@@ -32,6 +32,26 @@ def seed_data(session: Session = Depends(get_session)):
     count = scraper.generate_deals()
     return {"message": f"Seeded database with {count} deals."}
 
+@router.get("/deals")
+def list_deals(session: Session = Depends(get_session)):
+    """List all active deals with product and store info."""
+    # Join Deal, Product, Store
+    statement = select(Deal, Product, Store).join(Product).join(Store)
+    results = session.exec(statement).all()
+
+    deals_data = []
+    for deal, product, store in results:
+        deals_data.append({
+            "id": deal.id,
+            "product": product,
+            "store": store,
+            "price": deal.price,
+            "original_price": deal.original_price,
+            "discount_pct": deal.discount_pct,
+            "valid_until": deal.valid_until
+        })
+    return deals_data
+
 from datetime import datetime
 
 @router.post("/plans/generate")
@@ -47,10 +67,13 @@ def generate_meal_plan(user_id: int, session: Session = Depends(get_session)):
         # Simple consolidation logic for shopping list (Mock logic for now)
         # In a real app, we'd parse ingredients and match to Deals
 
+        from datetime import timedelta
+        start_date = datetime.strptime("2025-12-09", "%Y-%m-%d").date()
+
         meal_plan = MealPlan(
             user_id=user.id,
-            start_date=datetime.strptime("2025-12-09", "%Y-%m-%d").date(),
-            end_date=datetime.strptime("2025-12-11", "%Y-%m-%d").date(),
+            start_date=start_date,
+            end_date=start_date + timedelta(days=6),
             content_json=json.dumps(plan_data)
         )
         session.add(meal_plan)
