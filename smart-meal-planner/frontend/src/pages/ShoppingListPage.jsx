@@ -1,10 +1,31 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import ShoppingListItem from '../components/ShoppingListItem';
 import StoreComparison from '../components/StoreComparison';
 import { Download, Share2 } from 'lucide-react';
 
 const ShoppingListPage = () => {
+  const [planSummary, setPlanSummary] = useState("");
+  const userId = localStorage.getItem('user_id') || 1;
+
+  useEffect(() => {
+    // Fetch latest plan to get the AI summary
+    const fetchPlan = async () => {
+      try {
+        const res = await fetch(`http://localhost:8000/api/plans/${userId}/latest`);
+        if (res.ok) {
+           const data = await res.json();
+           setPlanSummary(data.shopping_list_summary);
+        }
+      } catch (e) {
+         console.error(e);
+      }
+    };
+    fetchPlan();
+  }, [userId]);
+
   // Mock Data for MVP visualization
+  // In a real implementation, we would parse the ingredients from the MealPlan and match with Deals.
+  // For this MVP, we show a sample static list to demonstrate the UI layout.
   const [items, setItems] = useState([
     { id: 1, name: 'Ground Beef', quantity: 2, unit: 'kg', store: 'Walmart', price: 14.00, is_deal: true, checked: false },
     { id: 2, name: 'Chicken Thighs', quantity: 1.5, unit: 'kg', store: 'Provigo', price: 7.49, is_deal: true, checked: false },
@@ -50,6 +71,13 @@ const ShoppingListPage = () => {
         </div>
 
         <div className="space-y-6">
+           {planSummary && (
+             <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg mb-6">
+                <h3 className="font-bold text-blue-800 text-sm mb-1">AI Recommendation</h3>
+                <p className="text-blue-700 text-sm">{planSummary}</p>
+             </div>
+           )}
+
            {Object.entries(groupedItems).map(([store, storeItems]) => (
               <div key={store} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                  <div className="bg-gray-50 px-4 py-3 border-b border-gray-200 flex justify-between items-center">
