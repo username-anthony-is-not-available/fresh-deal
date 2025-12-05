@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, select
 from app.core.db import get_session
-from app.models.all_models import User, MealPlan
+from app.models.all_models import User, MealPlan, Deal, Product, Store
 from app.agents.scraper_agent import MockScraperAgent
 from app.agents.planner_agent import MealPlannerAgent
 from pydantic import BaseModel

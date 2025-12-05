@@ -100,34 +100,93 @@ class MealPlannerAgent:
     def _mock_response(self, user: User) -> Dict[str, Any]:
         # Generate a semi-random 7-day plan
         days = []
-        breakfasts = ["Oatmeal with Berries", "Scrambled Eggs & Toast", "Yogurt Parfait", "Pancakes", "Avocado Toast", "Cereal & Milk", "Breakfast Burrito"]
-        lunches = ["Chicken Caesar Salad", "Ham & Cheese Sandwich", "Leftover Pasta", "Vegetable Soup", "Turkey Wrap", "Quinoa Salad", "Grilled Cheese"]
-        dinners = [
-            {"name": "Spaghetti Bolognese", "ing": ["Pasta", "Ground Beef", "Tomato Sauce", "Onions"]},
-            {"name": "Chicken Stir Fry", "ing": ["Chicken Thighs", "Rice", "Broccoli", "Soy Sauce"]},
-            {"name": "Baked Salmon", "ing": ["Salmon Fillet", "Asparagus", "Potatoes"]},
-            {"name": "Pork Chops with Veggies", "ing": ["Pork Chops", "Carrots", "Green Beans"]},
-            {"name": "Beef Tacos", "ing": ["Ground Beef", "Tortillas", "Lettuce", "Cheese"]},
-            {"name": "Vegetarian Curry", "ing": ["Chickpeas", "Coconut Milk", "Spinach", "Rice"]},
-            {"name": "Roast Chicken", "ing": ["Whole Chicken", "Potatoes", "Carrots"]}
+
+        is_vegetarian = False
+        is_vegan = False
+        if user.dietary_preferences:
+            prefs = user.dietary_preferences.lower()
+            if "vegetarian" in prefs: is_vegetarian = True
+            if "vegan" in prefs: is_vegan = True
+
+        # Pool of meals
+        breakfasts = [
+            {"name": "Oatmeal with Berries", "ing": ["Oats", "Milk", "Berries"], "tags": ["veg", "vegan"]},
+            {"name": "Scrambled Eggs & Toast", "ing": ["Eggs", "Bread", "Butter"], "tags": ["veg"]},
+            {"name": "Yogurt Parfait", "ing": ["Yogurt", "Granola", "Honey"], "tags": ["veg"]},
+            {"name": "Pancakes", "ing": ["Flour", "Milk", "Eggs", "Syrup"], "tags": ["veg"]},
+            {"name": "Avocado Toast", "ing": ["Bread", "Avocado", "Salt"], "tags": ["veg", "vegan"]},
+            {"name": "Cereal & Milk", "ing": ["Cereal", "Milk"], "tags": ["veg"]},
+            {"name": "Tofu Scramble", "ing": ["Tofu", "Spinach", "Turmeric"], "tags": ["veg", "vegan"]}
         ]
 
+        lunches = [
+            {"name": "Chicken Caesar Salad", "ing": ["Romaine Lettuce", "Chicken Breast", "Croutons", "Caesar Dressing"], "tags": []},
+            {"name": "Ham & Cheese Sandwich", "ing": ["Bread", "Ham", "Cheese"], "tags": []},
+            {"name": "Vegetable Soup", "ing": ["Carrots", "Celery", "Onions", "Broth"], "tags": ["veg", "vegan"]},
+            {"name": "Turkey Wrap", "ing": ["Tortilla", "Turkey", "Lettuce", "Mayo"], "tags": []},
+            {"name": "Quinoa Salad", "ing": ["Quinoa", "Cucumber", "Tomatoes", "Feta"], "tags": ["veg"]},
+            {"name": "Grilled Cheese", "ing": ["Bread", "Cheese", "Butter"], "tags": ["veg"]},
+            {"name": "Hummus & Veggie Wrap", "ing": ["Tortilla", "Hummus", "Peppers", "Cucumber"], "tags": ["veg", "vegan"]}
+        ]
+
+        dinners = [
+            {"name": "Spaghetti Bolognese", "ing": ["Pasta", "Ground Beef", "Tomato Sauce", "Onions"], "tags": []},
+            {"name": "Chicken Stir Fry", "ing": ["Chicken Thighs", "Rice", "Broccoli", "Soy Sauce"], "tags": []},
+            {"name": "Baked Salmon", "ing": ["Salmon Fillet", "Asparagus", "Potatoes"], "tags": []},
+            {"name": "Pork Chops with Veggies", "ing": ["Pork Chops", "Carrots", "Green Beans"], "tags": []},
+            {"name": "Beef Tacos", "ing": ["Ground Beef", "Tortillas", "Lettuce", "Cheese"], "tags": []},
+            {"name": "Vegetarian Curry", "ing": ["Chickpeas", "Coconut Milk", "Spinach", "Rice"], "tags": ["veg", "vegan"]},
+            {"name": "Roast Chicken", "ing": ["Whole Chicken", "Potatoes", "Carrots"], "tags": []},
+            {"name": "Lentil Shepherd's Pie", "ing": ["Lentils", "Potatoes", "Carrots", "Peas"], "tags": ["veg", "vegan"]},
+            {"name": "Stuffed Bell Peppers", "ing": ["Bell Peppers", "Rice", "Black Beans", "Corn"], "tags": ["veg", "vegan"]},
+            {"name": "Eggplant Parmesan", "ing": ["Eggplant", "Tomato Sauce", "Mozzarella", "Breadcrumbs"], "tags": ["veg"]}
+        ]
+
+        # Filter based on preferences
+        def filter_meals(meal_list):
+            filtered = []
+            for m in meal_list:
+                if is_vegan:
+                    if "vegan" in m["tags"]: filtered.append(m)
+                elif is_vegetarian:
+                    if "veg" in m["tags"]: filtered.append(m)
+                else:
+                    filtered.append(m)
+            return filtered
+
+        valid_breakfasts = filter_meals(breakfasts)
+        valid_lunches = filter_meals(lunches)
+        valid_dinners = filter_meals(dinners)
+
+        # Fallback if too strict
+        if not valid_dinners: valid_dinners = dinners
+
         # Shuffle dinners for variety
-        random.shuffle(dinners)
+        random.shuffle(valid_dinners)
 
         for i in range(1, 8):
+            # cycle through breakfasts/lunches
+            bf = valid_breakfasts[(i-1) % len(valid_breakfasts)]
+            lu = valid_lunches[(i-1) % len(valid_lunches)]
+            dn = valid_dinners[(i-1) % len(valid_dinners)]
+
             day_plan = {
                 "day": i,
                 "meals": [
-                    { "type": "Breakfast", "name": breakfasts[(i-1) % 7], "ingredients": ["Eggs", "Bread"] if "Eggs" in breakfasts[(i-1)%7] else ["Oats", "Milk"] },
-                    { "type": "Lunch", "name": lunches[(i-1) % 7], "ingredients": ["Bread", "Ham"] if "Sandwich" in lunches[(i-1)%7] else ["Chicken", "Lettuce"] },
-                    { "type": "Dinner", "name": dinners[i-1]["name"], "ingredients": dinners[i-1]["ing"] }
+                    { "type": "Breakfast", "name": bf["name"], "ingredients": bf["ing"] },
+                    { "type": "Lunch", "name": lu["name"], "ingredients": lu["ing"] },
+                    { "type": "Dinner", "name": dn["name"], "ingredients": dn["ing"] }
                 ]
             }
             days.append(day_plan)
 
+        summary = "Based on your preferences, we found great deals on fresh ingredients."
+        if is_vegetarian: summary += " Enjoy these meat-free savings!"
+        elif is_vegan: summary += " Enjoy these plant-based savings!"
+        else: summary += " Stock up on proteins currently on sale!"
+
         plan = {
             "days": days,
-            "shopping_list_summary": "Buy Chicken, Ground Beef, and Salmon on sale. Stock up on Rice and Pasta."
+            "shopping_list_summary": summary
         }
         return self.nutrition_agent.validate_plan(plan)

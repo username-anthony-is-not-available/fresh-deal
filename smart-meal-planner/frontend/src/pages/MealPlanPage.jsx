@@ -77,11 +77,12 @@ const MealPlanPage = () => {
      );
   }
 
-  // Mock Nutrition Data (Will come from API later)
+  // Parse Nutrition Data from plan or use default
+  const nutritionSummary = plan.nutritional_summary || {};
   const nutritionData = [
-     { name: 'Protein', value: 125, unit: 'g', color: '#3b82f6' },
-     { name: 'Carbs', value: 250, unit: 'g', color: '#22c55e' },
-     { name: 'Fats', value: 70, unit: 'g', color: '#eab308' },
+     { name: 'Protein', value: nutritionSummary.avg_daily_protein || 0, unit: 'g', color: '#3b82f6' },
+     { name: 'Calories', value: nutritionSummary.avg_daily_calories || 0, unit: 'kcal', color: '#ef4444' },
+     // Note: Mock data might not have fat/carbs in summary, so we keep simple
   ];
 
   return (
