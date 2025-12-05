@@ -18,7 +18,13 @@ class Settings(BaseSettings):
 
     # AI
     OPENROUTER_API_KEY: str | None = None
-    OPENROUTER_MODEL: str = "anthropic/claude-3.5-sonnet"
+    OPENROUTER_BASE_URL: str = "https://openrouter.ai/api/v1"
+    DEFAULT_MODEL: str = "meta-llama/llama-3.1-8b-instruct:free"
+    FALLBACK_MODEL: str = "meta-llama/llama-3.1-8b-instruct:free"
+    OPENROUTER_MODEL: str = "anthropic/claude-3.5-sonnet" # Keeping for backward compat if any
+
+    # Redis
+    REDIS_URL: str = "redis://localhost:6379/0"
 
     # App Mode
     USE_MOCK_AI: bool = False
