@@ -1,123 +1,183 @@
+
 import React, { useState, useEffect } from 'react';
 import ShoppingListItem from '../components/ShoppingListItem';
 import StoreComparison from '../components/StoreComparison';
-import { Download, Share2 } from 'lucide-react';
+import { Download, Share2, TrendingDown, MapPin, DollarSign } from 'lucide-react';
 
 const ShoppingListPage = () => {
-  const [planSummary, setPlanSummary] = useState("");
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [strategy, setStrategy] = useState("min_cost");
   const userId = localStorage.getItem('user_id') || 1;
 
   useEffect(() => {
-    // Fetch latest plan to get the AI summary
-    const fetchPlan = async () => {
+    const fetchList = async () => {
+      setLoading(true);
       try {
-        const res = await fetch(`http://localhost:8000/api/plans/${userId}/latest`);
+        const res = await fetch(`http://localhost:8000/api/shopping/optimize?user_id=${userId}&strategy=${strategy}`);
         if (res.ok) {
-           const data = await res.json();
-           setPlanSummary(data.shopping_list_summary);
+           const result = await res.json();
+           setData(result);
+        } else {
+            // If failed (e.g. no plan), handle it
+            console.error("Failed to fetch list");
         }
       } catch (e) {
          console.error(e);
+      } finally {
+        setLoading(false);
       }
     };
-    fetchPlan();
-  }, [userId]);
+    fetchList();
+  }, [userId, strategy]);
 
-  // Mock Data for MVP visualization
-  // In a real implementation, we would parse the ingredients from the MealPlan and match with Deals.
-  // For this MVP, we show a sample static list to demonstrate the UI layout.
-  const [items, setItems] = useState([
-    { id: 1, name: 'Ground Beef', quantity: 2, unit: 'kg', store: 'Walmart', price: 14.00, is_deal: true, checked: false },
-    { id: 2, name: 'Chicken Thighs', quantity: 1.5, unit: 'kg', store: 'Provigo', price: 7.49, is_deal: true, checked: false },
-    { id: 3, name: 'Pasta (Spaghetti)', quantity: 2, unit: 'pack', store: 'Walmart', price: 1.94, is_deal: false, checked: false },
-    { id: 4, name: 'Tomato Sauce', quantity: 3, unit: 'can', store: 'Walmart', price: 3.00, is_deal: false, checked: true },
-    { id: 5, name: 'Eggs (Large)', quantity: 1, unit: 'carton', store: 'IGA', price: 4.50, is_deal: false, checked: false },
-    { id: 6, name: 'Milk 2%', quantity: 2, unit: 'L', store: 'IGA', price: 5.20, is_deal: false, checked: false },
-    { id: 7, name: 'Apples (Gala)', quantity: 3, unit: 'lb', store: 'Provigo', price: 2.99, is_deal: true, checked: false },
-    { id: 8, name: 'Spinach', quantity: 1, unit: 'pack', store: 'Provigo', price: 3.99, is_deal: false, checked: false },
-  ]);
+  if (loading) {
+      return <div className="p-8 text-center text-gray-500">Optimizing your shopping list...</div>;
+  }
 
-  const toggleItem = (id) => {
-    setItems(items.map(i => i.id === id ? { ...i, checked: !i.checked } : i));
-  };
+  if (!data || !data.recommended_stores) {
+      return <div className="p-8 text-center">No shopping list available. Generate a meal plan first!</div>;
+  }
 
-  const storeComparison = [
-    { name: 'Walmart', total: 65.40, items_count: 8, savings: 0 },
-    { name: 'Provigo', total: 72.10, items_count: 8, savings: 0 },
-    { name: 'IGA', total: 78.50, items_count: 8, savings: 0 },
-    { name: 'Optimized Mix', total: 43.11, items_count: 8, savings: 22.29 }, // Demo numbers
+  // Format comparison for the chart component
+  // The component likely expects { name, total, savings }
+  // We construct mock comparison for the other stores vs our optimized total
+  const comparisonData = [
+     // We can just show the recommended breakdown for now as "Optimized"
+     // Or ideally, the backend should return "Single Store" estimates.
+     // For MVP, we will visualize the Savings.
+     { name: 'Optimized', total: data.total_cost, savings: data.total_savings },
+     { name: 'Regular Price', total: data.total_regular_cost, savings: 0 }
   ];
-
-  // Group items by store for the list view
-  const groupedItems = items.reduce((acc, item) => {
-    if (!acc[item.store]) acc[item.store] = [];
-    acc[item.store].push(item);
-    return acc;
-  }, {});
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
       <div className="lg:col-span-2">
-        <div className="flex items-center justify-between mb-6">
-           <h1 className="text-3xl font-bold text-gray-900">Shopping List</h1>
+        <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
+           <div>
+               <h1 className="text-3xl font-bold text-gray-900">Shopping List</h1>
+               <p className="text-sm text-gray-500 mt-1">
+                   Strategy: <span className="font-medium text-gray-700">{strategy === 'min_cost' ? 'Maximum Savings' : 'Convenience'}</span>
+               </p>
+           </div>
+
            <div className="flex gap-2">
+                <select
+                    value={strategy}
+                    onChange={(e) => setStrategy(e.target.value)}
+                    className="border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-accent-500"
+                >
+                    <option value="min_cost">Max Savings (Multi-Store)</option>
+                    <option value="convenience">Convenience (Fewer Stops)</option>
+                </select>
+
               <button className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg">
                  <Share2 className="w-5 h-5" />
-              </button>
-              <button className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg">
-                 <Download className="w-5 h-5" />
               </button>
            </div>
         </div>
 
         <div className="space-y-6">
-           {planSummary && (
-             <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg mb-6">
-                <h3 className="font-bold text-blue-800 text-sm mb-1">AI Recommendation</h3>
-                <p className="text-blue-700 text-sm">{planSummary}</p>
-             </div>
-           )}
-
-           {Object.entries(groupedItems).map(([store, storeItems]) => (
-              <div key={store} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+           {data.recommended_stores.map((storeData, idx) => (
+              <div key={idx} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden relative">
+                 {/* Store Header */}
                  <div className="bg-gray-50 px-4 py-3 border-b border-gray-200 flex justify-between items-center">
-                    <h3 className="font-bold text-gray-900">{store}</h3>
-                    <span className="text-xs font-medium bg-white border border-gray-200 px-2 py-1 rounded">
-                       {storeItems.length} items
-                    </span>
+                    <div className="flex items-center gap-3">
+                        <div className="bg-blue-100 text-blue-800 font-bold w-8 h-8 flex items-center justify-center rounded-full text-sm">
+                            {idx + 1}
+                        </div>
+                        <div>
+                            <h3 className="font-bold text-gray-900 text-lg">{storeData.store}</h3>
+                            <span className="text-xs text-gray-500 flex items-center gap-1">
+                                <MapPin className="w-3 h-3" /> Stop #{idx + 1}
+                            </span>
+                        </div>
+                    </div>
+                    <div className="text-right">
+                        <div className="font-bold text-gray-900">${storeData.subtotal.toFixed(2)}</div>
+                        {storeData.savings > 0 && (
+                            <div className="text-xs text-green-600 font-medium">Save ${storeData.savings.toFixed(2)}</div>
+                        )}
+                    </div>
                  </div>
+
+                 {/* Items List */}
                  <div className="divide-y divide-gray-100">
-                    {storeItems.map(item => (
-                       <ShoppingListItem
-                          key={item.id}
-                          item={item}
-                          isChecked={item.checked}
-                          onToggle={() => toggleItem(item.id)}
-                       />
+                    {storeData.items.map((item, i) => (
+                       <div key={i} className="flex items-center p-4 hover:bg-gray-50 transition-colors">
+                           <input type="checkbox" className="w-5 h-5 text-accent-600 rounded border-gray-300 focus:ring-accent-500 mr-4" />
+                           <div className="flex-1">
+                               <p className="font-medium text-gray-900">{item.name}</p>
+                               <p className="text-xs text-gray-500">{item.qty} {item.unit}</p>
+                           </div>
+                           <div className="text-right">
+                               <div className="font-medium text-gray-900">${item.cost.toFixed(2)}</div>
+                               {item.discount_pct > 0 && (
+                                   <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">
+                                       -{item.discount_pct}%
+                                   </span>
+                               )}
+                           </div>
+                       </div>
                     ))}
-                 </div>
-                 <div className="px-4 py-3 bg-gray-50 border-t border-gray-200 text-right">
-                    <span className="text-sm text-gray-500 mr-2">Subtotal:</span>
-                    <span className="font-bold text-gray-900">
-                       ${storeItems.reduce((sum, i) => sum + i.price, 0).toFixed(2)}
-                    </span>
                  </div>
               </div>
            ))}
+
+           {data.unmatched_items.length > 0 && (
+               <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                   <h4 className="font-bold text-gray-700 mb-2">Items Not Found in Deal Database</h4>
+                   <ul className="list-disc list-inside text-sm text-gray-600">
+                       {data.unmatched_items.map((item, i) => (
+                           <li key={i}>{item}</li>
+                       ))}
+                   </ul>
+               </div>
+           )}
         </div>
       </div>
 
+      {/* Sidebar Stats */}
       <div>
-         <div className="sticky top-24">
-            <h2 className="text-xl font-bold text-gray-900 mb-4">Smart Savings</h2>
-            <StoreComparison stores={storeComparison} />
-
-            <div className="mt-6 bg-accent-50 p-6 rounded-xl border border-accent-100 text-center">
-               <span className="text-accent-800 font-medium block mb-1">Total Savings</span>
-               <span className="text-4xl font-bold text-accent-600">$22.29</span>
-               <p className="text-sm text-accent-700 mt-2">
-                  By shopping at multiple stores instead of just one.
+         <div className="sticky top-24 space-y-6">
+            <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-6 rounded-2xl border border-green-100 text-center shadow-sm">
+               <span className="inline-flex items-center justify-center p-3 bg-green-100 rounded-full mb-3 text-green-600">
+                   <DollarSign className="w-6 h-6" />
+               </span>
+               <span className="text-gray-600 font-medium block mb-1 uppercase text-xs tracking-wider">Total Savings</span>
+               <span className="text-4xl font-extrabold text-green-600">${data.total_savings.toFixed(2)}</span>
+               <p className="text-sm text-green-700 mt-2 font-medium">
+                  {(data.total_savings / data.total_regular_cost * 100).toFixed(0)}% off regular prices
                </p>
+            </div>
+
+            <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+                <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
+                    <TrendingDown className="w-5 h-5 text-gray-500" />
+                    Cost Breakdown
+                </h3>
+                <div className="space-y-3">
+                    <div className="flex justify-between text-sm">
+                        <span className="text-gray-500">Regular Price</span>
+                        <span className="font-medium text-gray-900 line-through">${data.total_regular_cost.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                        <span className="text-gray-500">Optimized Price</span>
+                        <span className="font-bold text-accent-600">${data.total_cost.toFixed(2)}</span>
+                    </div>
+                    <div className="h-px bg-gray-100 my-2"></div>
+                    <div className="flex justify-between text-sm font-bold">
+                        <span className="text-green-600">Your Savings</span>
+                        <span className="text-green-600">-${data.total_savings.toFixed(2)}</span>
+                    </div>
+                </div>
+            </div>
+
+            <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">
+                <h4 className="font-bold text-blue-900 text-sm mb-2">Why these stores?</h4>
+                <p className="text-xs text-blue-700 leading-relaxed">
+                    We found that splitting your trip between <strong>{data.recommended_stores.map(s => s.store).join(' and ')}</strong> saves you the most money this week based on active flyers.
+                </p>
             </div>
          </div>
       </div>

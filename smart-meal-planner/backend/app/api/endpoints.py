@@ -1,11 +1,15 @@
-from fastapi import APIRouter, Depends, HTTPException
+
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlmodel import Session, select
 from app.core.db import get_session
 from app.models.all_models import User, MealPlan, Deal, Product, Store
 from app.agents.scraper_agent import MockScraperAgent
 from app.agents.planner_agent import MealPlannerAgent
+from app.services.shopping_optimizer import ShoppingListOptimizer
 from pydantic import BaseModel
+from typing import Optional, List
 import json
+from datetime import datetime, timedelta
 
 router = APIRouter()
 
@@ -52,8 +56,6 @@ def list_deals(session: Session = Depends(get_session)):
         })
     return deals_data
 
-from datetime import datetime
-
 @router.post("/plans/generate")
 def generate_meal_plan(user_id: int, session: Session = Depends(get_session)):
     try:
@@ -64,10 +66,6 @@ def generate_meal_plan(user_id: int, session: Session = Depends(get_session)):
         planner = MealPlannerAgent(session)
         plan_data = planner.generate_plan(user)
 
-        # Simple consolidation logic for shopping list (Mock logic for now)
-        # In a real app, we'd parse ingredients and match to Deals
-
-        from datetime import timedelta
         start_date = datetime.strptime("2025-12-09", "%Y-%m-%d").date()
 
         meal_plan = MealPlan(
@@ -93,3 +91,29 @@ def get_latest_plan(user_id: int, session: Session = Depends(get_session)):
     if not plan:
         raise HTTPException(status_code=404, detail="No plan found")
     return json.loads(plan.content_json)
+
+@router.get("/shopping/optimize")
+def optimize_shopping_list(
+    user_id: int,
+    strategy: str = "min_cost",
+    session: Session = Depends(get_session)
+):
+    """
+    Returns the optimized shopping list for the user's latest meal plan.
+    """
+    user = session.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Get latest plan
+    statement = select(MealPlan).where(MealPlan.user_id == user_id).order_by(MealPlan.created_at.desc())
+    plan = session.exec(statement).first()
+    if not plan:
+        raise HTTPException(status_code=404, detail="No meal plan found. Generate one first.")
+
+    plan_data = json.loads(plan.content_json)
+
+    optimizer = ShoppingListOptimizer(session)
+    result = optimizer.generate_shopping_list(user, plan_data, strategy)
+
+    return result
