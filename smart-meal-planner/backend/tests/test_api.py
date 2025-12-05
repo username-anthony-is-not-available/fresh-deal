@@ -53,5 +53,5 @@ def test_full_flow():
     assert response.status_code == 200
     data = response.json()
     assert "days" in data
-    assert len(data["days"]) == 3
+    assert len(data["days"]) == 7
     assert "shopping_list_summary" in data
