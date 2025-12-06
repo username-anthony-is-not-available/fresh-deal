@@ -8,7 +8,8 @@ const MealPlanPage = () => {
   const [plan, setPlan] = useState(null);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
-  const [error, setError] = useState(null); // Add error state
+  const [error, setError] = useState(null);
+  const [polling, setPolling] = useState(false);
 
   const userId = localStorage.getItem('user_id') || 1; // Default to 1 for dev
 
@@ -33,8 +34,42 @@ const MealPlanPage = () => {
     }
   };
 
+  const pollTaskStatus = async (taskId) => {
+      const intervalId = setInterval(async () => {
+          try {
+              const res = await fetch(`http://localhost:8000/api/tasks/${taskId}`);
+              if (res.ok) {
+                  const data = await res.json();
+                  if (data.status === "SUCCESS") {
+                      clearInterval(intervalId);
+                      setPlan(data.result);
+                      setPolling(false);
+                      setGenerating(false);
+                  } else if (data.status === "FAILURE" || data.status === "Failed") {
+                      clearInterval(intervalId);
+                      setError("Plan generation failed: " + data.error);
+                      setPolling(false);
+                      setGenerating(false);
+                  }
+                  // If PENDING or STARTED, continue polling
+              } else {
+                   clearInterval(intervalId);
+                   setError("Failed to check task status");
+                   setPolling(false);
+                   setGenerating(false);
+              }
+          } catch (e) {
+              clearInterval(intervalId);
+              setError("Network error polling status");
+              setPolling(false);
+              setGenerating(false);
+          }
+      }, 2000); // Poll every 2 seconds
+  };
+
   const generatePlan = async () => {
     setGenerating(true);
+    setPolling(true);
     setError(null);
     try {
       const res = await fetch(`http://localhost:8000/api/plans/generate?user_id=${userId}`, {
@@ -42,17 +77,27 @@ const MealPlanPage = () => {
       });
       if (res.ok) {
         const data = await res.json();
-        setPlan(data);
+        // The API now returns a task_id
+        if (data.task_id) {
+            pollTaskStatus(data.task_id);
+        } else {
+            // Fallback for sync response (should not happen with new API)
+            setPlan(data);
+            setGenerating(false);
+            setPolling(false);
+        }
       } else {
          const txt = await res.text();
          console.error("Generate failed", txt);
          setError(`Generate failed: ${res.status}`);
+         setGenerating(false);
+         setPolling(false);
       }
     } catch (e) {
       console.error("Failed to generate", e);
       setError(`Network error: ${e.message}`);
-    } finally {
       setGenerating(false);
+      setPolling(false);
     }
   };
 
@@ -85,6 +130,7 @@ const MealPlanPage = () => {
            <div className="animate-spin rounded-full h-16 w-16 border-4 border-primary-200 border-t-primary-600 mx-auto mb-6"></div>
            <h2 className="text-xl font-bold text-gray-900">AI is crafting your menu...</h2>
            <p className="text-gray-500 mt-2">Analyzing 60+ recipes and 100+ deals...</p>
+           <p className="text-sm text-gray-400 mt-4">This might take up to 30 seconds.</p>
         </div>
      );
   }
@@ -113,10 +159,11 @@ const MealPlanPage = () => {
          </div>
          <button
            onClick={generatePlan}
-           className="flex items-center gap-2 text-primary-700 bg-primary-50 px-4 py-2 rounded-lg hover:bg-primary-100 font-medium"
+           disabled={generating}
+           className="flex items-center gap-2 text-primary-700 bg-primary-50 px-4 py-2 rounded-lg hover:bg-primary-100 font-medium disabled:opacity-50"
          >
-            <RefreshCw className="w-4 h-4" />
-            Regenerate
+            <RefreshCw className={`w-4 h-4 ${generating ? 'animate-spin' : ''}`} />
+            {generating ? 'Generating...' : 'Regenerate'}
          </button>
       </div>
 
