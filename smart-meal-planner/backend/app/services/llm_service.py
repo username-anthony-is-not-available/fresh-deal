@@ -108,6 +108,13 @@ class LLMService:
     def generate_meal_plan(self, user_prefs: Dict, available_deals: List[Dict], recipes_db: List[Dict]) -> Dict:
         """
         Generates a meal plan based on user preferences and available deals.
+
+        Args:
+            user_prefs: User preferences (household size, etc.)
+            available_deals: List of current deals
+            recipes_db: List of recipes (legacy argument, or we pass matched recipes here)
+                        If this list is small (< 100), we assume it's pre-filtered or the legacy static list.
+                        If it's empty, we should ideally fetch from DB, but this method signature implies dependency injection.
         """
         week_dates = self.get_next_week_dates()
 
@@ -189,7 +196,7 @@ class LLMService:
         {formatted_deals}
 
         RECIPE SELECTION RULES:
-        1. You have 60 recipes available (use IDs provided).
+        1. You have a curated list of recipes available (use IDs provided).
         2. You MUST select 21 meals.
         3. PRIORITY RULES:
            - Never repeat the same meal on consecutive days
@@ -200,7 +207,7 @@ class LLMService:
         4. Respect dietary restrictions (vegetarian, vegan, gluten-free, etc.)
 
         AVAILABLE RECIPES:
-        {json.dumps([{'id': r['id'], 'name': r['name'], 'tags': r['tags'], 'ingredients': [i['item'] for i in r['ingredients']], 'meal_type': r['meal_type']} for r in recipes])}
+        {json.dumps(self._format_recipes_for_prompt(recipes))}
 
         RETURN JSON STRUCTURE:
         {{
@@ -241,6 +248,30 @@ class LLMService:
                 return json.loads(response[start:end])
             raise ValueError("Could not parse JSON from LLM response")
 
+    def _format_recipes_for_prompt(self, recipes: List[Dict]) -> List[Dict]:
+        """Formats recipes (both legacy dicts and new DB objects converted to dicts) for the prompt."""
+        formatted = []
+        for r in recipes:
+            # Handle DB model dict conversion
+            ingredients = r.get('ingredients', [])
+            # If ingredients is a JSON string (new DB model), parse it
+            if isinstance(ingredients, str):
+                try:
+                    ingredients = json.loads(ingredients)
+                except:
+                    ingredients = []
+            # Legacy format check
+            elif isinstance(ingredients, list) and len(ingredients) > 0 and isinstance(ingredients[0], dict):
+                 ingredients = [i.get('item', '') for i in ingredients]
+
+            formatted.append({
+                'id': r.get('id'),
+                'name': r.get('name'),
+                'ingredients': ingredients,
+                'meal_type': r.get('meal_type', 'Any')
+            })
+        return formatted
+
     def _generate_mock_plan(self, user_prefs: Dict, recipes: List[Dict], week_dates: List[Dict]) -> Dict:
         """Fallback mock plan generation."""
         import random
@@ -250,7 +281,7 @@ class LLMService:
             day_meals = {}
             for m_type in ["Breakfast", "Lunch", "Dinner"]:
                 # Filter by meal type if available in recipe
-                candidates = [r for r in recipes if r.get("meal_type") == m_type]
+                candidates = [r for r in recipes if str(r.get("meal_type")).lower() == m_type.lower() or r.get("meal_type") == 'Any']
                 if not candidates:
                     candidates = recipes
 

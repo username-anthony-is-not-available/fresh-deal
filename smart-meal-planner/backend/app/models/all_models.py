@@ -40,6 +40,32 @@ class Deal(SQLModel, table=True):
     product: Product = Relationship(back_populates="deals")
     store: Store = Relationship(link_model=None) # Simple relationship
 
+class Recipe(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    name: str
+    cuisine: Optional[str] = None
+    category: Optional[str] = None # e.g. "Main Dish"
+    meal_type: Optional[str] = None # Breakfast, Lunch, Dinner (inferred or explicit)
+
+    ingredients_json: str = Field(default="[]") # JSON list of strings (display)
+    instructions_json: str = Field(default="[]") # JSON list of strings (display)
+
+    prep_time_minutes: Optional[int] = None
+    difficulty: Optional[str] = None
+    image_url: Optional[str] = None
+    source_url: Optional[str] = None
+
+    # Matching helpers
+    ingredients: List["RecipeIngredient"] = Relationship(back_populates="recipe")
+
+class RecipeIngredient(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    recipe_id: int = Field(foreign_key="recipe.id")
+    name: str = Field(index=True) # Normalized name for matching (e.g. "chicken")
+    original_text: Optional[str] = None # "2 lbs chicken breast"
+
+    recipe: Recipe = Relationship(back_populates="ingredients")
+
 class MealPlan(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     user_id: int = Field(foreign_key="user.id")
