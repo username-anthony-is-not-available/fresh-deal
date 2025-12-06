@@ -2,12 +2,13 @@
 import json
 import os
 from typing import List, Dict, Any, Tuple
-from sqlmodel import Session, select
+from sqlmodel import select
+from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.all_models import Product, Deal, Store, MealPlan, User
 
 class ShoppingListOptimizer:
-    def __init__(self, session: Session):
-        self.session = session
+    def __init__(self, session):
+        self.session = session # Can be AsyncSession or Sync Session
         self.recipes = self._load_recipes()
 
     def _load_recipes(self) -> List[Dict]:
@@ -23,12 +24,10 @@ class ShoppingListOptimizer:
     def get_recipe_by_id(self, recipe_id: str) -> Dict:
         return next((r for r in self.recipes if r["id"] == recipe_id), None)
 
-    def generate_shopping_list(self, user: User, plan_data: Dict[str, Any], strategy: str = "min_cost") -> Dict[str, Any]:
+    async def generate_shopping_list_async(self, user: User, plan_data: Dict[str, Any], strategy: str = "min_cost") -> Dict[str, Any]:
         """
-        Generates an optimized shopping list based on the meal plan.
-        strategies: 'min_cost', 'convenience' (fewer stores), 'balanced'
+        Async version of generate_shopping_list.
         """
-
         # 1. Consolidate Ingredients
         consolidated = self._consolidate_ingredients(plan_data, user.household_size)
 
@@ -38,7 +37,7 @@ class ShoppingListOptimizer:
             # key is (name, unit)
             item_name = key[0]
             unit = key[1]
-            best_options = self._find_prices_for_ingredient(item_name, unit)
+            best_options = await self._find_prices_for_ingredient_async(item_name, unit)
             priced_items.append({
                 "ingredient": item_name,
                 "quantity": qty_data["qty"],
@@ -51,6 +50,29 @@ class ShoppingListOptimizer:
 
         return optimization_result
 
+    def generate_shopping_list(self, user: User, plan_data: Dict[str, Any], strategy: str = "min_cost") -> Dict[str, Any]:
+        """
+        Synchronous version (for tests or sync contexts).
+        """
+        # 1. Consolidate Ingredients
+        consolidated = self._consolidate_ingredients(plan_data, user.household_size)
+
+        # 2. Find Prices for Each Ingredient
+        priced_items = []
+        for key, qty_data in consolidated.items():
+            item_name = key[0]
+            unit = key[1]
+            best_options = self._find_prices_for_ingredient_sync(item_name, unit)
+            priced_items.append({
+                "ingredient": item_name,
+                "quantity": qty_data["qty"],
+                "unit": unit,
+                "options": best_options
+            })
+
+        # 3. Optimize based on strategy
+        return self._optimize_routes(priced_items, strategy)
+
     def _consolidate_ingredients(self, plan_data: Dict, household_size: int) -> Dict[Tuple[str, str], Dict]:
         """
         Returns: { ("Chicken Breast", "kg"): { "qty": 2.5, "unit": "kg" }, ... }
@@ -60,50 +82,73 @@ class ShoppingListOptimizer:
 
         scale = max(1, household_size / 4)
 
-        for day in plan_data.get("days", []):
-            for meal in day.get("meals", []):
-                recipe_id = meal.get("id")
-                if recipe_id:
-                    recipe = self.get_recipe_by_id(recipe_id)
-                    if recipe:
-                        for ing in recipe["ingredients"]:
-                            name = ing["item"]
-                            qty = ing["quantity"] * scale
-                            unit = ing["unit"]
+        # Handle both 'meal_plan' (new format) and 'days' (legacy/mock format)
+        days = plan_data.get("meal_plan", plan_data.get("days", []))
 
-                            # Normalization helpers
-                            # Convert everything to lowercase for matching
-                            # But keep original casing for display? Let's assume schema matches.
+        for day in days:
+            # Check if day has 'meals' array (legacy) or structured breakfast/lunch/dinner (new)
+            meals_to_process = []
+            if "meals" in day and isinstance(day["meals"], list):
+                meals_to_process = day["meals"]
+            else:
+                for meal_type in ["breakfast", "lunch", "dinner"]:
+                    if meal_type in day:
+                        # Normalize to look like the legacy structure for processing
+                        m = day[meal_type]
+                        # Ensure it has 'ingredients'
+                        if m:
+                            meals_to_process.append(m)
 
-                            # Try to merge with existing entry if units are compatible
-                            merged = False
+            for meal in meals_to_process:
+                # If meal is fully enriched it has 'ingredients'
+                ingredients = meal.get("ingredients", [])
 
-                            # Check existing keys for this item name
-                            existing_keys = [k for k in consolidated.keys() if k[0] == name]
+                # If ingredients is missing, try to lookup by ID (legacy path)
+                if not ingredients:
+                    recipe_id = meal.get("id") or meal.get("recipe_id")
+                    if recipe_id:
+                        recipe = self.get_recipe_by_id(recipe_id)
+                        if recipe:
+                             ingredients = recipe["ingredients"]
 
-                            for k in existing_keys:
-                                existing_unit = k[1]
-                                if existing_unit == unit:
-                                    consolidated[k]["qty"] += qty
-                                    merged = True
-                                    break
+                for ing in ingredients:
+                    name = ing["item"]
+                    qty = ing["quantity"] * scale
+                    unit = ing["unit"]
 
-                                # Simple conversions
-                                if existing_unit == "kg" and unit == "lb":
-                                    consolidated[k]["qty"] += qty * 0.453592
-                                    merged = True
-                                    break
-                                elif existing_unit == "lb" and unit == "kg":
-                                    consolidated[k]["qty"] += qty * 2.20462
-                                    merged = True
-                                    break
-                                elif existing_unit == "L" and unit == "ml":
-                                    consolidated[k]["qty"] += qty / 1000.0
-                                    merged = True
-                                    break
+                    # Normalization helpers
+                    # Convert everything to lowercase for matching
+                    # But keep original casing for display? Let's assume schema matches.
 
-                            if not merged:
-                                consolidated[(name, unit)] = {"qty": qty, "unit": unit}
+                    # Try to merge with existing entry if units are compatible
+                    merged = False
+
+                    # Check existing keys for this item name
+                    existing_keys = [k for k in consolidated.keys() if k[0] == name]
+
+                    for k in existing_keys:
+                        existing_unit = k[1]
+                        if existing_unit == unit:
+                            consolidated[k]["qty"] += qty
+                            merged = True
+                            break
+
+                        # Simple conversions
+                        if existing_unit == "kg" and unit == "lb":
+                            consolidated[k]["qty"] += qty * 0.453592
+                            merged = True
+                            break
+                        elif existing_unit == "lb" and unit == "kg":
+                            consolidated[k]["qty"] += qty * 2.20462
+                            merged = True
+                            break
+                        elif existing_unit == "L" and unit == "ml":
+                            consolidated[k]["qty"] += qty / 1000.0
+                            merged = True
+                            break
+
+                    if not merged:
+                        consolidated[(name, unit)] = {"qty": qty, "unit": unit}
 
         # Round quantities
         for k, v in consolidated.items():
@@ -111,9 +156,34 @@ class ShoppingListOptimizer:
 
         return consolidated
 
-    def _find_prices_for_ingredient(self, ingredient_name: str, required_unit: str) -> List[Dict]:
+    async def _find_prices_for_ingredient_async(self, ingredient_name: str, required_unit: str) -> List[Dict]:
         """
-        Returns a list of price options. Handles unit conversion vs store pricing.
+        Async: Returns a list of price options. Handles unit conversion vs store pricing.
+        """
+        # Execute query asynchronously
+        # Use execute() and scalars() or all() instead of exec() which is sqlmodel wrapper helper
+        # but here we are using standard sqlalchemy AsyncSession (or mix)
+
+        # Use scalars().first() for single result
+        result = await self.session.execute(select(Product).where(Product.name == ingredient_name))
+        product = result.scalars().first()
+
+        options = []
+        if not product:
+            return []
+
+        deals_result = await self.session.execute(select(Deal).where(Deal.product_id == product.id))
+        deals = deals_result.scalars().all()
+
+        stores_result = await self.session.execute(select(Store))
+        stores = stores_result.scalars().all()
+        store_map = {s.id: s for s in stores}
+
+        return self._calculate_options(deals, store_map, product, required_unit)
+
+    def _find_prices_for_ingredient_sync(self, ingredient_name: str, required_unit: str) -> List[Dict]:
+        """
+        Sync: Returns a list of price options. Handles unit conversion vs store pricing.
         """
         product = self.session.exec(select(Product).where(Product.name == ingredient_name)).first()
 
@@ -125,25 +195,19 @@ class ShoppingListOptimizer:
         stores = self.session.exec(select(Store)).all()
         store_map = {s.id: s for s in stores}
 
+        return self._calculate_options(deals, store_map, product, required_unit)
+
+    def _calculate_options(self, deals, store_map, product, required_unit):
+        options = []
         for deal in deals:
             store = store_map.get(deal.store_id)
             if store:
-                # Price is per product.unit_type
-                # We need to convert price to required_unit
                 price = deal.price
-
-                # Conversion logic
-                # if product.unit_type == "kg" and required_unit == "lb":
-                #     price = price * 0.453592 (Price per lb is less than price per kg)
-
                 conversion_factor = 1.0
                 if product.unit_type == "kg" and required_unit == "lb":
                     conversion_factor = 0.453592
                 elif product.unit_type == "lb" and required_unit == "kg":
                     conversion_factor = 2.20462
-
-                # If units are totally different (e.g. "each" vs "kg"), we can't easily convert without more data.
-                # For MVP, assume 1:1 if unknown, or rely on data seeding being consistent.
 
                 final_price = price * conversion_factor
 
@@ -151,11 +215,10 @@ class ShoppingListOptimizer:
                     "store_id": store.id,
                     "store_name": store.name,
                     "chain": store.chain,
-                    "price": final_price, # Price per REQUIRED unit
+                    "price": final_price,
                     "discount_pct": deal.discount_pct,
                     "unit_type": required_unit
                 })
-
         return options
 
     def _optimize_routes(self, priced_items: List[Dict], strategy: str) -> Dict[str, Any]:
@@ -165,7 +228,6 @@ class ShoppingListOptimizer:
         unmatched_items = []
 
         # Single Store Calculation
-        # We need to know the cost of the ENTIRE list at each store.
         all_stores = set()
         for item in priced_items:
             for opt in item["options"]:
@@ -176,7 +238,6 @@ class ShoppingListOptimizer:
         # Calculate single store totals
         for item in priced_items:
             for store_name in single_store_baskets.keys():
-                # Find option for this store
                 opt = next((o for o in item["options"] if o["store_name"] == store_name), None)
                 if opt:
                     cost = opt["price"] * item["quantity"]
@@ -213,21 +274,13 @@ class ShoppingListOptimizer:
             # Selection
             selected_option = None
             if strategy == "convenience":
-                # Pick the store that has the lowest TOTAL basket cost (single store)
-                # But filter for stores that actually have THIS item.
-
-                # Find valid stores that have this item
                 valid_store_names = [o["store_name"] for o in valid_options]
-
-                # Sort single_store_baskets by total cost, picking the best one that contains this item
-                # This approximates "Shop at the best single store"
                 best_store = None
                 min_total = float('inf')
 
                 for s_name in valid_store_names:
-                    # Penalize missing items in the total score to avoid picking a cheap store that has nothing
                     basket = single_store_baskets[s_name]
-                    penalty = len(basket["missing"]) * 100 # Heavy penalty for missing items
+                    penalty = len(basket["missing"]) * 100
                     score = basket["total"] + penalty
 
                     if score < min_total:
@@ -237,7 +290,6 @@ class ShoppingListOptimizer:
                 if best_store:
                     selected_option = next(o for o in valid_options if o["store_name"] == best_store)
                 else:
-                    # Fallback
                     valid_options.sort(key=lambda x: x["total_item_cost"])
                     selected_option = valid_options[0]
 
