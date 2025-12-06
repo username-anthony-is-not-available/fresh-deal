@@ -42,13 +42,13 @@ const ShoppingListPage = () => {
   // Format comparison for the chart component
   // The component likely expects { name, total, savings }
   // We construct mock comparison for the other stores vs our optimized total
-  const comparisonData = [
-     // We can just show the recommended breakdown for now as "Optimized"
-     // Or ideally, the backend should return "Single Store" estimates.
-     // For MVP, we will visualize the Savings.
-     { name: 'Optimized', total: data.total_cost, savings: data.total_savings },
-     { name: 'Regular Price', total: data.total_regular_cost, savings: 0 }
-  ];
+  // const comparisonData = [
+  //    // We can just show the recommended breakdown for now as "Optimized"
+  //    // Or ideally, the backend should return "Single Store" estimates.
+  //    // For MVP, we will visualize the Savings.
+  //    { name: 'Optimized', total: data.total_cost, savings: data.total_savings },
+  //    { name: 'Regular Price', total: data.total_regular_cost, savings: 0 }
+  // ];
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
