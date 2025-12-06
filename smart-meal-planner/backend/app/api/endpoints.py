@@ -12,7 +12,7 @@ from typing import Optional, List, Dict, Any
 from celery.result import AsyncResult
 import json
 from datetime import datetime, timedelta
-from app.tasks import generate_meal_plan_task
+from app.tasks import generate_meal_plan_task, scrape_metro_task
 
 router = APIRouter()
 
@@ -39,6 +39,14 @@ def seed_data(session: Session = Depends(get_session)):
     scraper = MockScraperAgent(session)
     count = scraper.generate_deals()
     return {"message": f"Seeded database with {count} deals."}
+
+@router.post("/admin/scrape/metro")
+async def trigger_metro_scrape(limit: int = 50):
+    """
+    Triggers the background task to scrape Metro.ca.
+    """
+    task = scrape_metro_task.delay(limit)
+    return {"task_id": task.id, "status": "Processing"}
 
 @router.get("/deals")
 async def list_deals(session: AsyncSession = Depends(get_async_session)):
