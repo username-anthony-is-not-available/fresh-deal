@@ -33,4 +33,11 @@ export default defineConfig([
       ],
     },
   },
+  // Add specific config for configuration files that run in Node
+  {
+    files: ['playwright.config.js', 'vite.config.js', 'postcss.config.js', 'tailwind.config.js'],
+    languageOptions: {
+        globals: globals.node
+    }
+  }
 ])

@@ -1,13 +1,16 @@
 from typing import Optional, List
 from sqlmodel import SQLModel, Field, Relationship
-from datetime import datetime, date
+from datetime import datetime, date, timezone
+
+def utc_now():
+    return datetime.now(timezone.utc)
 
 class User(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     postal_code: str
     household_size: int
     dietary_preferences: Optional[str] = None  # JSON string or comma-separated
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=utc_now)
 
 class Store(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -43,4 +46,4 @@ class MealPlan(SQLModel, table=True):
     start_date: date
     end_date: date
     content_json: str # Stores the full JSON structure of meals
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=utc_now)

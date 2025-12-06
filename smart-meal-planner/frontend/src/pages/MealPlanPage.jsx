@@ -9,30 +9,29 @@ const MealPlanPage = () => {
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState(null);
-  const [polling, setPolling] = useState(false);
 
   const userId = localStorage.getItem('user_id') || 1; // Default to 1 for dev
 
   useEffect(() => {
-    fetchLatestPlan();
-  }, []);
-
-  const fetchLatestPlan = async () => {
-    try {
-      const res = await fetch(`http://localhost:8000/api/plans/${userId}/latest`);
-      if (res.ok) {
-        const data = await res.json();
-        setPlan(data);
-      } else {
-         console.log("No existing plan or API error");
+    const fetchLatestPlan = async () => {
+      try {
+        const res = await fetch(`http://localhost:8000/api/plans/${userId}/latest`);
+        if (res.ok) {
+          const data = await res.json();
+          setPlan(data);
+        } else {
+           console.log("No existing plan or API error");
+        }
+      } catch (e) {
+        console.log("Network error fetching plan", e);
+        setError(e.message);
+      } finally {
+        setLoading(false);
       }
-    } catch (e) {
-      console.log("Network error fetching plan", e);
-      setError(e.message);
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
+
+    fetchLatestPlan();
+  }, [userId]);
 
   const pollTaskStatus = async (taskId) => {
       const intervalId = setInterval(async () => {
@@ -43,25 +42,21 @@ const MealPlanPage = () => {
                   if (data.status === "SUCCESS") {
                       clearInterval(intervalId);
                       setPlan(data.result);
-                      setPolling(false);
                       setGenerating(false);
                   } else if (data.status === "FAILURE" || data.status === "Failed") {
                       clearInterval(intervalId);
                       setError("Plan generation failed: " + data.error);
-                      setPolling(false);
                       setGenerating(false);
                   }
                   // If PENDING or STARTED, continue polling
               } else {
                    clearInterval(intervalId);
                    setError("Failed to check task status");
-                   setPolling(false);
                    setGenerating(false);
               }
-          } catch (e) {
+          } catch {
               clearInterval(intervalId);
               setError("Network error polling status");
-              setPolling(false);
               setGenerating(false);
           }
       }, 2000); // Poll every 2 seconds
@@ -69,7 +64,6 @@ const MealPlanPage = () => {
 
   const generatePlan = async () => {
     setGenerating(true);
-    setPolling(true);
     setError(null);
     try {
       const res = await fetch(`http://localhost:8000/api/plans/generate?user_id=${userId}`, {
@@ -84,20 +78,17 @@ const MealPlanPage = () => {
             // Fallback for sync response (should not happen with new API)
             setPlan(data);
             setGenerating(false);
-            setPolling(false);
         }
       } else {
          const txt = await res.text();
          console.error("Generate failed", txt);
          setError(`Generate failed: ${res.status}`);
          setGenerating(false);
-         setPolling(false);
       }
     } catch (e) {
       console.error("Failed to generate", e);
       setError(`Network error: ${e.message}`);
       setGenerating(false);
-      setPolling(false);
     }
   };
 
@@ -144,11 +135,11 @@ const MealPlanPage = () => {
   const dateRange = startDate && endDate ? `${startDate} - ${endDate}` : "This Week";
 
   // Parse Nutrition Data
-  const nutritionSummary = plan.nutritional_summary || plan.shopping_summary || {};
-  const nutritionData = [
-     { name: 'Protein', value: nutritionSummary.avg_daily_protein || 0, unit: 'g', color: '#3b82f6' },
-     { name: 'Calories', value: nutritionSummary.avg_daily_calories || 0, unit: 'kcal', color: '#ef4444' },
-  ];
+  // const nutritionSummary = plan.nutritional_summary || plan.shopping_summary || {};
+  // const nutritionData = [
+  //    { name: 'Protein', value: nutritionSummary.avg_daily_protein || 0, unit: 'g', color: '#3b82f6' },
+  //    { name: 'Calories', value: nutritionSummary.avg_daily_calories || 0, unit: 'kcal', color: '#ef4444' },
+  // ];
 
   return (
     <div>
