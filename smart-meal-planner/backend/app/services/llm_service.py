@@ -4,6 +4,7 @@ import logging
 import redis
 import hashlib
 from typing import List, Dict, Any, Optional
+from datetime import datetime, timedelta
 from openai import OpenAI, APIError
 from app.core.config import settings
 
@@ -58,18 +59,66 @@ class LLMService:
         except Exception as e:
             logger.error(f"Redis set error: {e}")
 
+    def format_deals_for_llm(self, deals: List[Dict]) -> str:
+        """
+        Convert deals to LLM-friendly format with context.
+        """
+        formatted = []
+        for deal in deals:
+            formatted.append({
+                "product": deal.get("product"),
+                "store": deal.get("store"),
+                "category": deal.get("category", "general"),
+                "sale_price": deal.get("price"),
+                "regular_price": deal.get("regular_price", (deal.get("price") or 0) * 1.5),
+                "discount_percent": deal.get("discount", 0),
+                "expires_in_days": deal.get("expires_in_days", 7),
+                "unit": deal.get("unit", "each")
+            })
+
+        # Sort by discount % to highlight best deals
+        formatted.sort(key=lambda x: x["discount_percent"], reverse=True)
+
+        return json.dumps(formatted[:30], indent=2)  # Top 30 deals only to save tokens
+
+    def get_next_week_dates(self) -> List[Dict]:
+        """
+        Returns dates for the upcoming Monday-Sunday.
+        """
+        today = datetime.now()
+        # Find next Monday
+        days_until_monday = (7 - today.weekday()) % 7
+        if days_until_monday == 0:
+            days_until_monday = 7  # If today is Monday, start next Monday
+
+        start_date = today + timedelta(days=days_until_monday)
+
+        dates = []
+        for i in range(7):
+            date = start_date + timedelta(days=i)
+            dates.append({
+                "day": i + 1,
+                "day_name": date.strftime("%A"),
+                "date": date.strftime("%Y-%m-%d"),
+                "display_date": date.strftime("%b %d")  # "Dec 09"
+            })
+
+        return dates
+
     def generate_meal_plan(self, user_prefs: Dict, available_deals: List[Dict], recipes_db: List[Dict]) -> Dict:
         """
         Generates a meal plan based on user preferences and available deals.
         """
-        # Create a cache key. Limit deals to 20 to avoid huge keys, but ensure variety logic holds.
-        cache_key = self._get_cache_key("meal_plan", {"prefs": user_prefs, "deals": available_deals[:20]})
+        week_dates = self.get_next_week_dates()
+
+        # Create a cache key.
+        cache_key = self._get_cache_key("meal_plan", {"prefs": user_prefs, "deals": available_deals[:20], "week": week_dates[0]['date']})
         cached = self._get_cached_response(cache_key)
         if cached:
             logger.info("Returning cached meal plan")
             return cached
 
-        prompt = self._construct_meal_plan_prompt(user_prefs, available_deals, recipes_db)
+        prompt = self._construct_meal_plan_prompt(user_prefs, available_deals, recipes_db, week_dates)
 
         try:
             response = self._call_llm(prompt)
@@ -78,41 +127,7 @@ class LLMService:
             return plan
         except Exception as e:
             logger.error(f"LLM generation failed: {e}. Falling back to mock data.")
-            return self._generate_mock_plan(user_prefs, recipes_db)
-
-    def select_recipes(self, recipes: List[Dict], deals: List[Dict], preferences: Dict) -> List[Dict]:
-        """
-        Selects the best recipes from the database matching deals and preferences.
-        """
-        cache_key = self._get_cache_key("recipe_selection", {"recipes": len(recipes), "deals": len(deals), "prefs": preferences})
-        cached = self._get_cached_response(cache_key)
-        if cached:
-            return cached
-
-        prompt = self._construct_recipe_selection_prompt(recipes, deals, preferences)
-
-        try:
-            response = self._call_llm(prompt)
-            parsed = self._parse_llm_response(response)
-
-            # Expected format: {"selected_recipes": ["Name 1", "Name 2"]}
-            selected_names = parsed.get("selected_recipes", [])
-
-            # Match back to recipe objects
-            selected_recipes = [r for r in recipes if r.get("name") in selected_names]
-
-            if not selected_recipes:
-                # If LLM returned empty or mismatched names, fallback or assume it meant indexes?
-                # For now, simplistic fallback if empty.
-                if len(selected_names) > 0:
-                     logger.warning("LLM returned names but none matched db.")
-                raise ValueError("No matching recipes found from LLM response")
-
-            self._set_cached_response(cache_key, selected_recipes)
-            return selected_recipes
-        except Exception as e:
-            logger.error(f"Recipe selection failed: {e}. Falling back to simple filtering.")
-            return self._fallback_recipe_selection(recipes, preferences)
+            return self._generate_mock_plan(user_prefs, recipes_db, week_dates)
 
     def _call_llm(self, prompt: str) -> str:
         """Calls the LLM API."""
@@ -151,23 +166,68 @@ class LLMService:
             except Exception as e2:
                 raise APIError(f"Both models failed: {e2}", request=None, body=None)
 
-    def _construct_meal_plan_prompt(self, user_prefs: Dict, deals: List[Dict], recipes: List[Dict]) -> str:
-        # Simplified prompt construction
+    def _construct_meal_plan_prompt(self, user_prefs: Dict, deals: List[Dict], recipes: List[Dict], week_dates: List[Dict]) -> str:
+        formatted_deals = self.format_deals_for_llm(deals)
+        household_size = user_prefs.get('household_size', 1)
+
         return f"""
         Create a 7-day meal plan (Breakfast, Lunch, Dinner) for a user with these preferences: {json.dumps(user_prefs)}.
-        Consider these available deals: {json.dumps(deals[:20])}.
-        Use these recipes if possible: {json.dumps([r['name'] for r in recipes[:50]])}.
-        Return a JSON object with a 'days' array, where each day has 'day' number and 'meals' list.
-        Each meal should have 'type', 'name', 'ingredients'.
-        """
 
-    def _construct_recipe_selection_prompt(self, recipes: List[Dict], deals: List[Dict], prefs: Dict) -> str:
-        return f"""
-        Select the top 5 recipes from the provided list that best match the user's preferences and maximize savings based on deals.
-        User Preferences: {json.dumps(prefs)}
-        Deals: {json.dumps(deals[:20])}
-        Recipes: {json.dumps([{'id': r.get('id'), 'name': r.get('name'), 'tags': r.get('tags')} for r in recipes])}
-        Return a JSON object with a key 'selected_recipes' containing a list of recipe names.
+        GENERATE PLAN FOR: {week_dates[0]['date']} to {week_dates[6]['date']}
+
+        USER CONTEXT:
+        - Household: {household_size} people
+        - This affects:
+          * Recipe servings (scale ingredients)
+          * Shopping quantities (buy enough for {household_size})
+          * Meal sizes (appropriate portions)
+
+        Example: If recipe serves 4 and household is 2, use HALF the ingredients.
+        If household is 6, use 1.5x ingredients.
+
+        AVAILABLE DEALS (Expiring Soon):
+        {formatted_deals}
+
+        RECIPE SELECTION RULES:
+        1. You have 60 recipes available (use IDs provided).
+        2. You MUST select 21 meals.
+        3. PRIORITY RULES:
+           - Never repeat the same meal on consecutive days
+           - Never repeat the same protein source on consecutive days
+           - Space repeated meals at least 3 days apart when possible
+           - Prioritize variety in cuisines across the week
+           - Prioritize recipes that use ingredients currently on sale
+        4. Respect dietary restrictions (vegetarian, vegan, gluten-free, etc.)
+
+        AVAILABLE RECIPES:
+        {json.dumps([{'id': r['id'], 'name': r['name'], 'tags': r['tags'], 'ingredients': [i['item'] for i in r['ingredients']], 'meal_type': r['meal_type']} for r in recipes])}
+
+        RETURN JSON STRUCTURE:
+        {{
+          "meal_plan": [
+            {{
+              "day": 1,
+              "day_name": "Monday",
+              "date": "{week_dates[0]['date']}",
+              "breakfast": {{
+                "recipe_id": "recipe_001",
+                "recipe_name": "Recipe Name",
+                "reason": "Reason for selection (e.g., uses sale items)",
+                "servings": {household_size},
+                "scaled_for_household": true
+              }},
+              "lunch": {{...}},
+              "dinner": {{...}}
+            }}
+          ],
+          "shopping_summary": {{
+            "key_deals_used": ["item1", "item2"],
+            "estimated_savings": 28.50,
+            "nutritional_balance": "Balanced across macros",
+            "household_size": {household_size}
+          }},
+          "weekly_overview": "This week focuses on..."
+        }}
         """
 
     def _parse_llm_response(self, response: str) -> Any:
@@ -181,12 +241,13 @@ class LLMService:
                 return json.loads(response[start:end])
             raise ValueError("Could not parse JSON from LLM response")
 
-    def _generate_mock_plan(self, user_prefs: Dict, recipes: List[Dict]) -> Dict:
-        """Fallback mock plan generation (simplified version of planner_agent logic)."""
+    def _generate_mock_plan(self, user_prefs: Dict, recipes: List[Dict], week_dates: List[Dict]) -> Dict:
+        """Fallback mock plan generation."""
         import random
+
         days = []
-        for i in range(1, 8):
-            day_meals = []
+        for i, date_info in enumerate(week_dates):
+            day_meals = {}
             for m_type in ["Breakfast", "Lunch", "Dinner"]:
                 # Filter by meal type if available in recipe
                 candidates = [r for r in recipes if r.get("meal_type") == m_type]
@@ -195,23 +256,30 @@ class LLMService:
 
                 if candidates:
                     recipe = random.choice(candidates)
-                    day_meals.append({
-                        "type": m_type,
-                        "name": recipe.get("name", "Unknown Meal"),
-                        "ingredients": [ing["item"] for ing in recipe.get("ingredients", [])],
-                        "id": recipe.get("id")
-                    })
-            days.append({"day": i, "meals": day_meals})
+                    day_meals[m_type.lower()] = {
+                        "recipe_id": recipe.get("id"),
+                        "recipe_name": recipe.get("name", "Unknown Meal"),
+                        "reason": "Mock fallback selection",
+                        "servings": user_prefs.get('household_size', 1),
+                        "scaled_for_household": True
+                    }
+
+            days.append({
+                "day": i + 1,
+                "day_name": date_info['day_name'],
+                "date": date_info['date'],
+                "breakfast": day_meals.get('breakfast'),
+                "lunch": day_meals.get('lunch'),
+                "dinner": day_meals.get('dinner')
+            })
 
         return {
-            "days": days,
-            "shopping_list_summary": "Generated via Mock Fallback",
-            "nutritional_summary": {"note": "Mock Data"}
+            "meal_plan": days,
+            "shopping_summary": {
+                "key_deals_used": ["Mock Deal 1", "Mock Deal 2"],
+                "estimated_savings": 10.00,
+                "nutritional_balance": "Mock Balance",
+                "household_size": user_prefs.get('household_size', 1)
+            },
+            "weekly_overview": "This is a mock plan generated because the AI service was unavailable."
         }
-
-    def _fallback_recipe_selection(self, recipes: List[Dict], prefs: Dict) -> List[Dict]:
-        """Simple filtering fallback."""
-        filtered = recipes
-        if prefs.get("vegetarian"):
-            filtered = [r for r in filtered if "vegetarian" in r.get("tags", [])]
-        return filtered[:5]

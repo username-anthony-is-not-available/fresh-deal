@@ -7,11 +7,31 @@
     "prep_time_minutes": 20,
     "difficulty": "easy",
     "ingredients": [
-      {"item": "Chicken Breast (Boneless)", "quantity": 0.5, "unit": "kg"},
-      {"item": "Broccoli Crowns", "quantity": 1, "unit": "each"},
-      {"item": "Soy Sauce", "quantity": 0.1, "unit": "each"},
-      {"item": "Garlic (3 pack)", "quantity": 0.1, "unit": "each"},
-      {"item": "Rice (Basmati 2kg)", "quantity": 0.2, "unit": "kg"}
+      {
+        "item": "Chicken Breast (Boneless)",
+        "quantity": 0.5,
+        "unit": "kg"
+      },
+      {
+        "item": "Broccoli Crowns",
+        "quantity": 1,
+        "unit": "each"
+      },
+      {
+        "item": "Soy Sauce",
+        "quantity": 0.1,
+        "unit": "each"
+      },
+      {
+        "item": "Garlic (3 pack)",
+        "quantity": 0.1,
+        "unit": "each"
+      },
+      {
+        "item": "Rice (Basmati 2kg)",
+        "quantity": 0.2,
+        "unit": "kg"
+      }
     ],
     "nutrition": {
       "calories": 450,
@@ -22,11 +42,15 @@
     "instructions": [
       "Cut chicken into bite-sized pieces",
       "Heat oil in wok over high heat",
-      "Stir-fry chicken until golden, 5-7 minutes",
-      "Add vegetables and sauce, cook 3-4 minutes",
+      "Stir-fry chicken until golden",
+      "Add vegetables and sauce",
       "Serve over rice"
     ],
-    "tags": ["high-protein", "quick", "family-friendly"]
+    "tags": [
+      "high-protein",
+      "quick",
+      "family-friendly"
+    ]
   },
   {
     "id": "recipe_002",
@@ -36,11 +60,31 @@
     "prep_time_minutes": 30,
     "difficulty": "medium",
     "ingredients": [
-      {"item": "Ground Beef (Lean)", "quantity": 0.5, "unit": "kg"},
-      {"item": "Pasta (Spaghetti 900g)", "quantity": 0.3, "unit": "kg"},
-      {"item": "Tomato Sauce (Can)", "quantity": 1, "unit": "each"},
-      {"item": "Onions (Yellow)", "quantity": 1, "unit": "each"},
-      {"item": "Garlic (3 pack)", "quantity": 0.1, "unit": "each"}
+      {
+        "item": "Ground Beef (Lean)",
+        "quantity": 0.5,
+        "unit": "kg"
+      },
+      {
+        "item": "Pasta (Spaghetti 900g)",
+        "quantity": 0.3,
+        "unit": "kg"
+      },
+      {
+        "item": "Tomato Sauce (Can)",
+        "quantity": 1,
+        "unit": "each"
+      },
+      {
+        "item": "Onions (Yellow)",
+        "quantity": 1,
+        "unit": "each"
+      },
+      {
+        "item": "Garlic (3 pack)",
+        "quantity": 0.1,
+        "unit": "each"
+      }
     ],
     "nutrition": {
       "calories": 600,
@@ -49,13 +93,16 @@
       "fat": 20
     },
     "instructions": [
-      "Boil pasta according to instructions",
+      "Boil pasta",
       "Brown beef in a pan",
-      "Add onions and garlic, cook until soft",
+      "Add onions and garlic",
       "Add tomato sauce and simmer",
-      "Combine with pasta and serve"
+      "Combine with pasta"
     ],
-    "tags": ["comfort-food", "family-friendly"]
+    "tags": [
+      "comfort-food",
+      "family-friendly"
+    ]
   },
   {
     "id": "recipe_003",
@@ -65,10 +112,26 @@
     "prep_time_minutes": 25,
     "difficulty": "medium",
     "ingredients": [
-      {"item": "Salmon Fillet (Atlantic)", "quantity": 0.4, "unit": "kg"},
-      {"item": "Asparagus", "quantity": 1, "unit": "bunch"},
-      {"item": "Olive Oil (1L)", "quantity": 0.05, "unit": "L"},
-      {"item": "Potatoes (Red)", "quantity": 0.5, "unit": "kg"}
+      {
+        "item": "Salmon Fillet (Atlantic)",
+        "quantity": 0.4,
+        "unit": "kg"
+      },
+      {
+        "item": "Asparagus",
+        "quantity": 1,
+        "unit": "bunch"
+      },
+      {
+        "item": "Olive Oil (1L)",
+        "quantity": 0.05,
+        "unit": "L"
+      },
+      {
+        "item": "Potatoes (Red)",
+        "quantity": 0.5,
+        "unit": "kg"
+      }
     ],
     "nutrition": {
       "calories": 550,
@@ -78,11 +141,15 @@
     },
     "instructions": [
       "Preheat grill or oven",
-      "Season salmon with salt and pepper",
-      "Grill salmon for 4-5 mins per side",
-      "Roast asparagus and potatoes until tender"
+      "Season salmon",
+      "Grill salmon 4-5 mins per side",
+      "Roast asparagus and potatoes"
     ],
-    "tags": ["healthy", "high-protein", "pescatarian"]
+    "tags": [
+      "healthy",
+      "high-protein",
+      "pescatarian"
+    ]
   },
   {
     "id": "recipe_004",
@@ -92,11 +159,31 @@
     "prep_time_minutes": 35,
     "difficulty": "medium",
     "ingredients": [
-      {"item": "Canned Beans (Chickpeas)", "quantity": 1, "unit": "each"},
-      {"item": "Coconut Milk", "quantity": 1, "unit": "each"},
-      {"item": "Spinach", "quantity": 1, "unit": "bunch"},
-      {"item": "Rice (Basmati 2kg)", "quantity": 0.2, "unit": "kg"},
-      {"item": "Onions (Yellow)", "quantity": 1, "unit": "each"}
+      {
+        "item": "Canned Beans (Chickpeas)",
+        "quantity": 1,
+        "unit": "each"
+      },
+      {
+        "item": "Coconut Milk",
+        "quantity": 1,
+        "unit": "each"
+      },
+      {
+        "item": "Spinach",
+        "quantity": 1,
+        "unit": "bunch"
+      },
+      {
+        "item": "Rice (Basmati 2kg)",
+        "quantity": 0.2,
+        "unit": "kg"
+      },
+      {
+        "item": "Onions (Yellow)",
+        "quantity": 1,
+        "unit": "each"
+      }
     ],
     "nutrition": {
       "calories": 400,
@@ -105,13 +192,17 @@
       "fat": 12
     },
     "instructions": [
-      "Sauté onions and spices",
+      "Saut\u00e9 onions and spices",
       "Add chickpeas and coconut milk",
-      "Simmer for 15 minutes",
-      "Stir in spinach until wilted",
+      "Simmer 15 minutes",
+      "Stir in spinach",
       "Serve over rice"
     ],
-    "tags": ["vegetarian", "vegan", "gluten-free"]
+    "tags": [
+      "vegetarian",
+      "vegan",
+      "gluten-free"
+    ]
   },
   {
     "id": "recipe_005",
@@ -121,11 +212,31 @@
     "prep_time_minutes": 20,
     "difficulty": "easy",
     "ingredients": [
-      {"item": "Ground Beef (Medium)", "quantity": 0.5, "unit": "kg"},
-      {"item": "Lettuce (Romaine)", "quantity": 1, "unit": "head"},
-      {"item": "Cheddar Cheese (Old)", "quantity": 0.2, "unit": "kg"},
-      {"item": "Tortillas", "quantity": 1, "unit": "pack"},
-      {"item": "Tomatoes (Beefsteak)", "quantity": 2, "unit": "each"}
+      {
+        "item": "Ground Beef (Medium)",
+        "quantity": 0.5,
+        "unit": "kg"
+      },
+      {
+        "item": "Lettuce (Romaine)",
+        "quantity": 1,
+        "unit": "head"
+      },
+      {
+        "item": "Cheddar Cheese (Old)",
+        "quantity": 0.2,
+        "unit": "kg"
+      },
+      {
+        "item": "Tortillas",
+        "quantity": 1,
+        "unit": "pack"
+      },
+      {
+        "item": "Tomatoes (Beefsteak)",
+        "quantity": 2,
+        "unit": "each"
+      }
     ],
     "nutrition": {
       "calories": 550,
@@ -137,9 +248,12 @@
       "Brown beef with taco seasoning",
       "Chop lettuce and tomatoes",
       "Warm tortillas",
-      "Assemble tacos with beef, cheese, and veggies"
+      "Assemble tacos"
     ],
-    "tags": ["family-friendly", "quick"]
+    "tags": [
+      "family-friendly",
+      "quick"
+    ]
   },
   {
     "id": "recipe_006",
@@ -149,10 +263,26 @@
     "prep_time_minutes": 10,
     "difficulty": "easy",
     "ingredients": [
-      {"item": "Oats (Quick)", "quantity": 0.1, "unit": "kg"},
-      {"item": "Milk (2L) 2%", "quantity": 0.2, "unit": "L"},
-      {"item": "Strawberries", "quantity": 1, "unit": "pack"},
-      {"item": "Honey", "quantity": 0.05, "unit": "each"}
+      {
+        "item": "Oats (Quick)",
+        "quantity": 0.1,
+        "unit": "kg"
+      },
+      {
+        "item": "Milk (2L) 2%",
+        "quantity": 0.2,
+        "unit": "L"
+      },
+      {
+        "item": "Strawberries",
+        "quantity": 1,
+        "unit": "pack"
+      },
+      {
+        "item": "Honey",
+        "quantity": 0.05,
+        "unit": "each"
+      }
     ],
     "nutrition": {
       "calories": 350,
@@ -164,7 +294,10 @@
       "Cook oats with milk",
       "Top with fresh berries and honey"
     ],
-    "tags": ["vegetarian", "healthy"]
+    "tags": [
+      "vegetarian",
+      "healthy"
+    ]
   },
   {
     "id": "recipe_007",
@@ -174,9 +307,21 @@
     "prep_time_minutes": 10,
     "difficulty": "easy",
     "ingredients": [
-      {"item": "Eggs (12 Large)", "quantity": 0.25, "unit": "pack"},
-      {"item": "Bread (Whole Wheat)", "quantity": 0.2, "unit": "loaf"},
-      {"item": "Butter (Salted)", "quantity": 0.05, "unit": "pack"}
+      {
+        "item": "Eggs (12 Large)",
+        "quantity": 0.25,
+        "unit": "pack"
+      },
+      {
+        "item": "Bread (Whole Wheat)",
+        "quantity": 0.2,
+        "unit": "loaf"
+      },
+      {
+        "item": "Butter (Salted)",
+        "quantity": 0.05,
+        "unit": "pack"
+      }
     ],
     "nutrition": {
       "calories": 400,
@@ -188,7 +333,10 @@
       "Whisk eggs and cook in butter",
       "Toast bread and serve"
     ],
-    "tags": ["vegetarian", "quick"]
+    "tags": [
+      "vegetarian",
+      "quick"
+    ]
   },
   {
     "id": "recipe_008",
@@ -198,11 +346,31 @@
     "prep_time_minutes": 15,
     "difficulty": "easy",
     "ingredients": [
-      {"item": "Chicken Breast (Boneless)", "quantity": 0.3, "unit": "kg"},
-      {"item": "Lettuce (Romaine)", "quantity": 1, "unit": "head"},
-      {"item": "Parmesan Cheese", "quantity": 0.1, "unit": "kg"},
-      {"item": "Croutons", "quantity": 0.1, "unit": "pack"},
-      {"item": "Caesar Dressing", "quantity": 0.1, "unit": "bottle"}
+      {
+        "item": "Chicken Breast (Boneless)",
+        "quantity": 0.3,
+        "unit": "kg"
+      },
+      {
+        "item": "Lettuce (Romaine)",
+        "quantity": 1,
+        "unit": "head"
+      },
+      {
+        "item": "Parmesan Cheese",
+        "quantity": 0.1,
+        "unit": "kg"
+      },
+      {
+        "item": "Croutons",
+        "quantity": 0.1,
+        "unit": "pack"
+      },
+      {
+        "item": "Caesar Dressing",
+        "quantity": 0.1,
+        "unit": "bottle"
+      }
     ],
     "nutrition": {
       "calories": 500,
@@ -215,7 +383,10 @@
       "Toss lettuce with dressing and cheese",
       "Top with chicken and croutons"
     ],
-    "tags": ["healthy", "high-protein"]
+    "tags": [
+      "healthy",
+      "high-protein"
+    ]
   },
   {
     "id": "recipe_009",
@@ -225,11 +396,31 @@
     "prep_time_minutes": 5,
     "difficulty": "easy",
     "ingredients": [
-      {"item": "Bread (White)", "quantity": 0.2, "unit": "loaf"},
-      {"item": "Ham", "quantity": 0.1, "unit": "kg"},
-      {"item": "Cheddar Cheese (Medium)", "quantity": 0.1, "unit": "kg"},
-      {"item": "Lettuce (Romaine)", "quantity": 0.1, "unit": "head"},
-      {"item": "Mayo", "quantity": 0.05, "unit": "bottle"}
+      {
+        "item": "Bread (White)",
+        "quantity": 0.2,
+        "unit": "loaf"
+      },
+      {
+        "item": "Ham",
+        "quantity": 0.1,
+        "unit": "kg"
+      },
+      {
+        "item": "Cheddar Cheese (Medium)",
+        "quantity": 0.1,
+        "unit": "kg"
+      },
+      {
+        "item": "Lettuce (Romaine)",
+        "quantity": 0.1,
+        "unit": "head"
+      },
+      {
+        "item": "Mayo",
+        "quantity": 0.05,
+        "unit": "bottle"
+      }
     ],
     "nutrition": {
       "calories": 450,
@@ -240,7 +431,10 @@
     "instructions": [
       "Assemble sandwich with ham, cheese, and lettuce"
     ],
-    "tags": ["quick", "kid-friendly"]
+    "tags": [
+      "quick",
+      "kid-friendly"
+    ]
   },
   {
     "id": "recipe_10",
@@ -250,11 +444,31 @@
     "prep_time_minutes": 45,
     "difficulty": "medium",
     "ingredients": [
-      {"item": "Ground Beef (Lean)", "quantity": 0.5, "unit": "kg"},
-      {"item": "Potatoes (Russet)", "quantity": 0.5, "unit": "kg"},
-      {"item": "Frozen Corn", "quantity": 0.2, "unit": "kg"},
-      {"item": "Onions (Yellow)", "quantity": 1, "unit": "each"},
-      {"item": "Butter (Salted)", "quantity": 0.05, "unit": "pack"}
+      {
+        "item": "Ground Beef (Lean)",
+        "quantity": 0.5,
+        "unit": "kg"
+      },
+      {
+        "item": "Potatoes (Russet)",
+        "quantity": 0.5,
+        "unit": "kg"
+      },
+      {
+        "item": "Frozen Corn",
+        "quantity": 0.2,
+        "unit": "kg"
+      },
+      {
+        "item": "Onions (Yellow)",
+        "quantity": 1,
+        "unit": "each"
+      },
+      {
+        "item": "Butter (Salted)",
+        "quantity": 0.05,
+        "unit": "pack"
+      }
     ],
     "nutrition": {
       "calories": 650,
@@ -268,7 +482,10 @@
       "Layer beef and potatoes in a dish",
       "Bake until golden"
     ],
-    "tags": ["comfort-food", "family-friendly"]
+    "tags": [
+      "comfort-food",
+      "family-friendly"
+    ]
   },
   {
     "id": "recipe_11",
@@ -278,10 +495,26 @@
     "prep_time_minutes": 25,
     "difficulty": "medium",
     "ingredients": [
-      {"item": "Pork Chops", "quantity": 0.5, "unit": "kg"},
-      {"item": "Apples (Gala)", "quantity": 2, "unit": "each"},
-      {"item": "Sweet Potatoes", "quantity": 0.5, "unit": "kg"},
-      {"item": "Sage", "quantity": 0.01, "unit": "pack"}
+      {
+        "item": "Pork Chops",
+        "quantity": 0.5,
+        "unit": "kg"
+      },
+      {
+        "item": "Apples (Gala)",
+        "quantity": 2,
+        "unit": "each"
+      },
+      {
+        "item": "Sweet Potatoes",
+        "quantity": 0.5,
+        "unit": "kg"
+      },
+      {
+        "item": "Sage",
+        "quantity": 0.01,
+        "unit": "pack"
+      }
     ],
     "nutrition": {
       "calories": 500,
@@ -291,10 +524,13 @@
     },
     "instructions": [
       "Sear pork chops",
-      "Sauté sliced apples",
+      "Saut\u00e9 sliced apples",
       "Serve with roasted sweet potatoes"
     ],
-    "tags": ["gluten-free", "seasonal"]
+    "tags": [
+      "gluten-free",
+      "seasonal"
+    ]
   },
   {
     "id": "recipe_12",
@@ -304,11 +540,31 @@
     "prep_time_minutes": 20,
     "difficulty": "easy",
     "ingredients": [
-      {"item": "Quinoa", "quantity": 0.2, "unit": "kg"},
-      {"item": "Cucumber", "quantity": 1, "unit": "each"},
-      {"item": "Red Peppers", "quantity": 1, "unit": "each"},
-      {"item": "Feta", "quantity": 0.1, "unit": "pack"},
-      {"item": "Olive Oil (1L)", "quantity": 0.05, "unit": "L"}
+      {
+        "item": "Quinoa",
+        "quantity": 0.2,
+        "unit": "kg"
+      },
+      {
+        "item": "Cucumber",
+        "quantity": 1,
+        "unit": "each"
+      },
+      {
+        "item": "Red Peppers",
+        "quantity": 1,
+        "unit": "each"
+      },
+      {
+        "item": "Feta",
+        "quantity": 0.1,
+        "unit": "pack"
+      },
+      {
+        "item": "Olive Oil (1L)",
+        "quantity": 0.05,
+        "unit": "L"
+      }
     ],
     "nutrition": {
       "calories": 350,
@@ -321,7 +577,11 @@
       "Chop veggies",
       "Toss everything with olive oil and feta"
     ],
-    "tags": ["vegetarian", "healthy", "meal-prep"]
+    "tags": [
+      "vegetarian",
+      "healthy",
+      "meal-prep"
+    ]
   },
   {
     "id": "recipe_13",
@@ -331,11 +591,31 @@
     "prep_time_minutes": 20,
     "difficulty": "medium",
     "ingredients": [
-      {"item": "Flour (All Purpose 2.5kg)", "quantity": 0.2, "unit": "kg"},
-      {"item": "Milk (2L) 2%", "quantity": 0.2, "unit": "L"},
-      {"item": "Eggs (12 Large)", "quantity": 0.1, "unit": "pack"},
-      {"item": "Butter (Salted)", "quantity": 0.05, "unit": "pack"},
-      {"item": "Maple Syrup", "quantity": 0.05, "unit": "bottle"}
+      {
+        "item": "Flour (All Purpose 2.5kg)",
+        "quantity": 0.2,
+        "unit": "kg"
+      },
+      {
+        "item": "Milk (2L) 2%",
+        "quantity": 0.2,
+        "unit": "L"
+      },
+      {
+        "item": "Eggs (12 Large)",
+        "quantity": 0.1,
+        "unit": "pack"
+      },
+      {
+        "item": "Butter (Salted)",
+        "quantity": 0.05,
+        "unit": "pack"
+      },
+      {
+        "item": "Maple Syrup",
+        "quantity": 0.05,
+        "unit": "bottle"
+      }
     ],
     "nutrition": {
       "calories": 500,
@@ -348,7 +628,10 @@
       "Cook on griddle",
       "Serve with syrup"
     ],
-    "tags": ["vegetarian", "kid-friendly"]
+    "tags": [
+      "vegetarian",
+      "kid-friendly"
+    ]
   },
   {
     "id": "recipe_14",
@@ -358,10 +641,26 @@
     "prep_time_minutes": 20,
     "difficulty": "easy",
     "ingredients": [
-      {"item": "Tofu (Firm)", "quantity": 1, "unit": "pack"},
-      {"item": "Frozen Mixed Veggies", "quantity": 0.3, "unit": "kg"},
-      {"item": "Soy Sauce", "quantity": 0.05, "unit": "bottle"},
-      {"item": "Rice (Jasmine 2kg)", "quantity": 0.2, "unit": "kg"}
+      {
+        "item": "Tofu (Firm)",
+        "quantity": 1,
+        "unit": "pack"
+      },
+      {
+        "item": "Frozen Mixed Veggies",
+        "quantity": 0.3,
+        "unit": "kg"
+      },
+      {
+        "item": "Soy Sauce",
+        "quantity": 0.05,
+        "unit": "bottle"
+      },
+      {
+        "item": "Rice (Jasmine 2kg)",
+        "quantity": 0.2,
+        "unit": "kg"
+      }
     ],
     "nutrition": {
       "calories": 380,
@@ -375,7 +674,11 @@
       "Add veggies and sauce",
       "Serve over rice"
     ],
-    "tags": ["vegan", "vegetarian", "healthy"]
+    "tags": [
+      "vegan",
+      "vegetarian",
+      "healthy"
+    ]
   },
   {
     "id": "recipe_15",
@@ -385,10 +688,26 @@
     "prep_time_minutes": 25,
     "difficulty": "easy",
     "ingredients": [
-      {"item": "Cod Fillets", "quantity": 0.5, "unit": "kg"},
-      {"item": "Green Beans", "quantity": 0.3, "unit": "kg"},
-      {"item": "Lemon", "quantity": 1, "unit": "each"},
-      {"item": "Butter (Unsalted)", "quantity": 0.05, "unit": "pack"}
+      {
+        "item": "Cod Fillets",
+        "quantity": 0.5,
+        "unit": "kg"
+      },
+      {
+        "item": "Green Beans",
+        "quantity": 0.3,
+        "unit": "kg"
+      },
+      {
+        "item": "Lemon",
+        "quantity": 1,
+        "unit": "each"
+      },
+      {
+        "item": "Butter (Unsalted)",
+        "quantity": 0.05,
+        "unit": "pack"
+      }
     ],
     "nutrition": {
       "calories": 300,
@@ -402,7 +721,10 @@
       "Bake at 400F for 15 mins",
       "Serve with steamed beans"
     ],
-    "tags": ["low-carb", "healthy"]
+    "tags": [
+      "low-carb",
+      "healthy"
+    ]
   },
   {
     "id": "recipe_16",
@@ -412,11 +734,31 @@
     "prep_time_minutes": 40,
     "difficulty": "medium",
     "ingredients": [
-      {"item": "Ground Turkey", "quantity": 0.5, "unit": "kg"},
-      {"item": "Canned Beans (Black)", "quantity": 2, "unit": "cans"},
-      {"item": "Diced Tomatoes", "quantity": 1, "unit": "can"},
-      {"item": "Onions (Yellow)", "quantity": 1, "unit": "each"},
-      {"item": "Chili Powder", "quantity": 0.02, "unit": "pack"}
+      {
+        "item": "Ground Turkey",
+        "quantity": 0.5,
+        "unit": "kg"
+      },
+      {
+        "item": "Canned Beans (Black)",
+        "quantity": 2,
+        "unit": "cans"
+      },
+      {
+        "item": "Diced Tomatoes",
+        "quantity": 1,
+        "unit": "can"
+      },
+      {
+        "item": "Onions (Yellow)",
+        "quantity": 1,
+        "unit": "each"
+      },
+      {
+        "item": "Chili Powder",
+        "quantity": 0.02,
+        "unit": "pack"
+      }
     ],
     "nutrition": {
       "calories": 450,
@@ -429,7 +771,11 @@
       "Add beans, tomatoes, and spices",
       "Simmer for 30 minutes"
     ],
-    "tags": ["healthy", "high-protein", "meal-prep"]
+    "tags": [
+      "healthy",
+      "high-protein",
+      "meal-prep"
+    ]
   },
   {
     "id": "recipe_17",
@@ -439,9 +785,21 @@
     "prep_time_minutes": 5,
     "difficulty": "easy",
     "ingredients": [
-      {"item": "Yogurt (Greek 750g)", "quantity": 0.2, "unit": "kg"},
-      {"item": "Granola Bars", "quantity": 0.1, "unit": "pack"},
-      {"item": "Blueberries", "quantity": 1, "unit": "pack"}
+      {
+        "item": "Yogurt (Greek 750g)",
+        "quantity": 0.2,
+        "unit": "kg"
+      },
+      {
+        "item": "Granola Bars",
+        "quantity": 0.1,
+        "unit": "pack"
+      },
+      {
+        "item": "Blueberries",
+        "quantity": 1,
+        "unit": "pack"
+      }
     ],
     "nutrition": {
       "calories": 300,
@@ -452,7 +810,11 @@
     "instructions": [
       "Layer yogurt, crumbled granola, and berries"
     ],
-    "tags": ["vegetarian", "quick", "no-cook"]
+    "tags": [
+      "vegetarian",
+      "quick",
+      "no-cook"
+    ]
   },
   {
     "id": "recipe_18",
@@ -462,10 +824,26 @@
     "prep_time_minutes": 10,
     "difficulty": "easy",
     "ingredients": [
-      {"item": "Bread (White)", "quantity": 0.1, "unit": "loaf"},
-      {"item": "Cheddar Cheese (Old)", "quantity": 0.1, "unit": "kg"},
-      {"item": "Butter (Salted)", "quantity": 0.05, "unit": "pack"},
-      {"item": "Tomato Sauce (Can)", "quantity": 0.2, "unit": "can"}
+      {
+        "item": "Bread (White)",
+        "quantity": 0.1,
+        "unit": "loaf"
+      },
+      {
+        "item": "Cheddar Cheese (Old)",
+        "quantity": 0.1,
+        "unit": "kg"
+      },
+      {
+        "item": "Butter (Salted)",
+        "quantity": 0.05,
+        "unit": "pack"
+      },
+      {
+        "item": "Tomato Sauce (Can)",
+        "quantity": 0.2,
+        "unit": "can"
+      }
     ],
     "nutrition": {
       "calories": 450,
@@ -479,7 +857,10 @@
       "Grill until golden",
       "Serve with tomato soup"
     ],
-    "tags": ["vegetarian", "comfort-food"]
+    "tags": [
+      "vegetarian",
+      "comfort-food"
+    ]
   },
   {
     "id": "recipe_19",
@@ -489,10 +870,26 @@
     "prep_time_minutes": 30,
     "difficulty": "easy",
     "ingredients": [
-      {"item": "Sausages (Italian)", "quantity": 0.5, "unit": "kg"},
-      {"item": "Green Peppers", "quantity": 2, "unit": "each"},
-      {"item": "Onions (Yellow)", "quantity": 2, "unit": "each"},
-      {"item": "Olive Oil (1L)", "quantity": 0.02, "unit": "L"}
+      {
+        "item": "Sausages (Italian)",
+        "quantity": 0.5,
+        "unit": "kg"
+      },
+      {
+        "item": "Green Peppers",
+        "quantity": 2,
+        "unit": "each"
+      },
+      {
+        "item": "Onions (Yellow)",
+        "quantity": 2,
+        "unit": "each"
+      },
+      {
+        "item": "Olive Oil (1L)",
+        "quantity": 0.02,
+        "unit": "L"
+      }
     ],
     "nutrition": {
       "calories": 600,
@@ -502,10 +899,13 @@
     },
     "instructions": [
       "Slice sausages and veggies",
-      "Sauté sausages until cooked",
+      "Saut\u00e9 sausages until cooked",
       "Add peppers and onions, cook until soft"
     ],
-    "tags": ["low-carb", "keto"]
+    "tags": [
+      "low-carb",
+      "keto"
+    ]
   },
   {
     "id": "recipe_20",
@@ -515,10 +915,26 @@
     "prep_time_minutes": 5,
     "difficulty": "easy",
     "ingredients": [
-      {"item": "Bread (Whole Wheat)", "quantity": 0.1, "unit": "loaf"},
-      {"item": "Avocado", "quantity": 1, "unit": "each"},
-      {"item": "Eggs (12 Large)", "quantity": 0.1, "unit": "pack"},
-      {"item": "Salt", "quantity": 0.01, "unit": "dash"}
+      {
+        "item": "Bread (Whole Wheat)",
+        "quantity": 0.1,
+        "unit": "loaf"
+      },
+      {
+        "item": "Avocado",
+        "quantity": 1,
+        "unit": "each"
+      },
+      {
+        "item": "Eggs (12 Large)",
+        "quantity": 0.1,
+        "unit": "pack"
+      },
+      {
+        "item": "Salt",
+        "quantity": 0.01,
+        "unit": "dash"
+      }
     ],
     "nutrition": {
       "calories": 400,
@@ -531,6 +947,1878 @@
       "Mash avocado on top",
       "Top with fried egg"
     ],
-    "tags": ["vegetarian", "healthy"]
+    "tags": [
+      "vegetarian",
+      "healthy"
+    ]
+  },
+  {
+    "id": "recipe_21",
+    "name": "Smoothie Bowl",
+    "cuisine": "Modern",
+    "meal_type": "Breakfast",
+    "prep_time_minutes": 10,
+    "difficulty": "easy",
+    "ingredients": [
+      {
+        "item": "Bananas",
+        "quantity": 2,
+        "unit": "each"
+      },
+      {
+        "item": "Spinach",
+        "quantity": 1,
+        "unit": "bunch"
+      },
+      {
+        "item": "Frozen Mixed Berries",
+        "quantity": 1,
+        "unit": "pack"
+      },
+      {
+        "item": "Almond Milk",
+        "quantity": 0.2,
+        "unit": "L"
+      }
+    ],
+    "nutrition": {
+      "calories": 350,
+      "protein": 8,
+      "carbs": 70,
+      "fat": 5
+    },
+    "instructions": [
+      "Blend banana, spinach, berries and milk until smooth",
+      "Pour into bowl",
+      "Top with granola or seeds"
+    ],
+    "tags": [
+      "vegan",
+      "vegetarian",
+      "healthy"
+    ]
+  },
+  {
+    "id": "recipe_22",
+    "name": "French Toast",
+    "cuisine": "French",
+    "meal_type": "Breakfast",
+    "prep_time_minutes": 15,
+    "difficulty": "medium",
+    "ingredients": [
+      {
+        "item": "Bread (White)",
+        "quantity": 0.2,
+        "unit": "loaf"
+      },
+      {
+        "item": "Eggs (12 Large)",
+        "quantity": 0.1,
+        "unit": "pack"
+      },
+      {
+        "item": "Milk (2L) 2%",
+        "quantity": 0.1,
+        "unit": "L"
+      },
+      {
+        "item": "Maple Syrup",
+        "quantity": 0.05,
+        "unit": "bottle"
+      },
+      {
+        "item": "Cinnamon",
+        "quantity": 0.01,
+        "unit": "dash"
+      }
+    ],
+    "nutrition": {
+      "calories": 450,
+      "protein": 12,
+      "carbs": 60,
+      "fat": 18
+    },
+    "instructions": [
+      "Whisk eggs, milk, cinnamon",
+      "Dip bread",
+      "Cook in buttered pan until golden",
+      "Serve with syrup"
+    ],
+    "tags": [
+      "vegetarian",
+      "comfort-food"
+    ]
+  },
+  {
+    "id": "recipe_23",
+    "name": "Breakfast Burrito",
+    "cuisine": "Mexican",
+    "meal_type": "Breakfast",
+    "prep_time_minutes": 15,
+    "difficulty": "medium",
+    "ingredients": [
+      {
+        "item": "Tortillas",
+        "quantity": 1,
+        "unit": "pack"
+      },
+      {
+        "item": "Eggs (12 Large)",
+        "quantity": 0.15,
+        "unit": "pack"
+      },
+      {
+        "item": "Cheddar Cheese (Old)",
+        "quantity": 0.1,
+        "unit": "kg"
+      },
+      {
+        "item": "Salsa",
+        "quantity": 0.1,
+        "unit": "bottle"
+      }
+    ],
+    "nutrition": {
+      "calories": 500,
+      "protein": 25,
+      "carbs": 40,
+      "fat": 25
+    },
+    "instructions": [
+      "Scramble eggs",
+      "Warm tortilla",
+      "Fill with eggs, cheese, salsa",
+      "Roll up"
+    ],
+    "tags": [
+      "vegetarian",
+      "quick"
+    ]
+  },
+  {
+    "id": "recipe_24",
+    "name": "Chia Pudding",
+    "cuisine": "Modern",
+    "meal_type": "Breakfast",
+    "prep_time_minutes": 5,
+    "difficulty": "easy",
+    "ingredients": [
+      {
+        "item": "Chia Seeds",
+        "quantity": 0.1,
+        "unit": "pack"
+      },
+      {
+        "item": "Coconut Milk",
+        "quantity": 0.2,
+        "unit": "can"
+      },
+      {
+        "item": "Mango",
+        "quantity": 1,
+        "unit": "each"
+      },
+      {
+        "item": "Honey",
+        "quantity": 0.02,
+        "unit": "bottle"
+      }
+    ],
+    "nutrition": {
+      "calories": 300,
+      "protein": 10,
+      "carbs": 40,
+      "fat": 15
+    },
+    "instructions": [
+      "Mix chia seeds and milk",
+      "Let sit overnight (or 4 hours)",
+      "Top with diced mango"
+    ],
+    "tags": [
+      "vegan",
+      "vegetarian",
+      "healthy",
+      "no-cook"
+    ]
+  },
+  {
+    "id": "recipe_25",
+    "name": "Veggie Omelet",
+    "cuisine": "American",
+    "meal_type": "Breakfast",
+    "prep_time_minutes": 15,
+    "difficulty": "medium",
+    "ingredients": [
+      {
+        "item": "Eggs (12 Large)",
+        "quantity": 0.2,
+        "unit": "pack"
+      },
+      {
+        "item": "Green Peppers",
+        "quantity": 0.5,
+        "unit": "each"
+      },
+      {
+        "item": "Onions (Yellow)",
+        "quantity": 0.5,
+        "unit": "each"
+      },
+      {
+        "item": "Mushrooms",
+        "quantity": 0.1,
+        "unit": "pack"
+      }
+    ],
+    "nutrition": {
+      "calories": 300,
+      "protein": 18,
+      "carbs": 10,
+      "fat": 20
+    },
+    "instructions": [
+      "Saut\u00e9 veggies",
+      "Whisk eggs and pour over veggies",
+      "Cook until set, fold and serve"
+    ],
+    "tags": [
+      "vegetarian",
+      "low-carb",
+      "healthy"
+    ]
+  },
+  {
+    "id": "recipe_26",
+    "name": "Bagel with Lox",
+    "cuisine": "American",
+    "meal_type": "Breakfast",
+    "prep_time_minutes": 5,
+    "difficulty": "easy",
+    "ingredients": [
+      {
+        "item": "Bagels",
+        "quantity": 0.2,
+        "unit": "pack"
+      },
+      {
+        "item": "Cream Cheese",
+        "quantity": 0.1,
+        "unit": "tub"
+      },
+      {
+        "item": "Smoked Salmon",
+        "quantity": 0.1,
+        "unit": "pack"
+      },
+      {
+        "item": "Red Onions",
+        "quantity": 0.2,
+        "unit": "each"
+      }
+    ],
+    "nutrition": {
+      "calories": 400,
+      "protein": 20,
+      "carbs": 50,
+      "fat": 15
+    },
+    "instructions": [
+      "Toast bagel",
+      "Spread cream cheese",
+      "Top with salmon and onions"
+    ],
+    "tags": [
+      "pescatarian",
+      "quick"
+    ]
+  },
+  {
+    "id": "recipe_27",
+    "name": "Breakfast Quinoa",
+    "cuisine": "Modern",
+    "meal_type": "Breakfast",
+    "prep_time_minutes": 15,
+    "difficulty": "easy",
+    "ingredients": [
+      {
+        "item": "Quinoa",
+        "quantity": 0.1,
+        "unit": "kg"
+      },
+      {
+        "item": "Almond Milk",
+        "quantity": 0.2,
+        "unit": "L"
+      },
+      {
+        "item": "Cinnamon",
+        "quantity": 0.01,
+        "unit": "dash"
+      },
+      {
+        "item": "Apple",
+        "quantity": 1,
+        "unit": "each"
+      }
+    ],
+    "nutrition": {
+      "calories": 350,
+      "protein": 10,
+      "carbs": 60,
+      "fat": 8
+    },
+    "instructions": [
+      "Cook quinoa in milk with cinnamon",
+      "Stir in chopped apples",
+      "Serve warm"
+    ],
+    "tags": [
+      "vegan",
+      "vegetarian",
+      "healthy"
+    ]
+  },
+  {
+    "id": "recipe_28",
+    "name": "Tuna Salad Wrap",
+    "cuisine": "American",
+    "meal_type": "Lunch",
+    "prep_time_minutes": 10,
+    "difficulty": "easy",
+    "ingredients": [
+      {
+        "item": "Canned Tuna",
+        "quantity": 1,
+        "unit": "can"
+      },
+      {
+        "item": "Mayo",
+        "quantity": 0.05,
+        "unit": "bottle"
+      },
+      {
+        "item": "Tortillas",
+        "quantity": 1,
+        "unit": "pack"
+      },
+      {
+        "item": "Lettuce (Romaine)",
+        "quantity": 0.2,
+        "unit": "head"
+      }
+    ],
+    "nutrition": {
+      "calories": 400,
+      "protein": 30,
+      "carbs": 30,
+      "fat": 15
+    },
+    "instructions": [
+      "Mix tuna and mayo",
+      "Spread on tortilla with lettuce",
+      "Roll and cut"
+    ],
+    "tags": [
+      "quick",
+      "pescatarian"
+    ]
+  },
+  {
+    "id": "recipe_29",
+    "name": "Egg Salad Sandwich",
+    "cuisine": "American",
+    "meal_type": "Lunch",
+    "prep_time_minutes": 15,
+    "difficulty": "easy",
+    "ingredients": [
+      {
+        "item": "Eggs (12 Large)",
+        "quantity": 0.15,
+        "unit": "pack"
+      },
+      {
+        "item": "Mayo",
+        "quantity": 0.05,
+        "unit": "bottle"
+      },
+      {
+        "item": "Bread (Whole Wheat)",
+        "quantity": 0.2,
+        "unit": "loaf"
+      },
+      {
+        "item": "Celery",
+        "quantity": 1,
+        "unit": "stalk"
+      }
+    ],
+    "nutrition": {
+      "calories": 400,
+      "protein": 15,
+      "carbs": 35,
+      "fat": 20
+    },
+    "instructions": [
+      "Boil and peel eggs",
+      "Mash with mayo and chopped celery",
+      "Make sandwich"
+    ],
+    "tags": [
+      "vegetarian",
+      "classic"
+    ]
+  },
+  {
+    "id": "recipe_30",
+    "name": "Lentil Soup",
+    "cuisine": "Mediterranean",
+    "meal_type": "Lunch",
+    "prep_time_minutes": 30,
+    "difficulty": "medium",
+    "ingredients": [
+      {
+        "item": "Lentils (Dry)",
+        "quantity": 0.2,
+        "unit": "kg"
+      },
+      {
+        "item": "Carrots",
+        "quantity": 2,
+        "unit": "each"
+      },
+      {
+        "item": "Onions (Yellow)",
+        "quantity": 1,
+        "unit": "each"
+      },
+      {
+        "item": "Vegetable Broth",
+        "quantity": 0.5,
+        "unit": "L"
+      }
+    ],
+    "nutrition": {
+      "calories": 300,
+      "protein": 15,
+      "carbs": 50,
+      "fat": 5
+    },
+    "instructions": [
+      "Saut\u00e9 onions and carrots",
+      "Add lentils and broth",
+      "Simmer until tender"
+    ],
+    "tags": [
+      "vegan",
+      "vegetarian",
+      "healthy",
+      "meal-prep"
+    ]
+  },
+  {
+    "id": "recipe_31",
+    "name": "Chicken Noodle Soup",
+    "cuisine": "American",
+    "meal_type": "Lunch",
+    "prep_time_minutes": 30,
+    "difficulty": "medium",
+    "ingredients": [
+      {
+        "item": "Chicken Breast (Boneless)",
+        "quantity": 0.2,
+        "unit": "kg"
+      },
+      {
+        "item": "Egg Noodles",
+        "quantity": 0.1,
+        "unit": "pack"
+      },
+      {
+        "item": "Carrots",
+        "quantity": 2,
+        "unit": "each"
+      },
+      {
+        "item": "Chicken Broth",
+        "quantity": 0.5,
+        "unit": "L"
+      }
+    ],
+    "nutrition": {
+      "calories": 350,
+      "protein": 25,
+      "carbs": 40,
+      "fat": 10
+    },
+    "instructions": [
+      "Cook chicken in broth",
+      "Add carrots and noodles",
+      "Simmer until noodles are done"
+    ],
+    "tags": [
+      "comfort-food",
+      "low-fat"
+    ]
+  },
+  {
+    "id": "recipe_32",
+    "name": "Greek Salad with Chicken",
+    "cuisine": "Mediterranean",
+    "meal_type": "Lunch",
+    "prep_time_minutes": 15,
+    "difficulty": "easy",
+    "ingredients": [
+      {
+        "item": "Chicken Breast (Boneless)",
+        "quantity": 0.2,
+        "unit": "kg"
+      },
+      {
+        "item": "Cucumber",
+        "quantity": 1,
+        "unit": "each"
+      },
+      {
+        "item": "Tomatoes (Beefsteak)",
+        "quantity": 2,
+        "unit": "each"
+      },
+      {
+        "item": "Feta",
+        "quantity": 0.05,
+        "unit": "pack"
+      },
+      {
+        "item": "Olives",
+        "quantity": 0.1,
+        "unit": "jar"
+      }
+    ],
+    "nutrition": {
+      "calories": 400,
+      "protein": 30,
+      "carbs": 15,
+      "fat": 25
+    },
+    "instructions": [
+      "Cook chicken and cube",
+      "Chop veggies",
+      "Toss with feta, olives and dressing"
+    ],
+    "tags": [
+      "healthy",
+      "low-carb"
+    ]
+  },
+  {
+    "id": "recipe_33",
+    "name": "Caprese Sandwich",
+    "cuisine": "Italian",
+    "meal_type": "Lunch",
+    "prep_time_minutes": 10,
+    "difficulty": "easy",
+    "ingredients": [
+      {
+        "item": "Baguette",
+        "quantity": 0.3,
+        "unit": "loaf"
+      },
+      {
+        "item": "Mozzarella Ball",
+        "quantity": 0.2,
+        "unit": "each"
+      },
+      {
+        "item": "Tomatoes (Beefsteak)",
+        "quantity": 1,
+        "unit": "each"
+      },
+      {
+        "item": "Basil",
+        "quantity": 0.1,
+        "unit": "bunch"
+      },
+      {
+        "item": "Balsamic Glaze",
+        "quantity": 0.02,
+        "unit": "bottle"
+      }
+    ],
+    "nutrition": {
+      "calories": 450,
+      "protein": 18,
+      "carbs": 50,
+      "fat": 20
+    },
+    "instructions": [
+      "Slice baguette",
+      "Layer mozzarella, tomato, basil",
+      "Drizzle balsamic"
+    ],
+    "tags": [
+      "vegetarian",
+      "fresh"
+    ]
+  },
+  {
+    "id": "recipe_34",
+    "name": "BLT Sandwich",
+    "cuisine": "American",
+    "meal_type": "Lunch",
+    "prep_time_minutes": 15,
+    "difficulty": "easy",
+    "ingredients": [
+      {
+        "item": "Bacon",
+        "quantity": 0.1,
+        "unit": "pack"
+      },
+      {
+        "item": "Bread (White)",
+        "quantity": 0.2,
+        "unit": "loaf"
+      },
+      {
+        "item": "Lettuce (Romaine)",
+        "quantity": 0.1,
+        "unit": "head"
+      },
+      {
+        "item": "Tomatoes (Beefsteak)",
+        "quantity": 1,
+        "unit": "each"
+      },
+      {
+        "item": "Mayo",
+        "quantity": 0.02,
+        "unit": "bottle"
+      }
+    ],
+    "nutrition": {
+      "calories": 500,
+      "protein": 15,
+      "carbs": 40,
+      "fat": 30
+    },
+    "instructions": [
+      "Cook bacon until crispy",
+      "Toast bread",
+      "Assemble with lettuce, tomato, mayo"
+    ],
+    "tags": [
+      "comfort-food",
+      "quick"
+    ]
+  },
+  {
+    "id": "recipe_35",
+    "name": "Turkey Club",
+    "cuisine": "American",
+    "meal_type": "Lunch",
+    "prep_time_minutes": 10,
+    "difficulty": "easy",
+    "ingredients": [
+      {
+        "item": "Turkey Slices",
+        "quantity": 0.1,
+        "unit": "pack"
+      },
+      {
+        "item": "Bacon",
+        "quantity": 0.05,
+        "unit": "pack"
+      },
+      {
+        "item": "Bread (Whole Wheat)",
+        "quantity": 0.3,
+        "unit": "loaf"
+      },
+      {
+        "item": "Lettuce (Romaine)",
+        "quantity": 0.1,
+        "unit": "head"
+      },
+      {
+        "item": "Tomatoes (Beefsteak)",
+        "quantity": 1,
+        "unit": "each"
+      }
+    ],
+    "nutrition": {
+      "calories": 550,
+      "protein": 30,
+      "carbs": 50,
+      "fat": 25
+    },
+    "instructions": [
+      "Toast 3 slices bread",
+      "Layer turkey, bacon, lettuce, tomato",
+      "Cut into quarters"
+    ],
+    "tags": [
+      "classic",
+      "high-protein"
+    ]
+  },
+  {
+    "id": "recipe_36",
+    "name": "Cobb Salad",
+    "cuisine": "American",
+    "meal_type": "Lunch",
+    "prep_time_minutes": 20,
+    "difficulty": "medium",
+    "ingredients": [
+      {
+        "item": "Chicken Breast (Boneless)",
+        "quantity": 0.2,
+        "unit": "kg"
+      },
+      {
+        "item": "Bacon",
+        "quantity": 0.05,
+        "unit": "pack"
+      },
+      {
+        "item": "Eggs (12 Large)",
+        "quantity": 0.1,
+        "unit": "pack"
+      },
+      {
+        "item": "Avocado",
+        "quantity": 0.5,
+        "unit": "each"
+      },
+      {
+        "item": "Blue Cheese",
+        "quantity": 0.05,
+        "unit": "pack"
+      }
+    ],
+    "nutrition": {
+      "calories": 600,
+      "protein": 40,
+      "carbs": 10,
+      "fat": 45
+    },
+    "instructions": [
+      "Cook chicken and bacon",
+      "Boil egg",
+      "Assemble salad with avocado and cheese"
+    ],
+    "tags": [
+      "keto",
+      "low-carb",
+      "high-protein"
+    ]
+  },
+  {
+    "id": "recipe_37",
+    "name": "Hummus Wrap",
+    "cuisine": "Mediterranean",
+    "meal_type": "Lunch",
+    "prep_time_minutes": 10,
+    "difficulty": "easy",
+    "ingredients": [
+      {
+        "item": "Hummus",
+        "quantity": 0.2,
+        "unit": "tub"
+      },
+      {
+        "item": "Tortillas",
+        "quantity": 1,
+        "unit": "pack"
+      },
+      {
+        "item": "Cucumber",
+        "quantity": 0.5,
+        "unit": "each"
+      },
+      {
+        "item": "Red Peppers",
+        "quantity": 0.5,
+        "unit": "each"
+      },
+      {
+        "item": "Spinach",
+        "quantity": 0.2,
+        "unit": "bunch"
+      }
+    ],
+    "nutrition": {
+      "calories": 350,
+      "protein": 10,
+      "carbs": 50,
+      "fat": 15
+    },
+    "instructions": [
+      "Spread hummus on tortilla",
+      "Add veggies",
+      "Roll up"
+    ],
+    "tags": [
+      "vegan",
+      "vegetarian",
+      "healthy"
+    ]
+  },
+  {
+    "id": "recipe_38",
+    "name": "Pasta Salad",
+    "cuisine": "Italian",
+    "meal_type": "Lunch",
+    "prep_time_minutes": 20,
+    "difficulty": "easy",
+    "ingredients": [
+      {
+        "item": "Pasta (Rotini)",
+        "quantity": 0.2,
+        "unit": "pack"
+      },
+      {
+        "item": "Italian Dressing",
+        "quantity": 0.1,
+        "unit": "bottle"
+      },
+      {
+        "item": "Broccoli Crowns",
+        "quantity": 0.5,
+        "unit": "each"
+      },
+      {
+        "item": "Red Peppers",
+        "quantity": 0.5,
+        "unit": "each"
+      },
+      {
+        "item": "Mozzarella Cubes",
+        "quantity": 0.1,
+        "unit": "pack"
+      }
+    ],
+    "nutrition": {
+      "calories": 400,
+      "protein": 12,
+      "carbs": 60,
+      "fat": 15
+    },
+    "instructions": [
+      "Boil pasta and cool",
+      "Chop veggies",
+      "Toss with dressing and cheese"
+    ],
+    "tags": [
+      "vegetarian",
+      "meal-prep"
+    ]
+  },
+  {
+    "id": "recipe_39",
+    "name": "Minestrone Soup",
+    "cuisine": "Italian",
+    "meal_type": "Lunch",
+    "prep_time_minutes": 35,
+    "difficulty": "medium",
+    "ingredients": [
+      {
+        "item": "Vegetable Broth",
+        "quantity": 0.5,
+        "unit": "L"
+      },
+      {
+        "item": "Pasta (Shells)",
+        "quantity": 0.1,
+        "unit": "pack"
+      },
+      {
+        "item": "Kidney Beans",
+        "quantity": 1,
+        "unit": "can"
+      },
+      {
+        "item": "Zucchini",
+        "quantity": 1,
+        "unit": "each"
+      },
+      {
+        "item": "Tomatoes (Diced)",
+        "quantity": 1,
+        "unit": "can"
+      }
+    ],
+    "nutrition": {
+      "calories": 300,
+      "protein": 12,
+      "carbs": 55,
+      "fat": 5
+    },
+    "instructions": [
+      "Simmer broth, tomatoes, veggies",
+      "Add beans and pasta",
+      "Cook until tender"
+    ],
+    "tags": [
+      "vegan",
+      "vegetarian",
+      "healthy"
+    ]
+  },
+  {
+    "id": "recipe_40",
+    "name": "Roast Beef Sandwich",
+    "cuisine": "American",
+    "meal_type": "Lunch",
+    "prep_time_minutes": 5,
+    "difficulty": "easy",
+    "ingredients": [
+      {
+        "item": "Roast Beef Deli Meat",
+        "quantity": 0.1,
+        "unit": "pack"
+      },
+      {
+        "item": "Bread (Rye)",
+        "quantity": 0.2,
+        "unit": "loaf"
+      },
+      {
+        "item": "Cheddar Cheese (Medium)",
+        "quantity": 0.05,
+        "unit": "kg"
+      },
+      {
+        "item": "Horseradish Mayo",
+        "quantity": 0.02,
+        "unit": "bottle"
+      }
+    ],
+    "nutrition": {
+      "calories": 450,
+      "protein": 25,
+      "carbs": 40,
+      "fat": 20
+    },
+    "instructions": [
+      "Assemble sandwich with roast beef, cheese, and sauce"
+    ],
+    "tags": [
+      "quick",
+      "high-protein"
+    ]
+  },
+  {
+    "id": "recipe_41",
+    "name": "Falafel Pita",
+    "cuisine": "Mediterranean",
+    "meal_type": "Lunch",
+    "prep_time_minutes": 15,
+    "difficulty": "easy",
+    "ingredients": [
+      {
+        "item": "Falafel (Frozen)",
+        "quantity": 0.2,
+        "unit": "pack"
+      },
+      {
+        "item": "Pita Bread",
+        "quantity": 1,
+        "unit": "pack"
+      },
+      {
+        "item": "Tzatziki",
+        "quantity": 0.1,
+        "unit": "tub"
+      },
+      {
+        "item": "Lettuce (Romaine)",
+        "quantity": 0.1,
+        "unit": "head"
+      },
+      {
+        "item": "Tomatoes (Beefsteak)",
+        "quantity": 1,
+        "unit": "each"
+      }
+    ],
+    "nutrition": {
+      "calories": 450,
+      "protein": 15,
+      "carbs": 60,
+      "fat": 18
+    },
+    "instructions": [
+      "Heat falafel",
+      "Warm pita",
+      "Fill with falafel, veggies, sauce"
+    ],
+    "tags": [
+      "vegetarian",
+      "quick"
+    ]
+  },
+  {
+    "id": "recipe_42",
+    "name": "Roast Chicken Thighs",
+    "cuisine": "American",
+    "meal_type": "Dinner",
+    "prep_time_minutes": 45,
+    "difficulty": "medium",
+    "ingredients": [
+      {
+        "item": "Chicken Thighs (Bone-in)",
+        "quantity": 0.6,
+        "unit": "kg"
+      },
+      {
+        "item": "Carrots",
+        "quantity": 4,
+        "unit": "each"
+      },
+      {
+        "item": "Potatoes (Russet)",
+        "quantity": 0.5,
+        "unit": "kg"
+      },
+      {
+        "item": "Olive Oil (1L)",
+        "quantity": 0.05,
+        "unit": "L"
+      }
+    ],
+    "nutrition": {
+      "calories": 550,
+      "protein": 30,
+      "carbs": 40,
+      "fat": 30
+    },
+    "instructions": [
+      "Toss chicken and veggies in oil and herbs",
+      "Roast at 400F for 35-40 mins"
+    ],
+    "tags": [
+      "family-friendly",
+      "comfort-food"
+    ]
+  },
+  {
+    "id": "recipe_43",
+    "name": "Chicken Curry",
+    "cuisine": "Indian",
+    "meal_type": "Dinner",
+    "prep_time_minutes": 35,
+    "difficulty": "medium",
+    "ingredients": [
+      {
+        "item": "Chicken Breast (Boneless)",
+        "quantity": 0.5,
+        "unit": "kg"
+      },
+      {
+        "item": "Coconut Milk",
+        "quantity": 1,
+        "unit": "can"
+      },
+      {
+        "item": "Curry Paste",
+        "quantity": 0.05,
+        "unit": "jar"
+      },
+      {
+        "item": "Rice (Basmati 2kg)",
+        "quantity": 0.2,
+        "unit": "kg"
+      }
+    ],
+    "nutrition": {
+      "calories": 500,
+      "protein": 30,
+      "carbs": 50,
+      "fat": 20
+    },
+    "instructions": [
+      "Brown chicken",
+      "Add paste and coconut milk",
+      "Simmer 20 mins",
+      "Serve with rice"
+    ],
+    "tags": [
+      "gluten-free",
+      "flavorful"
+    ]
+  },
+  {
+    "id": "recipe_44",
+    "name": "Grilled Chicken Salad",
+    "cuisine": "American",
+    "meal_type": "Dinner",
+    "prep_time_minutes": 20,
+    "difficulty": "easy",
+    "ingredients": [
+      {
+        "item": "Chicken Breast (Boneless)",
+        "quantity": 0.4,
+        "unit": "kg"
+      },
+      {
+        "item": "Mixed Greens",
+        "quantity": 1,
+        "unit": "tub"
+      },
+      {
+        "item": "Cucumber",
+        "quantity": 1,
+        "unit": "each"
+      },
+      {
+        "item": "Balsamic Vinaigrette",
+        "quantity": 0.1,
+        "unit": "bottle"
+      }
+    ],
+    "nutrition": {
+      "calories": 350,
+      "protein": 35,
+      "carbs": 10,
+      "fat": 15
+    },
+    "instructions": [
+      "Grill chicken",
+      "Toss greens and veggies",
+      "Top with chicken"
+    ],
+    "tags": [
+      "healthy",
+      "low-carb"
+    ]
+  },
+  {
+    "id": "recipe_45",
+    "name": "Chicken Fajitas",
+    "cuisine": "Mexican",
+    "meal_type": "Dinner",
+    "prep_time_minutes": 25,
+    "difficulty": "medium",
+    "ingredients": [
+      {
+        "item": "Chicken Breast (Boneless)",
+        "quantity": 0.5,
+        "unit": "kg"
+      },
+      {
+        "item": "Green Peppers",
+        "quantity": 2,
+        "unit": "each"
+      },
+      {
+        "item": "Onions (Yellow)",
+        "quantity": 1,
+        "unit": "each"
+      },
+      {
+        "item": "Tortillas",
+        "quantity": 1,
+        "unit": "pack"
+      }
+    ],
+    "nutrition": {
+      "calories": 500,
+      "protein": 30,
+      "carbs": 45,
+      "fat": 15
+    },
+    "instructions": [
+      "Slice chicken and veggies",
+      "Saut\u00e9 with spices",
+      "Serve in warm tortillas"
+    ],
+    "tags": [
+      "family-friendly",
+      "fun"
+    ]
+  },
+  {
+    "id": "recipe_46",
+    "name": "Chicken Alfredo",
+    "cuisine": "Italian",
+    "meal_type": "Dinner",
+    "prep_time_minutes": 30,
+    "difficulty": "medium",
+    "ingredients": [
+      {
+        "item": "Chicken Breast (Boneless)",
+        "quantity": 0.4,
+        "unit": "kg"
+      },
+      {
+        "item": "Pasta (Fettuccine)",
+        "quantity": 0.3,
+        "unit": "kg"
+      },
+      {
+        "item": "Heavy Cream",
+        "quantity": 0.2,
+        "unit": "L"
+      },
+      {
+        "item": "Parmesan Cheese",
+        "quantity": 0.1,
+        "unit": "kg"
+      }
+    ],
+    "nutrition": {
+      "calories": 700,
+      "protein": 35,
+      "carbs": 60,
+      "fat": 40
+    },
+    "instructions": [
+      "Cook pasta",
+      "Saut\u00e9 chicken",
+      "Make sauce with cream and cheese",
+      "Combine"
+    ],
+    "tags": [
+      "comfort-food",
+      "rich"
+    ]
+  },
+  {
+    "id": "recipe_47",
+    "name": "Lemon Garlic Chicken",
+    "cuisine": "Mediterranean",
+    "meal_type": "Dinner",
+    "prep_time_minutes": 30,
+    "difficulty": "easy",
+    "ingredients": [
+      {
+        "item": "Chicken Thighs (Bone-in)",
+        "quantity": 0.6,
+        "unit": "kg"
+      },
+      {
+        "item": "Lemon",
+        "quantity": 2,
+        "unit": "each"
+      },
+      {
+        "item": "Garlic (3 pack)",
+        "quantity": 0.2,
+        "unit": "each"
+      },
+      {
+        "item": "Rice (Basmati 2kg)",
+        "quantity": 0.2,
+        "unit": "kg"
+      }
+    ],
+    "nutrition": {
+      "calories": 500,
+      "protein": 30,
+      "carbs": 45,
+      "fat": 25
+    },
+    "instructions": [
+      "Pan sear chicken",
+      "Make sauce with lemon and garlic",
+      "Simmer until cooked"
+    ],
+    "tags": [
+      "flavorful",
+      "easy"
+    ]
+  },
+  {
+    "id": "recipe_48",
+    "name": "Beef Stir-Fry",
+    "cuisine": "Asian",
+    "meal_type": "Dinner",
+    "prep_time_minutes": 20,
+    "difficulty": "easy",
+    "ingredients": [
+      {
+        "item": "Steak (Sirloin)",
+        "quantity": 0.4,
+        "unit": "kg"
+      },
+      {
+        "item": "Snow Peas",
+        "quantity": 0.2,
+        "unit": "pack"
+      },
+      {
+        "item": "Soy Sauce",
+        "quantity": 0.1,
+        "unit": "bottle"
+      },
+      {
+        "item": "Rice (Jasmine 2kg)",
+        "quantity": 0.2,
+        "unit": "kg"
+      }
+    ],
+    "nutrition": {
+      "calories": 450,
+      "protein": 30,
+      "carbs": 45,
+      "fat": 18
+    },
+    "instructions": [
+      "Slice beef thin",
+      "Stir-fry beef and peas",
+      "Add sauce",
+      "Serve with rice"
+    ],
+    "tags": [
+      "high-protein",
+      "quick"
+    ]
+  },
+  {
+    "id": "recipe_49",
+    "name": "Meatballs Marinara",
+    "cuisine": "Italian",
+    "meal_type": "Dinner",
+    "prep_time_minutes": 40,
+    "difficulty": "medium",
+    "ingredients": [
+      {
+        "item": "Ground Beef (Lean)",
+        "quantity": 0.5,
+        "unit": "kg"
+      },
+      {
+        "item": "Breadcrumbs",
+        "quantity": 0.1,
+        "unit": "cup"
+      },
+      {
+        "item": "Tomato Sauce (Can)",
+        "quantity": 1,
+        "unit": "each"
+      },
+      {
+        "item": "Pasta (Spaghetti 900g)",
+        "quantity": 0.3,
+        "unit": "kg"
+      }
+    ],
+    "nutrition": {
+      "calories": 600,
+      "protein": 25,
+      "carbs": 70,
+      "fat": 25
+    },
+    "instructions": [
+      "Form meatballs",
+      "Brown in pan",
+      "Simmer in sauce",
+      "Serve over pasta"
+    ],
+    "tags": [
+      "family-friendly",
+      "classic"
+    ]
+  },
+  {
+    "id": "recipe_50",
+    "name": "Beef Stew",
+    "cuisine": "American",
+    "meal_type": "Dinner",
+    "prep_time_minutes": 120,
+    "difficulty": "medium",
+    "ingredients": [
+      {
+        "item": "Stewing Beef",
+        "quantity": 0.5,
+        "unit": "kg"
+      },
+      {
+        "item": "Potatoes (Russet)",
+        "quantity": 0.4,
+        "unit": "kg"
+      },
+      {
+        "item": "Carrots",
+        "quantity": 3,
+        "unit": "each"
+      },
+      {
+        "item": "Beef Broth",
+        "quantity": 0.5,
+        "unit": "L"
+      }
+    ],
+    "nutrition": {
+      "calories": 500,
+      "protein": 35,
+      "carbs": 40,
+      "fat": 20
+    },
+    "instructions": [
+      "Brown beef",
+      "Add veggies and broth",
+      "Simmer low and slow for 2 hours"
+    ],
+    "tags": [
+      "comfort-food",
+      "hearty"
+    ]
+  },
+  {
+    "id": "recipe_51",
+    "name": "Steak and Potatoes",
+    "cuisine": "American",
+    "meal_type": "Dinner",
+    "prep_time_minutes": 30,
+    "difficulty": "medium",
+    "ingredients": [
+      {
+        "item": "Steak (Ribeye)",
+        "quantity": 0.5,
+        "unit": "kg"
+      },
+      {
+        "item": "Potatoes (Red)",
+        "quantity": 0.5,
+        "unit": "kg"
+      },
+      {
+        "item": "Butter (Salted)",
+        "quantity": 0.05,
+        "unit": "pack"
+      },
+      {
+        "item": "Asparagus",
+        "quantity": 1,
+        "unit": "bunch"
+      }
+    ],
+    "nutrition": {
+      "calories": 700,
+      "protein": 40,
+      "carbs": 30,
+      "fat": 45
+    },
+    "instructions": [
+      "Grill or pan-sear steak",
+      "Boil and mash potatoes",
+      "Steam asparagus"
+    ],
+    "tags": [
+      "special-occasion",
+      "high-protein"
+    ]
+  },
+  {
+    "id": "recipe_52",
+    "name": "Pork Tenderloin",
+    "cuisine": "American",
+    "meal_type": "Dinner",
+    "prep_time_minutes": 35,
+    "difficulty": "medium",
+    "ingredients": [
+      {
+        "item": "Pork Tenderloin",
+        "quantity": 0.5,
+        "unit": "kg"
+      },
+      {
+        "item": "Sweet Potatoes",
+        "quantity": 0.5,
+        "unit": "kg"
+      },
+      {
+        "item": "Brussels Sprouts",
+        "quantity": 0.3,
+        "unit": "kg"
+      },
+      {
+        "item": "Honey",
+        "quantity": 0.02,
+        "unit": "bottle"
+      }
+    ],
+    "nutrition": {
+      "calories": 450,
+      "protein": 35,
+      "carbs": 40,
+      "fat": 15
+    },
+    "instructions": [
+      "Roast tenderloin and veggies at 400F",
+      "Glaze pork with honey"
+    ],
+    "tags": [
+      "healthy",
+      "lean"
+    ]
+  },
+  {
+    "id": "recipe_53",
+    "name": "BBQ Ribs",
+    "cuisine": "American",
+    "meal_type": "Dinner",
+    "prep_time_minutes": 180,
+    "difficulty": "hard",
+    "ingredients": [
+      {
+        "item": "Pork Ribs",
+        "quantity": 1,
+        "unit": "kg"
+      },
+      {
+        "item": "BBQ Sauce",
+        "quantity": 0.2,
+        "unit": "bottle"
+      },
+      {
+        "item": "Corn on Cob",
+        "quantity": 4,
+        "unit": "each"
+      }
+    ],
+    "nutrition": {
+      "calories": 800,
+      "protein": 40,
+      "carbs": 50,
+      "fat": 50
+    },
+    "instructions": [
+      "Slow cook ribs for 3 hours",
+      "Finish on grill with sauce",
+      "Serve with corn"
+    ],
+    "tags": [
+      "weekend",
+      "indulgent"
+    ]
+  },
+  {
+    "id": "recipe_54",
+    "name": "Pulled Pork Sandwich",
+    "cuisine": "American",
+    "meal_type": "Dinner",
+    "prep_time_minutes": 20,
+    "difficulty": "easy",
+    "ingredients": [
+      {
+        "item": "Pork Shoulder (Cooked)",
+        "quantity": 0.5,
+        "unit": "kg"
+      },
+      {
+        "item": "BBQ Sauce",
+        "quantity": 0.1,
+        "unit": "bottle"
+      },
+      {
+        "item": "Buns",
+        "quantity": 1,
+        "unit": "pack"
+      },
+      {
+        "item": "Coleslaw Mix",
+        "quantity": 0.2,
+        "unit": "bag"
+      }
+    ],
+    "nutrition": {
+      "calories": 600,
+      "protein": 30,
+      "carbs": 50,
+      "fat": 25
+    },
+    "instructions": [
+      "Mix shredded pork with sauce",
+      "Serve on buns with coleslaw"
+    ],
+    "tags": [
+      "family-friendly",
+      "fun"
+    ]
+  },
+  {
+    "id": "recipe_55",
+    "name": "Tilapia with Mango",
+    "cuisine": "Modern",
+    "meal_type": "Dinner",
+    "prep_time_minutes": 20,
+    "difficulty": "easy",
+    "ingredients": [
+      {
+        "item": "Tilapia Fillets",
+        "quantity": 0.5,
+        "unit": "kg"
+      },
+      {
+        "item": "Mango",
+        "quantity": 1,
+        "unit": "each"
+      },
+      {
+        "item": "Red Onions",
+        "quantity": 0.5,
+        "unit": "each"
+      },
+      {
+        "item": "Rice (Jasmine 2kg)",
+        "quantity": 0.2,
+        "unit": "kg"
+      }
+    ],
+    "nutrition": {
+      "calories": 350,
+      "protein": 30,
+      "carbs": 45,
+      "fat": 8
+    },
+    "instructions": [
+      "Pan fry tilapia",
+      "Top with mango salsa",
+      "Serve with rice"
+    ],
+    "tags": [
+      "healthy",
+      "light"
+    ]
+  },
+  {
+    "id": "recipe_56",
+    "name": "Fish Tacos",
+    "cuisine": "Mexican",
+    "meal_type": "Dinner",
+    "prep_time_minutes": 25,
+    "difficulty": "medium",
+    "ingredients": [
+      {
+        "item": "Cod Fillets",
+        "quantity": 0.5,
+        "unit": "kg"
+      },
+      {
+        "item": "Tortillas",
+        "quantity": 1,
+        "unit": "pack"
+      },
+      {
+        "item": "Cabbage (Slaw)",
+        "quantity": 0.2,
+        "unit": "bag"
+      },
+      {
+        "item": "Lime",
+        "quantity": 2,
+        "unit": "each"
+      }
+    ],
+    "nutrition": {
+      "calories": 400,
+      "protein": 25,
+      "carbs": 40,
+      "fat": 15
+    },
+    "instructions": [
+      "Fry or bake fish",
+      "Flake into tortillas",
+      "Top with slaw and lime"
+    ],
+    "tags": [
+      "fun",
+      "family-friendly"
+    ]
+  },
+  {
+    "id": "recipe_57",
+    "name": "Lentil Curry",
+    "cuisine": "Indian",
+    "meal_type": "Dinner",
+    "prep_time_minutes": 35,
+    "difficulty": "medium",
+    "ingredients": [
+      {
+        "item": "Lentils (Dry)",
+        "quantity": 0.3,
+        "unit": "kg"
+      },
+      {
+        "item": "Coconut Milk",
+        "quantity": 1,
+        "unit": "can"
+      },
+      {
+        "item": "Spinach",
+        "quantity": 1,
+        "unit": "bunch"
+      },
+      {
+        "item": "Rice (Basmati 2kg)",
+        "quantity": 0.2,
+        "unit": "kg"
+      }
+    ],
+    "nutrition": {
+      "calories": 400,
+      "protein": 18,
+      "carbs": 60,
+      "fat": 12
+    },
+    "instructions": [
+      "Cook lentils",
+      "Add coconut milk and spices",
+      "Stir in spinach",
+      "Serve with rice"
+    ],
+    "tags": [
+      "vegan",
+      "vegetarian",
+      "healthy"
+    ]
+  },
+  {
+    "id": "recipe_58",
+    "name": "Veggie Lasagna",
+    "cuisine": "Italian",
+    "meal_type": "Dinner",
+    "prep_time_minutes": 60,
+    "difficulty": "hard",
+    "ingredients": [
+      {
+        "item": "Lasagna Noodles",
+        "quantity": 0.3,
+        "unit": "pack"
+      },
+      {
+        "item": "Ricotta Cheese",
+        "quantity": 0.3,
+        "unit": "tub"
+      },
+      {
+        "item": "Spinach",
+        "quantity": 1,
+        "unit": "bunch"
+      },
+      {
+        "item": "Tomato Sauce (Can)",
+        "quantity": 1,
+        "unit": "each"
+      },
+      {
+        "item": "Mozzarella",
+        "quantity": 0.3,
+        "unit": "pack"
+      }
+    ],
+    "nutrition": {
+      "calories": 550,
+      "protein": 20,
+      "carbs": 60,
+      "fat": 25
+    },
+    "instructions": [
+      "Layer noodles, cheese, veggies, sauce",
+      "Bake until bubbly"
+    ],
+    "tags": [
+      "vegetarian",
+      "comfort-food"
+    ]
+  },
+  {
+    "id": "recipe_59",
+    "name": "Mushroom Risotto",
+    "cuisine": "Italian",
+    "meal_type": "Dinner",
+    "prep_time_minutes": 45,
+    "difficulty": "hard",
+    "ingredients": [
+      {
+        "item": "Arborio Rice",
+        "quantity": 0.3,
+        "unit": "kg"
+      },
+      {
+        "item": "Mushrooms",
+        "quantity": 0.3,
+        "unit": "pack"
+      },
+      {
+        "item": "Vegetable Broth",
+        "quantity": 1,
+        "unit": "L"
+      },
+      {
+        "item": "Parmesan Cheese",
+        "quantity": 0.1,
+        "unit": "kg"
+      }
+    ],
+    "nutrition": {
+      "calories": 450,
+      "protein": 12,
+      "carbs": 65,
+      "fat": 15
+    },
+    "instructions": [
+      "Saut\u00e9 mushrooms",
+      "Toast rice",
+      "Slowly add broth while stirring",
+      "Finish with cheese"
+    ],
+    "tags": [
+      "vegetarian",
+      "gluten-free"
+    ]
+  },
+  {
+    "id": "recipe_60",
+    "name": "Stuffed Peppers",
+    "cuisine": "Modern",
+    "meal_type": "Dinner",
+    "prep_time_minutes": 45,
+    "difficulty": "medium",
+    "ingredients": [
+      {
+        "item": "Green Peppers",
+        "quantity": 4,
+        "unit": "each"
+      },
+      {
+        "item": "Rice (Jasmine 2kg)",
+        "quantity": 0.2,
+        "unit": "kg"
+      },
+      {
+        "item": "Black Beans",
+        "quantity": 1,
+        "unit": "can"
+      },
+      {
+        "item": "Cheddar Cheese (Medium)",
+        "quantity": 0.1,
+        "unit": "kg"
+      },
+      {
+        "item": "Salsa",
+        "quantity": 0.2,
+        "unit": "jar"
+      }
+    ],
+    "nutrition": {
+      "calories": 350,
+      "protein": 15,
+      "carbs": 50,
+      "fat": 10
+    },
+    "instructions": [
+      "Mix cooked rice, beans, salsa",
+      "Stuff peppers",
+      "Top with cheese",
+      "Bake 30 mins"
+    ],
+    "tags": [
+      "vegetarian",
+      "gluten-free"
+    ]
   }
 ]

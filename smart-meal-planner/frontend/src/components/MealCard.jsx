@@ -29,7 +29,9 @@ const MealCard = ({ type, meal }) => {
       <div className="text-sm text-gray-500 mb-3">
         <ul className="list-disc list-inside">
           {meal.ingredients.slice(0, 3).map((ing, idx) => (
-             <li key={idx} className="truncate">{ing}</li>
+             <li key={idx} className="truncate">
+               {typeof ing === 'string' ? ing : ing.item}
+             </li>
           ))}
           {meal.ingredients.length > 3 && (
             <li className="list-none text-xs text-gray-400 pl-4">+ {meal.ingredients.length - 3} more</li>

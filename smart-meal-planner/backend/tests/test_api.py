@@ -52,6 +52,6 @@ def test_full_flow():
     response = client.post(f"/api/plans/generate?user_id={user_id}")
     assert response.status_code == 200
     data = response.json()
-    assert "days" in data
-    assert len(data["days"]) == 7
-    assert "shopping_list_summary" in data
+    assert "meal_plan" in data
+    assert len(data["meal_plan"]) == 7
+    assert "shopping_summary" in data

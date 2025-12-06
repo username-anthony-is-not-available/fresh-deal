@@ -7,7 +7,7 @@ from app.agents.scraper_agent import MockScraperAgent
 from app.agents.planner_agent import MealPlannerAgent
 from app.services.shopping_optimizer import ShoppingListOptimizer
 from pydantic import BaseModel
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 import json
 from datetime import datetime, timedelta
 
@@ -66,7 +66,13 @@ def generate_meal_plan(user_id: int, session: Session = Depends(get_session)):
         planner = MealPlannerAgent(session)
         plan_data = planner.generate_plan(user)
 
-        start_date = datetime.strptime("2025-12-09", "%Y-%m-%d").date()
+        # Extract start date from the first day of the plan
+        start_date_str = plan_data.get("meal_plan", [])[0].get("date")
+        if start_date_str:
+             start_date = datetime.strptime(start_date_str, "%Y-%m-%d").date()
+        else:
+             # Fallback if somehow missing
+             start_date = datetime.now().date()
 
         meal_plan = MealPlan(
             user_id=user.id,
