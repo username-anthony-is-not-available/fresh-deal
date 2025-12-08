@@ -6,13 +6,14 @@ from app.core.db import get_async_session, get_session
 from sqlmodel import Session
 from app.models.all_models import User, MealPlan, Deal, Product, Store
 from app.agents.scraper_agent import MockScraperAgent
+from app.agents.flipp_scraper import CANADIAN_STORES
 from app.services.shopping_optimizer import ShoppingListOptimizer
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 from celery.result import AsyncResult
 import json
 from datetime import datetime, timedelta
-from app.tasks import generate_meal_plan_task, scrape_metro_task
+from app.tasks import generate_meal_plan_task, scrape_metro_task, scrape_flipp_task
 
 router = APIRouter()
 
@@ -43,10 +44,80 @@ def seed_data(session: Session = Depends(get_session)):
 @router.post("/admin/scrape/metro")
 async def trigger_metro_scrape(limit: int = 50):
     """
-    Triggers the background task to scrape Metro.ca.
+    Triggers the background task to scrape Metro.ca using browser automation.
+    
+    NOTE: This often gets blocked by Cloudflare. 
+    Use /admin/scrape/flipp instead for more reliable results.
     """
     task = scrape_metro_task.delay(limit)
-    return {"task_id": task.id, "status": "Processing"}
+    return {"task_id": task.id, "status": "Processing", "scraper": "metro-playwright"}
+
+
+class FlippScrapeRequest(BaseModel):
+    """Request body for Flipp scraping."""
+    stores: Optional[List[str]] = None
+    postal_code: str = "H4T1V6"
+    limit: int = 100
+
+
+@router.post("/admin/scrape/flipp")
+async def trigger_flipp_scrape(request: FlippScrapeRequest = None):
+    """
+    Triggers the background task to scrape grocery deals from Flipp API.
+    
+    This is the RECOMMENDED scraper as it uses a public API and doesn't
+    get blocked like browser-based scrapers.
+    
+    Available stores:
+    - metro, maxi, provigo, super_c, loblaws, walmart, 
+    - food_basics, iga, no_frills, real_canadian_superstore
+    
+    Example: {"stores": ["metro", "walmart"], "postal_code": "H4T1V6", "limit": 100}
+    """
+    if request is None:
+        request = FlippScrapeRequest()
+        
+    task = scrape_flipp_task.delay(
+        stores=request.stores,
+        postal_code=request.postal_code,
+        limit=request.limit
+    )
+    return {
+        "task_id": task.id, 
+        "status": "Processing", 
+        "scraper": "flipp-api",
+        "stores": request.stores or list(CANADIAN_STORES.keys()),
+        "postal_code": request.postal_code
+    }
+
+
+@router.get("/admin/scrapers")
+async def list_scrapers():
+    """
+    List available scrapers and their configurations.
+    """
+    return {
+        "scrapers": [
+            {
+                "id": "flipp",
+                "name": "Flipp API",
+                "description": "Uses the Flipp public API to get flyer deals. Most reliable option.",
+                "endpoint": "/admin/scrape/flipp",
+                "method": "POST",
+                "recommended": True,
+                "stores": {key: store.name for key, store in CANADIAN_STORES.items()}
+            },
+            {
+                "id": "metro",
+                "name": "Metro Playwright",
+                "description": "Uses Playwright browser automation. Often blocked by Cloudflare.",
+                "endpoint": "/admin/scrape/metro",
+                "method": "POST",
+                "recommended": False,
+                "stores": {"metro": "Metro"}
+            }
+        ]
+    }
 
 @router.get("/deals")
 async def list_deals(session: AsyncSession = Depends(get_async_session)):
@@ -86,6 +157,8 @@ async def get_task_status(task_id: str):
     task_result = AsyncResult(task_id)
     if task_result.state == 'PENDING':
         return {"task_id": task_id, "status": "Pending"}
+    elif task_result.state == 'REVOKED':
+        return {"task_id": task_id, "status": "Stopped"}
     elif task_result.state != 'FAILURE':
         return {
             "task_id": task_id,
@@ -99,6 +172,15 @@ async def get_task_status(task_id: str):
             "status": "Failed",
             "error": str(task_result.info)
         }
+
+@router.post("/tasks/{task_id}/stop")
+async def stop_task(task_id: str):
+    """
+    Revokes/stops a running background task.
+    """
+    from app.celery_app import celery_app
+    celery_app.control.revoke(task_id, terminate=True, signal='SIGTERM')
+    return {"task_id": task_id, "status": "Stopped", "message": "Task revocation requested"}
 
 @router.get("/plans/{user_id}/latest")
 async def get_latest_plan(user_id: int, session: AsyncSession = Depends(get_async_session)):

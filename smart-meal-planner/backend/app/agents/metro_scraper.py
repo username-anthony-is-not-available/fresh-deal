@@ -1,5 +1,6 @@
 
 import asyncio
+import random
 from playwright.async_api import async_playwright
 import os
 from bs4 import BeautifulSoup
@@ -9,19 +10,51 @@ class MetroScraper:
     """
     Scraper for Metro.ca.
     Includes fallback to local sample data if live scraping is blocked (common in data centers).
+    
+    Rate limiting and anti-detection measures:
+    - Random delays between requests (2-5 seconds)
+    - Realistic user agent rotation
+    - Respects robots.txt conceptually (grocery sites typically block scrapers)
+    - Automatic fallback to sample data to avoid hammering blocked endpoints
     """
     BASE_URL = "https://www.metro.ca/en"
     CATEGORIES = {
         "Fruits & Vegetables": "https://www.metro.ca/en/online-grocery/aisle/fruits-vegetables",
         "Meat & Poultry": "https://www.metro.ca/en/online-grocery/aisle/meat-poultry"
     }
+    
+    # Rate limiting settings
+    MIN_DELAY_SECONDS = 2.0
+    MAX_DELAY_SECONDS = 5.0
+    REQUEST_TIMEOUT_MS = 15000
+    
+    # User agent rotation pool
+    USER_AGENTS = [
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36",
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0",
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.1 Safari/605.1.15",
+    ]
 
     def __init__(self, headless=True):
         self.headless = headless
         self.items = []
+        self.request_count = 0
+
+    async def _random_delay(self):
+        """Add a random delay between requests to avoid rate limiting."""
+        delay = random.uniform(self.MIN_DELAY_SECONDS, self.MAX_DELAY_SECONDS)
+        print(f"Rate limiting: waiting {delay:.1f}s before next request...")
+        await asyncio.sleep(delay)
+
+    def _get_random_user_agent(self) -> str:
+        """Rotate user agents to appear more human-like."""
+        return random.choice(self.USER_AGENTS)
 
     async def scrape(self, limit: int = 50):
         print("Starting Metro Scraper...")
+        print(f"Rate limiting enabled: {self.MIN_DELAY_SECONDS}-{self.MAX_DELAY_SECONDS}s between requests")
 
         # Try live scraping first
         try:
@@ -30,35 +63,67 @@ class MetroScraper:
                     headless=self.headless,
                     args=["--disable-blink-features=AutomationControlled"]
                 )
+                
+                user_agent = self._get_random_user_agent()
+                print(f"Using user agent: {user_agent[:50]}...")
+                
                 context = await browser.new_context(
-                     user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+                    user_agent=user_agent,
+                    viewport={"width": 1920, "height": 1080},
+                    locale="en-CA",
                 )
                 page = await context.new_page()
+                
+                # Add stealth: hide webdriver property
+                await page.add_init_script("""
+                    Object.defineProperty(navigator, 'webdriver', {
+                        get: () => undefined
+                    });
+                """)
 
-                # Attempt to hit a category directly
-                url = list(self.CATEGORIES.values())[0]
-                try:
-                    await page.goto(url, timeout=15000, wait_until="domcontentloaded")
-                    # Check if we got content
-                    if await page.locator(".product-tile").count() > 0:
-                        print("Live scraping successful (unexpectedly!). Parsing...")
-                        # Logic to parse live page would go here
-                        # For now, if this magically works, we can try to parse.
-                        content = await page.content()
-                        self.parse_html(content, "Fruits & Vegetables")
-                    else:
-                        raise Exception("No products found (likely blocked)")
-                except Exception as e:
-                    print(f"Live scraping failed or blocked: {e}")
-                    print("Falling back to local sample data for POC demonstration.")
-                    self.load_sample_data()
+                items_scraped = 0
+                
+                for category_name, url in self.CATEGORIES.items():
+                    if items_scraped >= limit:
+                        print(f"Reached limit of {limit} items, stopping.")
+                        break
+                    
+                    # Rate limit between category requests
+                    if self.request_count > 0:
+                        await self._random_delay()
+                    
+                    self.request_count += 1
+                    print(f"Fetching category: {category_name} (request #{self.request_count})")
+                    
+                    try:
+                        await page.goto(url, timeout=self.REQUEST_TIMEOUT_MS, wait_until="domcontentloaded")
+                        
+                        # Additional random micro-delay to simulate reading
+                        await asyncio.sleep(random.uniform(0.5, 1.5))
+                        
+                        # Check if we got content
+                        if await page.locator(".product-tile").count() > 0:
+                            print(f"Live scraping successful for {category_name}!")
+                            content = await page.content()
+                            self.parse_html(content, category_name)
+                            items_scraped = len(self.items)
+                        else:
+                            raise Exception("No products found (likely blocked)")
+                            
+                    except Exception as e:
+                        print(f"Live scraping failed for {category_name}: {e}")
+                        print("Falling back to local sample data for POC demonstration.")
+                        self.load_sample_data()
+                        break  # Don't retry other categories if blocked
 
                 await browser.close()
+                
         except Exception as e:
-             print(f"Playwright error: {e}")
-             self.load_sample_data()
+            print(f"Playwright error: {e}")
+            self.load_sample_data()
 
-        return self.items
+        print(f"Scraping complete. Total requests: {self.request_count}, Items: {len(self.items)}")
+        return self.items[:limit]  # Respect the limit
 
     def load_sample_data(self):
         """Loads sample HTML to simulate successful scraping."""

@@ -7,24 +7,178 @@ from app.core.db import engine
 from app.models.all_models import User, MealPlan, Store, Product, Deal
 from app.agents.planner_agent import MealPlannerAgent
 from app.agents.metro_scraper import MetroScraper
+from app.agents.flipp_scraper import FlippScraper, CANADIAN_STORES
 from datetime import datetime, timedelta, date
 import asyncio
 
-@shared_task
+
+def _get_or_create_event_loop():
+    """Get existing event loop or create a new one for Celery workers."""
+    try:
+        loop = asyncio.get_event_loop()
+        if loop.is_closed():
+            raise RuntimeError("Event loop is closed")
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+    return loop
+
+
+@shared_task(rate_limit='10/m')
+def scrape_flipp_task(
+    stores: list = None,
+    postal_code: str = "H4T1V6",
+    limit: int = 100
+):
+    """
+    Background task to scrape grocery deals from Flipp API.
+    
+    This is the RECOMMENDED scraper as it:
+    - Uses a public API (no bot protection issues)
+    - Gets data from multiple stores at once
+    - Is much faster and more reliable than browser scraping
+    
+    Args:
+        stores: List of store keys (e.g., ["metro", "maxi", "walmart"])
+                If None, scrapes all available stores
+        postal_code: Canadian postal code for location-based deals
+        limit: Maximum number of items to fetch
+    """
+    with Session(engine) as session:
+        try:
+            # Run Flipp scraper
+            scraper = FlippScraper(
+                postal_code=postal_code,
+                stores=stores
+            )
+            
+            loop = _get_or_create_event_loop()
+            items = loop.run_until_complete(scraper.scrape(limit=limit))
+
+            if not items:
+                return {"status": "No items found", "count": 0}
+
+            # Persist Data - group by store
+            store_cache = {}  # Cache store objects by name
+            new_products = 0
+            new_deals = 0
+            today = date.today()
+            
+            for item in items:
+                store_name = item.get("store", "Unknown Store")
+                
+                # Get or create store
+                if store_name not in store_cache:
+                    store = session.exec(
+                        select(Store).where(Store.name == store_name)
+                    ).first()
+                    if not store:
+                        # Try to find chain info
+                        chain = store_name
+                        store = Store(
+                            name=store_name,
+                            chain=chain,
+                            postal_code=postal_code,
+                            address="Online"
+                        )
+                        session.add(store)
+                        session.commit()
+                        session.refresh(store)
+                    store_cache[store_name] = store
+                
+                store = store_cache[store_name]
+
+                # Find or Create Product
+                product = session.exec(
+                    select(Product).where(Product.name == item["name"])
+                ).first()
+                if not product:
+                    product = Product(
+                        name=item["name"],
+                        category=item.get("category", "Grocery"),
+                        unit_type=item.get("unit", "each")
+                    )
+                    session.add(product)
+                    session.commit()
+                    session.refresh(product)
+                    new_products += 1
+
+                # Parse validity dates if available
+                valid_from = today
+                valid_until = today + timedelta(days=7)
+                
+                if item.get("valid_from"):
+                    try:
+                        valid_from = datetime.fromisoformat(
+                            item["valid_from"].replace("Z", "+00:00")
+                        ).date()
+                    except:
+                        pass
+                        
+                if item.get("valid_to"):
+                    try:
+                        valid_until = datetime.fromisoformat(
+                            item["valid_to"].replace("Z", "+00:00")
+                        ).date()
+                    except:
+                        pass
+
+                # Calculate discount percentage
+                original = item.get("original_price", item["price"])
+                discount_pct = 0
+                if original > 0 and original > item["price"]:
+                    discount_pct = round((original - item["price"]) / original * 100, 1)
+
+                # Create Deal
+                deal = Deal(
+                    product_id=product.id,
+                    store_id=store.id,
+                    price=item["price"],
+                    original_price=original,
+                    discount_pct=discount_pct,
+                    valid_from=valid_from,
+                    valid_until=valid_until
+                )
+                session.add(deal)
+                new_deals += 1
+
+            session.commit()
+
+            # Summary by store
+            store_summary = {}
+            for item in items:
+                store = item.get("store", "Unknown")
+                store_summary[store] = store_summary.get(store, 0) + 1
+
+            return {
+                "status": "Success",
+                "source": "Flipp API",
+                "scraped_items": len(items),
+                "new_products": new_products,
+                "new_deals": new_deals,
+                "stores": store_summary
+            }
+
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return {"error": str(e)}
+
+
+# Rate limit: max 2 scrape tasks per minute to avoid hammering external sites
+@shared_task(rate_limit='2/m')
 def scrape_metro_task(limit: int = 50):
     """
-    Background task to scrape Metro.ca and update the database.
+    Background task to scrape Metro.ca using browser automation.
+    
+    NOTE: This scraper often gets blocked by Cloudflare protection.
+    For more reliable results, use scrape_flipp_task() instead.
     """
     with Session(engine) as session:
         try:
             # 1. Run Scraper (Async needs to be run in sync context)
             scraper = MetroScraper()
-            # Celery workers use prefork, asyncio might need new loop
-            try:
-                loop = asyncio.get_event_loop()
-            except RuntimeError:
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
+            loop = _get_or_create_event_loop()
 
             items = loop.run_until_complete(scraper.scrape(limit=limit))
 

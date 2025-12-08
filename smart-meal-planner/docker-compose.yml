@@ -24,11 +24,27 @@ services:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
       - POSTGRES_DB=mealplanner
+      - REDIS_URL=redis://redis:6379/0
       - USE_MOCK_AI=True # Set to False and provide API key for real AI
       # - OPENROUTER_API_KEY=your_key_here
     depends_on:
       - db
       - redis
+
+  celery_worker:
+    build: ./backend
+    command: celery -A app.celery_app worker --loglevel=info
+    environment:
+      - POSTGRES_SERVER=db
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=mealplanner
+      - REDIS_URL=redis://redis:6379/0
+      - USE_MOCK_AI=True
+    depends_on:
+      - db
+      - redis
+      - backend
 
   frontend:
     build: ./frontend

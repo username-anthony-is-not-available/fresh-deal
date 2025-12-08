@@ -6,6 +6,7 @@ import DealsPage from './pages/DealsPage';
 import MealPlanPage from './pages/MealPlanPage';
 import ShoppingListPage from './pages/ShoppingListPage';
 import SettingsPage from './pages/SettingsPage';
+import ScrapingDashboardPage from './pages/ScrapingDashboardPage';
 
 function App() {
   return (
@@ -16,6 +17,7 @@ function App() {
           <Route path="deals" element={<DealsPage />} />
           <Route path="plan" element={<MealPlanPage />} />
           <Route path="list" element={<ShoppingListPage />} />
+          <Route path="scraping" element={<ScrapingDashboardPage />} />
           <Route path="settings" element={<SettingsPage />} />
         </Route>
       </Routes>
