@@ -9,6 +9,7 @@ import SettingsPage from './pages/SettingsPage';
 import ScrapingDashboardPage from './pages/ScrapingDashboardPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
+import FavoritesPage from './pages/FavoritesPage';
 import AuthContext, { AuthProvider } from './context/AuthContext';
 
 const PrivateRoute = ({ children }) => {
@@ -42,6 +43,10 @@ function AppRoutes() {
         <Route
           path="settings"
           element={<PrivateRoute><SettingsPage /></PrivateRoute>}
+        />
+        <Route
+          path="favorites"
+          element={<PrivateRoute><FavoritesPage /></PrivateRoute>}
         />
       </Route>
     </Routes>

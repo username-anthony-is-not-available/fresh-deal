@@ -1,10 +1,9 @@
-
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlmodel import select
+from sqlmodel import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.db import get_async_session, get_session
 from sqlmodel import Session
-from app.models.all_models import User, MealPlan, Deal, Product, Store
+from app.models.all_models import User, MealPlan, Deal, Product, Store, RecipeRating, UserFavorite, Recipe
 from app.agents.scraper_agent import MockScraperAgent
 from app.agents.flipp_scraper import CANADIAN_STORES
 from app.services.shopping_optimizer import ShoppingListOptimizer
@@ -20,13 +19,75 @@ from app.schemas import UserUpdate, UserRead
 router = APIRouter()
 
 class UserCreate(BaseModel):
+    email: str
+    password: str
     postal_code: str
     household_size: int
     dietary_preferences: str
 
+class RecipeRatingCreate(BaseModel):
+    rating: int
+
+@router.post("/recipes/{recipe_id}/rate")
+async def rate_recipe(recipe_id: int, rating_in: RecipeRatingCreate, user_id: int = 1, session: AsyncSession = Depends(get_async_session)):
+    # Hardcoded user_id=1 for MVP
+    # Check if a rating already exists
+    statement = select(RecipeRating).where(RecipeRating.user_id == user_id, RecipeRating.recipe_id == recipe_id)
+    result = await session.execute(statement)
+    existing_rating = result.scalars().first()
+
+    if existing_rating:
+        existing_rating.rating = rating_in.rating
+        session.add(existing_rating)
+    else:
+        rating = RecipeRating(user_id=user_id, recipe_id=recipe_id, rating=rating_in.rating)
+        session.add(rating)
+
+    await session.commit()
+    return {"message": "Rating submitted successfully"}
+
+@router.get("/recipes/{recipe_id}/average-rating")
+async def get_average_rating(recipe_id: int, session: AsyncSession = Depends(get_async_session)):
+    statement = select(func.avg(RecipeRating.rating)).where(RecipeRating.recipe_id == recipe_id)
+    result = await session.execute(statement)
+    average_rating = result.scalar_one_or_none()
+    return {"average_rating": average_rating or 0}
+
+@router.post("/recipes/{recipe_id}/favorite")
+async def favorite_recipe(recipe_id: int, user_id: int = 1, session: AsyncSession = Depends(get_async_session)):
+    # Hardcoded user_id=1 for MVP
+    favorite = UserFavorite(user_id=user_id, recipe_id=recipe_id)
+    session.add(favorite)
+    await session.commit()
+    return {"message": "Recipe favorited successfully"}
+
+@router.delete("/recipes/{recipe_id}/favorite")
+async def unfavorite_recipe(recipe_id: int, user_id: int = 1, session: AsyncSession = Depends(get_async_session)):
+    # Hardcoded user_id=1 for MVP
+    statement = select(UserFavorite).where(UserFavorite.user_id == user_id, UserFavorite.recipe_id == recipe_id)
+    result = await session.execute(statement)
+    favorite = result.scalars().first()
+
+    if favorite:
+        await session.delete(favorite)
+        await session.commit()
+        return {"message": "Recipe unfavorited successfully"}
+    else:
+        raise HTTPException(status_code=404, detail="Favorite not found")
+
+@router.get("/users/me/favorites")
+async def get_user_favorites(user_id: int = 1, session: AsyncSession = Depends(get_async_session)):
+    # Hardcoded user_id=1 for MVP
+    statement = select(Recipe).join(UserFavorite).where(UserFavorite.user_id == user_id)
+    result = await session.execute(statement)
+    favorites = result.scalars().all()
+    return favorites
+
 @router.post("/onboard")
 async def onboard_user(user_in: UserCreate, session: AsyncSession = Depends(get_async_session)):
     user = User(
+        email=user_in.email,
+        hashed_password=user_in.password, # In a real app, you'd hash this
         postal_code=user_in.postal_code,
         household_size=user_in.household_size,
         dietary_preferences=user_in.dietary_preferences

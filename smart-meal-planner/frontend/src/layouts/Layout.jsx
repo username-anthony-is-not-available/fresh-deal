@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
-import { Home, ShoppingCart, Calendar, Tag, Settings, Menu, Activity } from 'lucide-react';
+import { Home, ShoppingCart, Calendar, Tag, Settings, Menu, Activity, Heart } from 'lucide-react';
 import clsx from 'clsx';
 import { Toaster } from 'react-hot-toast';
 import { useTranslation } from 'react-i18next';
@@ -14,6 +14,7 @@ const Layout = () => {
     { name: t('deals'), path: '/deals', icon: Tag },
     { name: t('meal_plan'), path: '/plan', icon: Calendar },
     { name: t('shopping_list'), path: '/list', icon: ShoppingCart },
+    { name: t('favorites', 'My Favorites'), path: '/favorites', icon: Heart },
     { name: t('scraping'), path: '/scraping', icon: Activity },
     { name: t('settings'), path: '/settings', icon: Settings },
   ];

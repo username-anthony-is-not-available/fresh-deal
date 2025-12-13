@@ -105,27 +105,33 @@ class LLMService:
 
         return dates
 
-    def generate_meal_plan(self, user_prefs: Dict, available_deals: List[Dict], recipes_db: List[Dict]) -> Dict:
+    def generate_meal_plan(self, user_prefs: Dict, available_deals: List[Dict], recipes_db: List[Dict], user_favorites: List[int] = None) -> Dict:
         """
         Generates a meal plan based on user preferences and available deals.
 
         Args:
             user_prefs: User preferences (household size, etc.)
             available_deals: List of current deals
-            recipes_db: List of recipes (legacy argument, or we pass matched recipes here)
-                        If this list is small (< 100), we assume it's pre-filtered or the legacy static list.
-                        If it's empty, we should ideally fetch from DB, but this method signature implies dependency injection.
+            recipes_db: List of recipes, potentially with 'average_rating'
+            user_favorites: List of favorite recipe IDs
         """
+        user_favorites = user_favorites or []
         week_dates = self.get_next_week_dates()
 
         # Create a cache key.
-        cache_key = self._get_cache_key("meal_plan", {"prefs": user_prefs, "deals": available_deals[:20], "week": week_dates[0]['date']})
+        cache_key_data = {
+            "prefs": user_prefs,
+            "deals": available_deals[:20],
+            "week": week_dates[0]['date'],
+            "favorites": sorted(user_favorites)
+        }
+        cache_key = self._get_cache_key("meal_plan", cache_key_data)
         cached = self._get_cached_response(cache_key)
         if cached:
             logger.info("Returning cached meal plan")
             return cached
 
-        prompt = self._construct_meal_plan_prompt(user_prefs, available_deals, recipes_db, week_dates)
+        prompt = self._construct_meal_plan_prompt(user_prefs, available_deals, recipes_db, week_dates, user_favorites)
 
         try:
             response = self._call_llm(prompt)
@@ -173,7 +179,7 @@ class LLMService:
             except Exception as e2:
                 raise APIError(f"Both models failed: {e2}", request=None, body=None)
 
-    def _construct_meal_plan_prompt(self, user_prefs: Dict, deals: List[Dict], recipes: List[Dict], week_dates: List[Dict]) -> str:
+    def _construct_meal_plan_prompt(self, user_prefs: Dict, deals: List[Dict], recipes: List[Dict], week_dates: List[Dict], user_favorites: List[int]) -> str:
         formatted_deals = self.format_deals_for_llm(deals)
         household_size = user_prefs.get('household_size', 1)
 
@@ -183,30 +189,27 @@ class LLMService:
         GENERATE PLAN FOR: {week_dates[0]['date']} to {week_dates[6]['date']}
 
         USER CONTEXT:
-        - Household: {household_size} people
-        - This affects:
-          * Recipe servings (scale ingredients)
-          * Shopping quantities (buy enough for {household_size})
-          * Meal sizes (appropriate portions)
+        - Household: {household_size} people. Scale recipe ingredients and shopping quantities accordingly.
 
-        Example: If recipe serves 4 and household is 2, use HALF the ingredients.
-        If household is 6, use 1.5x ingredients.
+        USER'S FAVORITE RECIPES (HIGHEST PRIORITY):
+        {json.dumps(user_favorites)}
 
         AVAILABLE DEALS (Expiring Soon):
         {formatted_deals}
 
         RECIPE SELECTION RULES:
-        1. You have a curated list of recipes available (use IDs provided).
-        2. You MUST select 21 meals.
-        3. PRIORITY RULES:
-           - Never repeat the same meal on consecutive days
-           - Never repeat the same protein source on consecutive days
-           - Space repeated meals at least 3 days apart when possible
-           - Prioritize variety in cuisines across the week
-           - Prioritize recipes that use ingredients currently on sale
-        4. Respect dietary restrictions (vegetarian, vegan, gluten-free, etc.)
+        1. You MUST select 21 meals from the provided recipe list.
+        2. PRIORITY RULES:
+           - HIGHEST PRIORITY: Strongly prefer recipes from the user's favorites list.
+           - HIGH PRIORITY: Prioritize recipes with a high average rating (4 stars or higher).
+           - MEDIUM PRIORITY: Prioritize recipes that use ingredients currently on sale.
+        3. GENERAL RULES:
+           - Never repeat the same meal or protein source on consecutive days.
+           - Space repeated meals at least 3 days apart.
+           - Ensure variety in cuisines.
+           - Respect dietary restrictions.
 
-        AVAILABLE RECIPES:
+        AVAILABLE RECIPES (includes average ratings):
         {json.dumps(self._format_recipes_for_prompt(recipes))}
 
         RETURN JSON STRUCTURE:
@@ -219,7 +222,7 @@ class LLMService:
               "breakfast": {{
                 "recipe_id": "recipe_001",
                 "recipe_name": "Recipe Name",
-                "reason": "Reason for selection (e.g., uses sale items)",
+                "reason": "Reason for selection (e.g., user favorite, high rating, uses sale items)",
                 "servings": {household_size},
                 "scaled_for_household": true
               }},
@@ -268,7 +271,8 @@ class LLMService:
                 'id': r.get('id'),
                 'name': r.get('name'),
                 'ingredients': ingredients,
-                'meal_type': r.get('meal_type', 'Any')
+                'meal_type': r.get('meal_type', 'Any'),
+                'average_rating': r.get('average_rating')
             })
         return formatted
 
