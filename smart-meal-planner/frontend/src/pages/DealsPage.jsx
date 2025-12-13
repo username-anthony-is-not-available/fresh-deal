@@ -1,17 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import DealCard from '../components/DealCard';
 import { Search, Filter } from 'lucide-react';
+import api from '../services/api';
 
 const DealsPage = () => {
   const [deals, setDeals] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('');
-
-  // We need to fetch deals. The current backend doesn't have a direct "list all deals" endpoint
-  // other than seed, but we can assume we'd add one or just use seed for now.
-  // I will add a temporary fetch logic. For now, let's Mock it on client side if API is missing,
-  // but better to actually fetch. I'll implement a simple endpoint in next steps.
-  // For now, I'll assume an endpoint /api/deals exists (I'll add it in backend step).
 
   useEffect(() => {
     fetchDeals();
@@ -19,21 +14,22 @@ const DealsPage = () => {
 
   const fetchDeals = async () => {
     try {
-      // NOTE: I will need to add this endpoint to the backend in the next major step.
-      // For now, this will 404 until I add it.
-      const res = await fetch('http://localhost:8000/api/deals');
-      if (res.ok) {
-        const data = await res.json();
-        setDeals(data);
-      } else {
-        // Fallback for dev if endpoint not ready yet
-        console.warn("Deals endpoint not ready");
-        setDeals([]);
-      }
+      const data = await api.get('/deals');
+      setDeals(data);
     } catch (e) {
-      console.error(e);
+      console.warn("Failed to fetch deals", e);
+      setDeals([]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const seedData = async () => {
+    try {
+      await api.post('/data/seed');
+      fetchDeals();
+    } catch (e) {
+      console.error("Failed to seed data", e);
     }
   };
 
@@ -88,10 +84,7 @@ const DealsPage = () => {
         <div className="text-center py-12 bg-white rounded-lg border border-dashed border-gray-300">
            <p className="text-gray-500">No deals found. Try seeding the database first.</p>
            <button
-             onClick={async () => {
-                await fetch('http://localhost:8000/api/data/seed', { method: 'POST' });
-                fetchDeals();
-             }}
+             onClick={seedData}
              className="mt-4 text-primary-600 font-medium hover:underline"
            >
              Seed Mock Data

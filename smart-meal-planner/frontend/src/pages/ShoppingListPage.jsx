@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import ShoppingListItem from '../components/ShoppingListItem';
 import StoreComparison from '../components/StoreComparison';
 import { Download, Share2, TrendingDown, MapPin, DollarSign } from 'lucide-react';
+import api from '../services/api';
 
 const ShoppingListPage = () => {
   const [data, setData] = useState(null);
@@ -14,16 +15,10 @@ const ShoppingListPage = () => {
     const fetchList = async () => {
       setLoading(true);
       try {
-        const res = await fetch(`http://localhost:8000/api/shopping/optimize?user_id=${userId}&strategy=${strategy}`);
-        if (res.ok) {
-           const result = await res.json();
-           setData(result);
-        } else {
-            // If failed (e.g. no plan), handle it
-            console.error("Failed to fetch list");
-        }
+        const result = await api.get(`/shopping/optimize?user_id=${userId}&strategy=${strategy}`);
+        setData(result);
       } catch (e) {
-         console.error(e);
+        console.error("Failed to fetch shopping list", e);
       } finally {
         setLoading(false);
       }

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChefHat, ShoppingBag, DollarSign } from 'lucide-react';
+import api from '../services/api';
 
 const HomePage = () => {
   const navigate = useNavigate();
@@ -17,16 +18,10 @@ const HomePage = () => {
 
     try {
       // Seed data first to ensure we have products
-      await fetch('http://localhost:8000/api/data/seed', { method: 'POST' });
+      await api.post('/data/seed', {});
 
-      const response = await fetch('http://localhost:8000/api/onboard', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
-      });
-
-      if (response.ok) {
-        const user = await response.json();
+      const user = await api.post('/onboard', formData);
+      if (user) {
         // Store user ID in localStorage for simple session management
         localStorage.setItem('user_id', user.id);
         navigate('/plan');
