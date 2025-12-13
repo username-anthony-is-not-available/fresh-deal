@@ -29,6 +29,9 @@ class Settings(BaseSettings):
     # App Mode
     USE_MOCK_AI: bool = False
 
+    # Sentry
+    SENTRY_DSN: str | None = None
+
     model_config = SettingsConfigDict(env_file=".env", case_sensitive=True)
 
     @property
