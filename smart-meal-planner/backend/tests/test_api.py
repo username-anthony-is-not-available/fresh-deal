@@ -22,7 +22,7 @@ engine = create_async_engine(
     poolclass=StaticPool
 )
 
-@pytest_asyncio.fixture(name="session")
+@pytest_asyncio.fixture(name="session", scope="function")
 async def session_fixture():
     async with engine.begin() as conn:
         await conn.run_sync(SQLModel.metadata.create_all)
@@ -33,7 +33,11 @@ async def session_fixture():
     async with async_session() as session:
         yield session
 
-@pytest_asyncio.fixture(name="client")
+    async with engine.begin() as conn:
+        await conn.run_sync(SQLModel.metadata.drop_all)
+
+
+@pytest_asyncio.fixture(name="client", scope="function")
 async def client_fixture(session: AsyncSession):
     def get_session_override():
         return session
@@ -80,7 +84,7 @@ async def test_get_user(client: AsyncClient):
     # First, create a user to fetch
     onboard_response = await client.post(
         "/api/onboard",
-        json={"postal_code": "H1A 1A1", "household_size": 1, "dietary_preferences": "Vegetarian"}
+        json={"email": "test@test.com", "password": "password", "postal_code": "H1A 1A1", "household_size": 1, "dietary_preferences": "Vegetarian"}
     )
     user_id = onboard_response.json()["id"]
 
@@ -98,7 +102,7 @@ async def test_update_user(client: AsyncClient):
     # First, create a user to update
     onboard_response = await client.post(
         "/api/onboard",
-        json={"postal_code": "H2B 2B2", "household_size": 3, "dietary_preferences": "None"}
+        json={"email": "test@test.com", "password": "password", "postal_code": "H2B 2B2", "household_size": 3, "dietary_preferences": "None"}
     )
     user_id = onboard_response.json()["id"]
 

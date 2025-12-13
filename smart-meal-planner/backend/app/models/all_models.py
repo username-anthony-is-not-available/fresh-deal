@@ -15,6 +15,10 @@ class User(SQLModel, table=True):
     dietary_preferences: Optional[str] = None  # JSON string or comma-separated
     created_at: datetime = Field(default_factory=utc_now)
 
+    ratings: List["RecipeRating"] = Relationship(back_populates="user")
+    favorites: List["UserFavorite"] = Relationship(back_populates="user")
+
+
 class Store(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     name: str
@@ -61,6 +65,9 @@ class Recipe(SQLModel, table=True):
     # Matching helpers
     ingredients: List["RecipeIngredient"] = Relationship(back_populates="recipe")
 
+    ratings: List["RecipeRating"] = Relationship(back_populates="recipe")
+    favorited_by: List["UserFavorite"] = Relationship(back_populates="recipe")
+
 class RecipeIngredient(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     recipe_id: int = Field(foreign_key="recipe.id")
@@ -76,3 +83,22 @@ class MealPlan(SQLModel, table=True):
     end_date: date
     content_json: str # Stores the full JSON structure of meals
     created_at: datetime = Field(default_factory=utc_now)
+
+class RecipeRating(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: int = Field(foreign_key="user.id")
+    recipe_id: int = Field(foreign_key="recipe.id")
+    rating: int = Field(ge=1, le=5)
+    created_at: datetime = Field(default_factory=utc_now)
+
+    user: "User" = Relationship(back_populates="ratings")
+    recipe: "Recipe" = Relationship(back_populates="ratings")
+
+class UserFavorite(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: int = Field(foreign_key="user.id")
+    recipe_id: int = Field(foreign_key="recipe.id")
+    created_at: datetime = Field(default_factory=utc_now)
+
+    user: "User" = Relationship(back_populates="favorites")
+    recipe: "Recipe" = Relationship(back_populates="favorited_by")
