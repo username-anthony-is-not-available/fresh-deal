@@ -17,3 +17,6 @@ pytest-asyncio==0.23.7
 playwright==1.49.1
 beautifulsoup4==4.12.3
 aiohttp==3.12.14
+passlib==1.7.4
+python-jose==3.4.0
+bcrypt==4.1.3

@@ -1,9 +1,12 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.core.config import settings
+from app.core.config import Settings
 from app.core.db import init_db
 from contextlib import asynccontextmanager
 from app.api.endpoints import router as api_router
+from app.api import auth_endpoints
+
+settings = Settings()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -32,8 +35,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(api_router, prefix="/api")
+app.include_router(api_router, prefix="/api", tags=["api"])
+app.include_router(auth_endpoints.router, prefix="/auth", tags=["auth"])
 
-@app.get("/")
-def root():
-    return {"message": "Smart Meal Planner API is running"}
+@app.get("/health")
+def health_check():
+    return {"status": "ok"}
