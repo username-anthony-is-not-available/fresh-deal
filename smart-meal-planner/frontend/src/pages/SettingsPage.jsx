@@ -1,5 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Save } from 'lucide-react';
+import toast from 'react-hot-toast';
+import SettingsService from '../services/SettingsService';
+import { useAuth } from '../context/AuthContext';
 
 const SettingsPage = () => {
   const [formData, setFormData] = useState({
@@ -10,14 +13,50 @@ const SettingsPage = () => {
     excluded_ingredients: ''
   });
 
+  const { currentUser } = useAuth();
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = (e) => {
+  useEffect(() => {
+    if (!currentUser) return;
+
+    const fetchSettings = async () => {
+      try {
+        const response = await SettingsService.getUserSettings(currentUser.id);
+        setFormData({
+          postal_code: response.data.postal_code,
+          household_size: response.data.household_size,
+          dietary_preferences: response.data.dietary_preferences || 'None',
+          budget_limit: 200, // Not in model, keeping in state for now
+          excluded_ingredients: '' // Not in model
+        });
+      } catch (error) {
+        toast.error("Failed to load settings.");
+        console.error(error);
+      }
+    };
+    fetchSettings();
+  }, []);
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    alert("Settings saved! (Mock)");
+    const settingsToUpdate = {
+      postal_code: formData.postal_code,
+      household_size: parseInt(formData.household_size, 10),
+      dietary_preferences: formData.dietary_preferences
+    };
+
+    const toastId = toast.loading('Saving settings...');
+    try {
+      await SettingsService.updateUserSettings(currentUser.id, settingsToUpdate);
+      toast.success('Settings saved successfully!', { id: toastId });
+    } catch (error) {
+      toast.error('Failed to save settings.', { id: toastId });
+      console.error(error);
+    }
   };
 
   return (
@@ -29,8 +68,9 @@ const SettingsPage = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Postal Code</label>
+                <label htmlFor="postal_code" className="block text-sm font-medium text-gray-700 mb-1">Postal Code</label>
                 <input
+                  id="postal_code"
                   type="text"
                   name="postal_code"
                   value={formData.postal_code}
@@ -40,8 +80,9 @@ const SettingsPage = () => {
              </div>
 
              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Household Size</label>
+                <label htmlFor="household_size" className="block text-sm font-medium text-gray-700 mb-1">Household Size</label>
                 <select
+                   id="household_size"
                    name="household_size"
                    value={formData.household_size}
                    onChange={handleChange}
@@ -57,8 +98,9 @@ const SettingsPage = () => {
           </div>
 
           <div>
-             <label className="block text-sm font-medium text-gray-700 mb-1">Dietary Preferences</label>
+             <label htmlFor="dietary_preferences" className="block text-sm font-medium text-gray-700 mb-1">Dietary Preferences</label>
              <select
+                id="dietary_preferences"
                 name="dietary_preferences"
                 value={formData.dietary_preferences}
                 onChange={handleChange}
@@ -74,8 +116,9 @@ const SettingsPage = () => {
           </div>
 
           <div>
-             <label className="block text-sm font-medium text-gray-700 mb-1">Excluded Ingredients (comma separated)</label>
+             <label htmlFor="excluded_ingredients" className="block text-sm font-medium text-gray-700 mb-1">Excluded Ingredients (comma separated)</label>
              <input
+                id="excluded_ingredients"
                 type="text"
                 name="excluded_ingredients"
                 value={formData.excluded_ingredients}
@@ -86,12 +129,13 @@ const SettingsPage = () => {
           </div>
 
           <div>
-             <label className="block text-sm font-medium text-gray-700 mb-1">Weekly Budget Limit ($)</label>
+             <label htmlFor="budget_limit" className="block text-sm font-medium text-gray-700 mb-1">Weekly Budget Limit ($)</label>
              <div className="relative rounded-md shadow-sm">
                 <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
                    <span className="text-gray-500 sm:text-sm">$</span>
                 </div>
                 <input
+                   id="budget_limit"
                    type="number"
                    name="budget_limit"
                    value={formData.budget_limit}
