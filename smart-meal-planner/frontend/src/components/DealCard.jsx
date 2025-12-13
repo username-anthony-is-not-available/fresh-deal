@@ -1,8 +1,10 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import SavingsBadge from './SavingsBadge';
 import { Tag } from 'lucide-react';
 
 const DealCard = ({ product, deal, store }) => {
+  const { t } = useTranslation();
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
       <div className="p-4">
@@ -34,7 +36,7 @@ const DealCard = ({ product, deal, store }) => {
                 amount={deal.original_price ? deal.original_price - deal.price : null}
              />
              <div className="text-xs text-gray-400">
-                Valid until {new Date(deal.valid_until).toLocaleDateString()}
+                {t('valid_until')} {new Date(deal.valid_until).toLocaleDateString()}
              </div>
         </div>
       </div>
