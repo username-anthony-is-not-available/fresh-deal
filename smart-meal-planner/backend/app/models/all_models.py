@@ -7,6 +7,9 @@ def utc_now():
 
 class User(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
+    email: str = Field(unique=True, index=True)
+    hashed_password: str
+    is_active: bool = Field(default=True)
     postal_code: str
     household_size: int
     dietary_preferences: Optional[str] = None  # JSON string or comma-separated

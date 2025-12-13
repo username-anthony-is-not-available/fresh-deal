@@ -47,20 +47,26 @@ async def client_fixture(session: AsyncSession):
     app.dependency_overrides.clear()
 
 @pytest.mark.asyncio
-async def test_root(client: AsyncClient):
-    response = await client.get("/")
+async def test_health_check(client: AsyncClient):
+    response = await client.get("/health")
     assert response.status_code == 200
-    assert response.json() == {"message": "Smart Meal Planner API is running"}
+    assert response.json() == {"status": "ok"}
 
 @pytest.mark.asyncio
-async def test_onboard_user(client: AsyncClient):
+async def test_register(client: AsyncClient):
     response = await client.post(
-        "/api/onboard",
-        json={"postal_code": "H4T 1V6", "household_size": 2, "dietary_preferences": "None"}
+        "/auth/register",
+        json={
+            "email": "test@example.com",
+            "password": "password",
+            "postal_code": "H4T 1V6",
+            "household_size": 2,
+            "dietary_preferences": "None",
+        },
     )
     assert response.status_code == 200
     data = response.json()
-    assert data["postal_code"] == "H4T 1V6"
+    assert data["email"] == "test@example.com"
     assert "id" in data
 
 @pytest.mark.asyncio
