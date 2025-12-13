@@ -2820,5 +2820,104 @@
       "vegetarian",
       "gluten-free"
     ]
+  },
+  {
+    "id": "recipe_061",
+    "name": "Keto Avocado Egg Salad",
+    "cuisine": "Keto",
+    "meal_type": "Lunch",
+    "prep_time_minutes": 10,
+    "difficulty": "easy",
+    "ingredients": [
+      {
+        "item": "Eggs (12 Large)",
+        "quantity": 0.33,
+        "unit": "pack"
+      },
+      {
+        "item": "Avocado",
+        "quantity": 1,
+        "unit": "each"
+      },
+      {
+        "item": "Red Onions",
+        "quantity": 0.25,
+        "unit": "each"
+      },
+      {
+        "item": "Mayo",
+        "quantity": 0.05,
+        "unit": "bottle"
+      }
+    ],
+    "nutrition": {
+      "calories": 400,
+      "protein": 15,
+      "carbs": 8,
+      "fat": 35
+    },
+    "instructions": [
+      "Hard boil eggs and peel.",
+      "Mash eggs and avocado together.",
+      "Mix in finely chopped red onion and mayo.",
+      "Season with salt and pepper."
+    ],
+    "tags": [
+      "keto",
+      "low-carb",
+      "vegetarian",
+      "healthy"
+    ]
+  },
+    {
+    "id": "recipe_220",
+    "name": "Tourtière (Quebec Meat Pie)",
+    "cuisine": "Quebecois",
+    "meal_type": "Dinner",
+    "prep_time_minutes": 90,
+    "difficulty": "hard",
+    "ingredients": [
+      {
+        "item": "Ground Pork",
+        "quantity": 0.5,
+        "unit": "kg"
+      },
+      {
+        "item": "Ground Veal",
+        "quantity": 0.5,
+        "unit": "kg"
+      },
+      {
+        "item": "Onions (Yellow)",
+        "quantity": 1,
+        "unit": "each"
+      },
+      {
+        "item": "Potatoes (Russet)",
+        "quantity": 0.2,
+        "unit": "kg"
+      },
+      {
+        "item": "Pie Crust",
+        "quantity": 2,
+        "unit": "each"
+      }
+    ],
+    "nutrition": {
+      "calories": 700,
+      "protein": 35,
+      "carbs": 40,
+      "fat": 45
+    },
+    "instructions": [
+      "Cook meats with onions and spices.",
+      "Add mashed potatoes to thicken.",
+      "Fill pie crust and bake until golden brown."
+    ],
+    "tags": [
+      "quebec-specific",
+      "comfort-food",
+      "holiday"
+    ]
   }
 ]
