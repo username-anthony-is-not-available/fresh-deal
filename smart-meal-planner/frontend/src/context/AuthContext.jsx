@@ -1,15 +1,60 @@
-import React, { createContext, useContext } from 'react';
+import React, { createContext, useState, useEffect, useContext } from "react";
+import authService from "../services/authService";
 
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
-  const currentUser = { id: 1, name: 'Default User' }; // Mock user
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    const currentUser = authService.getCurrentUser();
+    if (currentUser) {
+      setUser(currentUser);
+    }
+  }, []);
+
+  const login = async (email, password) => {
+    const response = await authService.login(email, password);
+    if (response.data.access_token) {
+      localStorage.setItem("user", JSON.stringify(response.data));
+      setUser(response.data);
+    }
+    return response;
+  };
+
+  const logout = () => {
+    authService.logout();
+    setUser(null);
+  };
+
+  const register = (
+    email,
+    password,
+    postal_code,
+    household_size,
+    dietary_preferences
+  ) => {
+    return authService.register(
+      email,
+      password,
+      postal_code,
+      household_size,
+      dietary_preferences
+    );
+  };
+
+  // Alias for backward compatibility with currentUser usage
+  const currentUser = user;
 
   return (
-    <AuthContext.Provider value={{ currentUser }}>
+    <AuthContext.Provider
+      value={{ user, currentUser, login, logout, register }}
+    >
       {children}
     </AuthContext.Provider>
   );
 };
 
 export const useAuth = () => useContext(AuthContext);
+
+export default AuthContext;

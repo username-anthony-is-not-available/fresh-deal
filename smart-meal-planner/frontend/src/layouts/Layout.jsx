@@ -3,18 +3,20 @@ import { NavLink, Outlet } from 'react-router-dom';
 import { Home, ShoppingCart, Calendar, Tag, Settings, Menu, Activity, Heart } from 'lucide-react';
 import clsx from 'clsx';
 import { Toaster } from 'react-hot-toast';
+import { useTranslation } from 'react-i18next';
 
 const Layout = () => {
+  const { t } = useTranslation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
 
   const navItems = [
-    { name: 'Home', path: '/', icon: Home },
-    { name: 'Deals', path: '/deals', icon: Tag },
-    { name: 'Meal Plan', path: '/plan', icon: Calendar },
-    { name: 'Shopping List', path: '/list', icon: ShoppingCart },
-    { name: 'My Favorites', path: '/favorites', icon: Heart },
-    { name: 'Scraping', path: '/scraping', icon: Activity },
-    { name: 'Settings', path: '/settings', icon: Settings },
+    { name: t('home'), path: '/', icon: Home },
+    { name: t('deals'), path: '/deals', icon: Tag },
+    { name: t('meal_plan'), path: '/plan', icon: Calendar },
+    { name: t('shopping_list'), path: '/list', icon: ShoppingCart },
+    { name: t('favorites', 'My Favorites'), path: '/favorites', icon: Heart },
+    { name: t('scraping'), path: '/scraping', icon: Activity },
+    { name: t('settings'), path: '/settings', icon: Settings },
   ];
 
   return (
