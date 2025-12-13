@@ -2,6 +2,7 @@ import React from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { Home, ShoppingCart, Calendar, Tag, Settings, Menu, Activity } from 'lucide-react';
 import clsx from 'clsx';
+import { Toaster } from 'react-hot-toast';
 
 const Layout = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
@@ -17,6 +18,7 @@ const Layout = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
+      <Toaster position="top-center" reverseOrder={false} />
       {/* Header */}
       <header className="bg-white shadow-sm sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

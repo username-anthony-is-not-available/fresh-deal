@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import MealCard from '../components/MealCard';
 import NutritionSummary from '../components/NutritionSummary';
 import { RefreshCw, Calendar as CalendarIcon, Lightbulb } from 'lucide-react';
+import api from '../services/api';
 
 const MealPlanPage = () => {
   const [plan, setPlan] = useState(null);
@@ -15,16 +16,11 @@ const MealPlanPage = () => {
   useEffect(() => {
     const fetchLatestPlan = async () => {
       try {
-        const res = await fetch(`http://localhost:8000/api/plans/${userId}/latest`);
-        if (res.ok) {
-          const data = await res.json();
-          setPlan(data);
-        } else {
-           console.log("No existing plan or API error");
-        }
+        const data = await api.get(`/plans/${userId}/latest`);
+        setPlan(data);
       } catch (e) {
-        console.log("Network error fetching plan", e);
-        setError(e.message);
+        console.log("No existing plan or error fetching plan", e);
+        // It's not an error if there's no plan yet, so we don't set error state
       } finally {
         setLoading(false);
       }
@@ -34,56 +30,37 @@ const MealPlanPage = () => {
   }, [userId]);
 
   const pollTaskStatus = async (taskId) => {
-      const intervalId = setInterval(async () => {
-          try {
-              const res = await fetch(`http://localhost:8000/api/tasks/${taskId}`);
-              if (res.ok) {
-                  const data = await res.json();
-                  if (data.status === "SUCCESS") {
-                      clearInterval(intervalId);
-                      setPlan(data.result);
-                      setGenerating(false);
-                  } else if (data.status === "FAILURE" || data.status === "Failed") {
-                      clearInterval(intervalId);
-                      setError("Plan generation failed: " + data.error);
-                      setGenerating(false);
-                  }
-                  // If PENDING or STARTED, continue polling
-              } else {
-                   clearInterval(intervalId);
-                   setError("Failed to check task status");
-                   setGenerating(false);
-              }
-          } catch {
-              clearInterval(intervalId);
-              setError("Network error polling status");
-              setGenerating(false);
-          }
-      }, 2000); // Poll every 2 seconds
+    const intervalId = setInterval(async () => {
+      try {
+        const data = await api.get(`/tasks/${taskId}`);
+        if (data.status === "SUCCESS") {
+          clearInterval(intervalId);
+          setPlan(data.result);
+          setGenerating(false);
+        } else if (data.status === "FAILURE" || data.status === "Failed") {
+          clearInterval(intervalId);
+          setError("Plan generation failed: " + data.error);
+          setGenerating(false);
+        }
+      } catch {
+        clearInterval(intervalId);
+        setError("Network error polling status");
+        setGenerating(false);
+      }
+    }, 2000); // Poll every 2 seconds
   };
 
   const generatePlan = async () => {
     setGenerating(true);
     setError(null);
     try {
-      const res = await fetch(`http://localhost:8000/api/plans/generate?user_id=${userId}`, {
-        method: 'POST'
-      });
-      if (res.ok) {
-        const data = await res.json();
-        // The API now returns a task_id
-        if (data.task_id) {
-            pollTaskStatus(data.task_id);
-        } else {
-            // Fallback for sync response (should not happen with new API)
-            setPlan(data);
-            setGenerating(false);
-        }
+      const data = await api.post(`/plans/generate?user_id=${userId}`);
+      if (data.task_id) {
+        pollTaskStatus(data.task_id);
       } else {
-         const txt = await res.text();
-         console.error("Generate failed", txt);
-         setError(`Generate failed: ${res.status}`);
-         setGenerating(false);
+        // Fallback for sync response
+        setPlan(data);
+        setGenerating(false);
       }
     } catch (e) {
       console.error("Failed to generate", e);

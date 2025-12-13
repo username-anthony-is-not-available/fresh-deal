@@ -14,6 +14,8 @@ from celery.result import AsyncResult
 import json
 from datetime import datetime, timedelta
 from app.tasks import generate_meal_plan_task, scrape_metro_task, scrape_flipp_task
+from app.services.user_service import UserService
+from app.schemas import UserUpdate, UserRead
 
 router = APIRouter()
 
@@ -32,6 +34,22 @@ async def onboard_user(user_in: UserCreate, session: AsyncSession = Depends(get_
     session.add(user)
     await session.commit()
     await session.refresh(user)
+    return user
+
+@router.get("/users/{user_id}", response_model=UserRead)
+async def get_user(user_id: int, session: AsyncSession = Depends(get_async_session)):
+    user_service = UserService(session)
+    user = await user_service.get_user(user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return user
+
+@router.patch("/users/{user_id}", response_model=UserRead)
+async def update_user(user_id: int, user_in: UserUpdate, session: AsyncSession = Depends(get_async_session)):
+    user_service = UserService(session)
+    user = await user_service.update_user(user_id, user_in)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
     return user
 
 @router.post("/data/seed")

@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Play, RefreshCw, CheckCircle, XCircle, Clock, Database, Loader2, Trash2, Square, StopCircle, Zap, Globe } from 'lucide-react';
 import clsx from 'clsx';
-
-const API_BASE = 'http://localhost:8000/api';
+import api from '../services/api';
 
 // Available Canadian stores in Flipp API
 const FLIPP_STORES = [
@@ -52,11 +51,8 @@ const ScrapingDashboardPage = () => {
 
   const fetchDealCount = async () => {
     try {
-      const res = await fetch(`${API_BASE}/deals`);
-      if (res.ok) {
-        const data = await res.json();
-        setDealCount(data.length);
-      }
+      const data = await api.get('/deals');
+      setDealCount(data.length);
     } catch (e) {
       console.error('Failed to fetch deal count', e);
     }
@@ -64,19 +60,16 @@ const ScrapingDashboardPage = () => {
 
   const pollTask = useCallback(async (taskId) => {
     try {
-      const res = await fetch(`${API_BASE}/tasks/${taskId}`);
-      if (res.ok) {
-        const data = await res.json();
-        setTasks(prev => prev.map(t => 
-          t.task_id === taskId 
-            ? { ...t, status: data.status, result: data.result, error: data.error }
-            : t
-        ));
-        
-        // If task completed, refresh deal count
-        if (data.status === 'SUCCESS' || data.status === 'FAILURE') {
-          fetchDealCount();
-        }
+      const data = await api.get(`/tasks/${taskId}`);
+      setTasks(prev => prev.map(t =>
+        t.task_id === taskId
+          ? { ...t, status: data.status, result: data.result, error: data.error }
+          : t
+      ));
+
+      // If task completed, refresh deal count
+      if (data.status === 'SUCCESS' || data.status === 'FAILURE') {
+        fetchDealCount();
       }
     } catch (e) {
       console.error('Failed to poll task', e);
@@ -86,20 +79,17 @@ const ScrapingDashboardPage = () => {
   const triggerScrape = async (scraper) => {
     setIsScraping(prev => ({ ...prev, [scraper.id]: true }));
     try {
-      const res = await fetch(`${API_BASE}${scraper.endpoint}`, { method: 'POST' });
-      if (res.ok) {
-        const data = await res.json();
-        const newTask = {
-          task_id: data.task_id,
-          scraper: scraper.name,
-          status: data.status,
-          startedAt: new Date().toISOString(),
-          result: null,
-          error: null,
-          meta: data
-        };
-        setTasks(prev => [newTask, ...prev]);
-      }
+      const data = await api.post(scraper.endpoint);
+      const newTask = {
+        task_id: data.task_id,
+        scraper: scraper.name,
+        status: data.status,
+        startedAt: new Date().toISOString(),
+        result: null,
+        error: null,
+        meta: data
+      };
+      setTasks(prev => [newTask, ...prev]);
     } catch (e) {
       console.error('Failed to trigger scrape', e);
     } finally {
@@ -110,31 +100,25 @@ const ScrapingDashboardPage = () => {
   const triggerFlippScrape = async () => {
     setIsScraping(prev => ({ ...prev, flipp: true }));
     try {
-      const res = await fetch(`${API_BASE}/admin/scrape/flipp`, { 
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          stores: selectedStores.length > 0 ? selectedStores : null,
-          postal_code: postalCode,
-          limit: itemLimit
-        })
-      });
-      if (res.ok) {
-        const data = await res.json();
-        const storeNames = selectedStores.length > 0 
-          ? selectedStores.map(s => FLIPP_STORES.find(fs => fs.key === s)?.name).join(', ')
-          : 'All stores';
-        const newTask = {
-          task_id: data.task_id,
-          scraper: `Flipp API (${storeNames})`,
-          status: data.status,
-          startedAt: new Date().toISOString(),
-          result: null,
-          error: null,
-          meta: data
-        };
-        setTasks(prev => [newTask, ...prev]);
-      }
+      const body = {
+        stores: selectedStores.length > 0 ? selectedStores : null,
+        postal_code: postalCode,
+        limit: itemLimit
+      };
+      const data = await api.post('/admin/scrape/flipp', body);
+      const storeNames = selectedStores.length > 0
+        ? selectedStores.map(s => FLIPP_STORES.find(fs => fs.key === s)?.name).join(', ')
+        : 'All stores';
+      const newTask = {
+        task_id: data.task_id,
+        scraper: `Flipp API (${storeNames})`,
+        status: data.status,
+        startedAt: new Date().toISOString(),
+        result: null,
+        error: null,
+        meta: data
+      };
+      setTasks(prev => [newTask, ...prev]);
     } catch (e) {
       console.error('Failed to trigger Flipp scrape', e);
     } finally {
@@ -161,20 +145,17 @@ const ScrapingDashboardPage = () => {
   const seedMockData = async () => {
     setIsSeeding(true);
     try {
-      const res = await fetch(`${API_BASE}/data/seed`, { method: 'POST' });
-      if (res.ok) {
-        const data = await res.json();
-        const newTask = {
-          task_id: `seed-${Date.now()}`,
-          scraper: 'Mock Seeder',
-          status: 'SUCCESS',
-          startedAt: new Date().toISOString(),
-          result: data.message,
-          error: null
-        };
-        setTasks(prev => [newTask, ...prev]);
-        fetchDealCount();
-      }
+      const data = await api.post('/data/seed');
+      const newTask = {
+        task_id: `seed-${Date.now()}`,
+        scraper: 'Mock Seeder',
+        status: 'SUCCESS',
+        startedAt: new Date().toISOString(),
+        result: data.message,
+        error: null
+      };
+      setTasks(prev => [newTask, ...prev]);
+      fetchDealCount();
     } catch (e) {
       console.error('Failed to seed data', e);
     } finally {
@@ -188,14 +169,12 @@ const ScrapingDashboardPage = () => {
 
   const stopTask = async (taskId) => {
     try {
-      const res = await fetch(`${API_BASE}/tasks/${taskId}/stop`, { method: 'POST' });
-      if (res.ok) {
-        setTasks(prev => prev.map(t => 
-          t.task_id === taskId 
-            ? { ...t, status: 'Stopped' }
-            : t
-        ));
-      }
+      await api.post(`/tasks/${taskId}/stop`);
+      setTasks(prev => prev.map(t =>
+        t.task_id === taskId
+          ? { ...t, status: 'Stopped' }
+          : t
+      ));
     } catch (e) {
       console.error('Failed to stop task', e);
     }

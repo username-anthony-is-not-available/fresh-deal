@@ -74,3 +74,48 @@ async def test_deals_empty(client: AsyncClient):
     response = await client.get("/api/deals")
     assert response.status_code == 200
     assert response.json() == []
+
+@pytest.mark.asyncio
+async def test_get_user(client: AsyncClient):
+    # First, create a user to fetch
+    onboard_response = await client.post(
+        "/api/onboard",
+        json={"postal_code": "H1A 1A1", "household_size": 1, "dietary_preferences": "Vegetarian"}
+    )
+    user_id = onboard_response.json()["id"]
+
+    # Now, test the get endpoint
+    response = await client.get(f"/api/users/{user_id}")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["id"] == user_id
+    assert data["postal_code"] == "H1A 1A1"
+    assert data["household_size"] == 1
+    assert data["dietary_preferences"] == "Vegetarian"
+
+@pytest.mark.asyncio
+async def test_update_user(client: AsyncClient):
+    # First, create a user to update
+    onboard_response = await client.post(
+        "/api/onboard",
+        json={"postal_code": "H2B 2B2", "household_size": 3, "dietary_preferences": "None"}
+    )
+    user_id = onboard_response.json()["id"]
+
+    # Now, test the patch endpoint
+    update_data = {"postal_code": "J7Y 5K2", "household_size": 4}
+    response = await client.patch(f"/api/users/{user_id}", json=update_data)
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["id"] == user_id
+    assert data["postal_code"] == "J7Y 5K2"
+    assert data["household_size"] == 4
+    assert data["dietary_preferences"] == "None" # Should not be changed
+
+    # Verify the changes by fetching the user again
+    get_response = await client.get(f"/api/users/{user_id}")
+    assert get_response.status_code == 200
+    get_data = get_response.json()
+    assert get_data["postal_code"] == "J7Y 5K2"
+    assert get_data["household_size"] == 4
