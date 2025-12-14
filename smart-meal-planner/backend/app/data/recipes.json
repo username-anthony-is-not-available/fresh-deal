@@ -37,7 +37,8 @@
       "calories": 450,
       "protein": 35,
       "carbs": 48,
-      "fat": 12
+      "fat": 12,
+      "fiber": 10
     },
     "instructions": [
       "Cut chicken into bite-sized pieces",
@@ -50,6 +51,10 @@
       "high-protein",
       "quick",
       "family-friendly"
+    ],
+    "allergens": [
+      "gluten",
+      "soy"
     ]
   },
   {
@@ -90,7 +95,8 @@
       "calories": 600,
       "protein": 30,
       "carbs": 70,
-      "fat": 20
+      "fat": 20,
+      "fiber": 5
     },
     "instructions": [
       "Boil pasta",
@@ -102,6 +108,9 @@
     "tags": [
       "comfort-food",
       "family-friendly"
+    ],
+    "allergens": [
+      "gluten"
     ]
   },
   {
@@ -137,7 +146,8 @@
       "calories": 550,
       "protein": 40,
       "carbs": 30,
-      "fat": 25
+      "fat": 25,
+      "fiber": 11
     },
     "instructions": [
       "Preheat grill or oven",
@@ -149,6 +159,9 @@
       "healthy",
       "high-protein",
       "pescatarian"
+    ],
+    "allergens": [
+      "fish"
     ]
   },
   {
@@ -189,7 +202,8 @@
       "calories": 400,
       "protein": 15,
       "carbs": 60,
-      "fat": 12
+      "fat": 12,
+      "fiber": 23
     },
     "instructions": [
       "Saut\u00e9 onions and spices",
@@ -202,6 +216,9 @@
       "vegetarian",
       "vegan",
       "gluten-free"
+    ],
+    "allergens": [
+      "dairy"
     ]
   },
   {
@@ -242,7 +259,8 @@
       "calories": 550,
       "protein": 28,
       "carbs": 40,
-      "fat": 25
+      "fat": 25,
+      "fiber": 6
     },
     "instructions": [
       "Brown beef with taco seasoning",
@@ -253,6 +271,10 @@
     "tags": [
       "family-friendly",
       "quick"
+    ],
+    "allergens": [
+      "dairy",
+      "gluten"
     ]
   },
   {
@@ -288,7 +310,8 @@
       "calories": 350,
       "protein": 10,
       "carbs": 60,
-      "fat": 6
+      "fat": 6,
+      "fiber": 13
     },
     "instructions": [
       "Cook oats with milk",
@@ -297,6 +320,10 @@
     "tags": [
       "vegetarian",
       "healthy"
+    ],
+    "allergens": [
+      "dairy",
+      "gluten"
     ]
   },
   {
@@ -327,7 +354,8 @@
       "calories": 400,
       "protein": 20,
       "carbs": 30,
-      "fat": 20
+      "fat": 20,
+      "fiber": 5
     },
     "instructions": [
       "Whisk eggs and cook in butter",
@@ -336,6 +364,11 @@
     "tags": [
       "vegetarian",
       "quick"
+    ],
+    "allergens": [
+      "dairy",
+      "eggs",
+      "gluten"
     ]
   },
   {
@@ -376,7 +409,8 @@
       "calories": 500,
       "protein": 35,
       "carbs": 20,
-      "fat": 30
+      "fat": 30,
+      "fiber": 6
     },
     "instructions": [
       "Cook chicken and slice",
@@ -386,6 +420,10 @@
     "tags": [
       "healthy",
       "high-protein"
+    ],
+    "allergens": [
+      "dairy",
+      "gluten"
     ]
   },
   {
@@ -426,7 +464,8 @@
       "calories": 450,
       "protein": 20,
       "carbs": 40,
-      "fat": 20
+      "fat": 20,
+      "fiber": 6
     },
     "instructions": [
       "Assemble sandwich with ham, cheese, and lettuce"
@@ -434,6 +473,11 @@
     "tags": [
       "quick",
       "kid-friendly"
+    ],
+    "allergens": [
+      "dairy",
+      "eggs",
+      "gluten"
     ]
   },
   {
@@ -474,7 +518,8 @@
       "calories": 650,
       "protein": 28,
       "carbs": 60,
-      "fat": 30
+      "fat": 30,
+      "fiber": 12
     },
     "instructions": [
       "Boil and mash potatoes",
@@ -485,6 +530,9 @@
     "tags": [
       "comfort-food",
       "family-friendly"
+    ],
+    "allergens": [
+      "dairy"
     ]
   },
   {
@@ -520,7 +568,8 @@
       "calories": 500,
       "protein": 35,
       "carbs": 45,
-      "fat": 18
+      "fat": 18,
+      "fiber": 12
     },
     "instructions": [
       "Sear pork chops",
@@ -530,7 +579,8 @@
     "tags": [
       "gluten-free",
       "seasonal"
-    ]
+    ],
+    "allergens": []
   },
   {
     "id": "recipe_12",
@@ -570,7 +620,8 @@
       "calories": 350,
       "protein": 12,
       "carbs": 45,
-      "fat": 15
+      "fat": 15,
+      "fiber": 12
     },
     "instructions": [
       "Cook quinoa and let cool",
@@ -581,7 +632,8 @@
       "vegetarian",
       "healthy",
       "meal-prep"
-    ]
+    ],
+    "allergens": []
   },
   {
     "id": "recipe_13",
@@ -621,7 +673,8 @@
       "calories": 500,
       "protein": 12,
       "carbs": 80,
-      "fat": 15
+      "fat": 15,
+      "fiber": 5
     },
     "instructions": [
       "Mix batter",
@@ -631,6 +684,10 @@
     "tags": [
       "vegetarian",
       "kid-friendly"
+    ],
+    "allergens": [
+      "dairy",
+      "eggs"
     ]
   },
   {
@@ -666,7 +723,8 @@
       "calories": 380,
       "protein": 20,
       "carbs": 50,
-      "fat": 10
+      "fat": 10,
+      "fiber": 7
     },
     "instructions": [
       "Press tofu and cube",
@@ -678,6 +736,10 @@
       "vegan",
       "vegetarian",
       "healthy"
+    ],
+    "allergens": [
+      "gluten",
+      "soy"
     ]
   },
   {
@@ -713,7 +775,8 @@
       "calories": 300,
       "protein": 35,
       "carbs": 5,
-      "fat": 12
+      "fat": 12,
+      "fiber": 12
     },
     "instructions": [
       "Place cod in baking dish",
@@ -724,6 +787,10 @@
     "tags": [
       "low-carb",
       "healthy"
+    ],
+    "allergens": [
+      "dairy",
+      "fish"
     ]
   },
   {
@@ -764,7 +831,8 @@
       "calories": 450,
       "protein": 35,
       "carbs": 40,
-      "fat": 10
+      "fat": 10,
+      "fiber": 12
     },
     "instructions": [
       "Brown turkey with onions",
@@ -775,7 +843,8 @@
       "healthy",
       "high-protein",
       "meal-prep"
-    ]
+    ],
+    "allergens": []
   },
   {
     "id": "recipe_17",
@@ -805,7 +874,8 @@
       "calories": 300,
       "protein": 15,
       "carbs": 40,
-      "fat": 8
+      "fat": 8,
+      "fiber": 9
     },
     "instructions": [
       "Layer yogurt, crumbled granola, and berries"
@@ -814,6 +884,11 @@
       "vegetarian",
       "quick",
       "no-cook"
+    ],
+    "allergens": [
+      "dairy",
+      "gluten",
+      "nuts"
     ]
   },
   {
@@ -849,7 +924,8 @@
       "calories": 450,
       "protein": 15,
       "carbs": 35,
-      "fat": 25
+      "fat": 25,
+      "fiber": 5
     },
     "instructions": [
       "Butter bread",
@@ -860,6 +936,10 @@
     "tags": [
       "vegetarian",
       "comfort-food"
+    ],
+    "allergens": [
+      "dairy",
+      "gluten"
     ]
   },
   {
@@ -895,7 +975,8 @@
       "calories": 600,
       "protein": 25,
       "carbs": 15,
-      "fat": 45
+      "fat": 45,
+      "fiber": 7
     },
     "instructions": [
       "Slice sausages and veggies",
@@ -905,7 +986,8 @@
     "tags": [
       "low-carb",
       "keto"
-    ]
+    ],
+    "allergens": []
   },
   {
     "id": "recipe_20",
@@ -940,7 +1022,8 @@
       "calories": 400,
       "protein": 15,
       "carbs": 30,
-      "fat": 20
+      "fat": 20,
+      "fiber": 12
     },
     "instructions": [
       "Toast bread",
@@ -950,6 +1033,10 @@
     "tags": [
       "vegetarian",
       "healthy"
+    ],
+    "allergens": [
+      "eggs",
+      "gluten"
     ]
   },
   {
@@ -985,7 +1072,8 @@
       "calories": 350,
       "protein": 8,
       "carbs": 70,
-      "fat": 5
+      "fat": 5,
+      "fiber": 14
     },
     "instructions": [
       "Blend banana, spinach, berries and milk until smooth",
@@ -996,6 +1084,10 @@
       "vegan",
       "vegetarian",
       "healthy"
+    ],
+    "allergens": [
+      "dairy",
+      "nuts"
     ]
   },
   {
@@ -1036,7 +1128,8 @@
       "calories": 450,
       "protein": 12,
       "carbs": 60,
-      "fat": 18
+      "fat": 18,
+      "fiber": 5
     },
     "instructions": [
       "Whisk eggs, milk, cinnamon",
@@ -1047,6 +1140,11 @@
     "tags": [
       "vegetarian",
       "comfort-food"
+    ],
+    "allergens": [
+      "dairy",
+      "eggs",
+      "gluten"
     ]
   },
   {
@@ -1082,7 +1180,8 @@
       "calories": 500,
       "protein": 25,
       "carbs": 40,
-      "fat": 25
+      "fat": 25,
+      "fiber": 5
     },
     "instructions": [
       "Scramble eggs",
@@ -1093,6 +1192,11 @@
     "tags": [
       "vegetarian",
       "quick"
+    ],
+    "allergens": [
+      "dairy",
+      "eggs",
+      "gluten"
     ]
   },
   {
@@ -1128,7 +1232,8 @@
       "calories": 300,
       "protein": 10,
       "carbs": 40,
-      "fat": 15
+      "fat": 15,
+      "fiber": 15
     },
     "instructions": [
       "Mix chia seeds and milk",
@@ -1140,6 +1245,9 @@
       "vegetarian",
       "healthy",
       "no-cook"
+    ],
+    "allergens": [
+      "dairy"
     ]
   },
   {
@@ -1175,7 +1283,8 @@
       "calories": 300,
       "protein": 18,
       "carbs": 10,
-      "fat": 20
+      "fat": 20,
+      "fiber": 7
     },
     "instructions": [
       "Saut\u00e9 veggies",
@@ -1186,6 +1295,9 @@
       "vegetarian",
       "low-carb",
       "healthy"
+    ],
+    "allergens": [
+      "eggs"
     ]
   },
   {
@@ -1221,7 +1333,8 @@
       "calories": 400,
       "protein": 20,
       "carbs": 50,
-      "fat": 15
+      "fat": 15,
+      "fiber": 5
     },
     "instructions": [
       "Toast bagel",
@@ -1231,6 +1344,11 @@
     "tags": [
       "pescatarian",
       "quick"
+    ],
+    "allergens": [
+      "dairy",
+      "fish",
+      "gluten"
     ]
   },
   {
@@ -1266,7 +1384,8 @@
       "calories": 350,
       "protein": 10,
       "carbs": 60,
-      "fat": 8
+      "fat": 8,
+      "fiber": 10
     },
     "instructions": [
       "Cook quinoa in milk with cinnamon",
@@ -1277,6 +1396,10 @@
       "vegan",
       "vegetarian",
       "healthy"
+    ],
+    "allergens": [
+      "dairy",
+      "nuts"
     ]
   },
   {
@@ -1312,7 +1435,8 @@
       "calories": 400,
       "protein": 30,
       "carbs": 30,
-      "fat": 15
+      "fat": 15,
+      "fiber": 6
     },
     "instructions": [
       "Mix tuna and mayo",
@@ -1322,6 +1446,11 @@
     "tags": [
       "quick",
       "pescatarian"
+    ],
+    "allergens": [
+      "eggs",
+      "fish",
+      "gluten"
     ]
   },
   {
@@ -1357,7 +1486,8 @@
       "calories": 400,
       "protein": 15,
       "carbs": 35,
-      "fat": 20
+      "fat": 20,
+      "fiber": 5
     },
     "instructions": [
       "Boil and peel eggs",
@@ -1367,6 +1497,10 @@
     "tags": [
       "vegetarian",
       "classic"
+    ],
+    "allergens": [
+      "eggs",
+      "gluten"
     ]
   },
   {
@@ -1402,7 +1536,8 @@
       "calories": 300,
       "protein": 15,
       "carbs": 50,
-      "fat": 5
+      "fat": 5,
+      "fiber": 16
     },
     "instructions": [
       "Saut\u00e9 onions and carrots",
@@ -1414,7 +1549,8 @@
       "vegetarian",
       "healthy",
       "meal-prep"
-    ]
+    ],
+    "allergens": []
   },
   {
     "id": "recipe_31",
@@ -1449,7 +1585,8 @@
       "calories": 350,
       "protein": 25,
       "carbs": 40,
-      "fat": 10
+      "fat": 10,
+      "fiber": 8
     },
     "instructions": [
       "Cook chicken in broth",
@@ -1459,7 +1596,8 @@
     "tags": [
       "comfort-food",
       "low-fat"
-    ]
+    ],
+    "allergens": []
   },
   {
     "id": "recipe_32",
@@ -1499,7 +1637,8 @@
       "calories": 400,
       "protein": 30,
       "carbs": 15,
-      "fat": 25
+      "fat": 25,
+      "fiber": 5
     },
     "instructions": [
       "Cook chicken and cube",
@@ -1509,7 +1648,8 @@
     "tags": [
       "healthy",
       "low-carb"
-    ]
+    ],
+    "allergens": []
   },
   {
     "id": "recipe_33",
@@ -1549,7 +1689,8 @@
       "calories": 450,
       "protein": 18,
       "carbs": 50,
-      "fat": 20
+      "fat": 20,
+      "fiber": 5
     },
     "instructions": [
       "Slice baguette",
@@ -1559,7 +1700,8 @@
     "tags": [
       "vegetarian",
       "fresh"
-    ]
+    ],
+    "allergens": []
   },
   {
     "id": "recipe_34",
@@ -1599,7 +1741,8 @@
       "calories": 500,
       "protein": 15,
       "carbs": 40,
-      "fat": 30
+      "fat": 30,
+      "fiber": 6
     },
     "instructions": [
       "Cook bacon until crispy",
@@ -1609,6 +1752,10 @@
     "tags": [
       "comfort-food",
       "quick"
+    ],
+    "allergens": [
+      "eggs",
+      "gluten"
     ]
   },
   {
@@ -1649,7 +1796,8 @@
       "calories": 550,
       "protein": 30,
       "carbs": 50,
-      "fat": 25
+      "fat": 25,
+      "fiber": 6
     },
     "instructions": [
       "Toast 3 slices bread",
@@ -1659,6 +1807,9 @@
     "tags": [
       "classic",
       "high-protein"
+    ],
+    "allergens": [
+      "gluten"
     ]
   },
   {
@@ -1699,7 +1850,8 @@
       "calories": 600,
       "protein": 40,
       "carbs": 10,
-      "fat": 45
+      "fat": 45,
+      "fiber": 12
     },
     "instructions": [
       "Cook chicken and bacon",
@@ -1710,6 +1862,10 @@
       "keto",
       "low-carb",
       "high-protein"
+    ],
+    "allergens": [
+      "dairy",
+      "eggs"
     ]
   },
   {
@@ -1750,7 +1906,8 @@
       "calories": 350,
       "protein": 10,
       "carbs": 50,
-      "fat": 15
+      "fat": 15,
+      "fiber": 9
     },
     "instructions": [
       "Spread hummus on tortilla",
@@ -1761,6 +1918,9 @@
       "vegan",
       "vegetarian",
       "healthy"
+    ],
+    "allergens": [
+      "gluten"
     ]
   },
   {
@@ -1801,7 +1961,8 @@
       "calories": 400,
       "protein": 12,
       "carbs": 60,
-      "fat": 15
+      "fat": 15,
+      "fiber": 10
     },
     "instructions": [
       "Boil pasta and cool",
@@ -1811,6 +1972,9 @@
     "tags": [
       "vegetarian",
       "meal-prep"
+    ],
+    "allergens": [
+      "gluten"
     ]
   },
   {
@@ -1851,7 +2015,8 @@
       "calories": 300,
       "protein": 12,
       "carbs": 55,
-      "fat": 5
+      "fat": 5,
+      "fiber": 12
     },
     "instructions": [
       "Simmer broth, tomatoes, veggies",
@@ -1862,6 +2027,9 @@
       "vegan",
       "vegetarian",
       "healthy"
+    ],
+    "allergens": [
+      "gluten"
     ]
   },
   {
@@ -1897,7 +2065,8 @@
       "calories": 450,
       "protein": 25,
       "carbs": 40,
-      "fat": 20
+      "fat": 20,
+      "fiber": 5
     },
     "instructions": [
       "Assemble sandwich with roast beef, cheese, and sauce"
@@ -1905,6 +2074,11 @@
     "tags": [
       "quick",
       "high-protein"
+    ],
+    "allergens": [
+      "dairy",
+      "eggs",
+      "gluten"
     ]
   },
   {
@@ -1945,7 +2119,8 @@
       "calories": 450,
       "protein": 15,
       "carbs": 60,
-      "fat": 18
+      "fat": 18,
+      "fiber": 6
     },
     "instructions": [
       "Heat falafel",
@@ -1955,6 +2130,9 @@
     "tags": [
       "vegetarian",
       "quick"
+    ],
+    "allergens": [
+      "gluten"
     ]
   },
   {
@@ -1990,7 +2168,8 @@
       "calories": 550,
       "protein": 30,
       "carbs": 40,
-      "fat": 30
+      "fat": 30,
+      "fiber": 11
     },
     "instructions": [
       "Toss chicken and veggies in oil and herbs",
@@ -1999,7 +2178,8 @@
     "tags": [
       "family-friendly",
       "comfort-food"
-    ]
+    ],
+    "allergens": []
   },
   {
     "id": "recipe_43",
@@ -2034,7 +2214,8 @@
       "calories": 500,
       "protein": 30,
       "carbs": 50,
-      "fat": 20
+      "fat": 20,
+      "fiber": 7
     },
     "instructions": [
       "Brown chicken",
@@ -2045,6 +2226,9 @@
     "tags": [
       "gluten-free",
       "flavorful"
+    ],
+    "allergens": [
+      "dairy"
     ]
   },
   {
@@ -2080,7 +2264,8 @@
       "calories": 350,
       "protein": 35,
       "carbs": 10,
-      "fat": 15
+      "fat": 15,
+      "fiber": 5
     },
     "instructions": [
       "Grill chicken",
@@ -2090,7 +2275,8 @@
     "tags": [
       "healthy",
       "low-carb"
-    ]
+    ],
+    "allergens": []
   },
   {
     "id": "recipe_45",
@@ -2125,7 +2311,8 @@
       "calories": 500,
       "protein": 30,
       "carbs": 45,
-      "fat": 15
+      "fat": 15,
+      "fiber": 7
     },
     "instructions": [
       "Slice chicken and veggies",
@@ -2135,6 +2322,9 @@
     "tags": [
       "family-friendly",
       "fun"
+    ],
+    "allergens": [
+      "gluten"
     ]
   },
   {
@@ -2170,7 +2360,8 @@
       "calories": 700,
       "protein": 35,
       "carbs": 60,
-      "fat": 40
+      "fat": 40,
+      "fiber": 5
     },
     "instructions": [
       "Cook pasta",
@@ -2181,6 +2372,10 @@
     "tags": [
       "comfort-food",
       "rich"
+    ],
+    "allergens": [
+      "dairy",
+      "gluten"
     ]
   },
   {
@@ -2216,7 +2411,8 @@
       "calories": 500,
       "protein": 30,
       "carbs": 45,
-      "fat": 25
+      "fat": 25,
+      "fiber": 7
     },
     "instructions": [
       "Pan sear chicken",
@@ -2226,7 +2422,8 @@
     "tags": [
       "flavorful",
       "easy"
-    ]
+    ],
+    "allergens": []
   },
   {
     "id": "recipe_48",
@@ -2261,7 +2458,8 @@
       "calories": 450,
       "protein": 30,
       "carbs": 45,
-      "fat": 18
+      "fat": 18,
+      "fiber": 7
     },
     "instructions": [
       "Slice beef thin",
@@ -2272,6 +2470,10 @@
     "tags": [
       "high-protein",
       "quick"
+    ],
+    "allergens": [
+      "gluten",
+      "soy"
     ]
   },
   {
@@ -2307,7 +2509,8 @@
       "calories": 600,
       "protein": 25,
       "carbs": 70,
-      "fat": 25
+      "fat": 25,
+      "fiber": 5
     },
     "instructions": [
       "Form meatballs",
@@ -2318,6 +2521,9 @@
     "tags": [
       "family-friendly",
       "classic"
+    ],
+    "allergens": [
+      "gluten"
     ]
   },
   {
@@ -2353,7 +2559,8 @@
       "calories": 500,
       "protein": 35,
       "carbs": 40,
-      "fat": 20
+      "fat": 20,
+      "fiber": 11
     },
     "instructions": [
       "Brown beef",
@@ -2363,7 +2570,8 @@
     "tags": [
       "comfort-food",
       "hearty"
-    ]
+    ],
+    "allergens": []
   },
   {
     "id": "recipe_51",
@@ -2398,7 +2606,8 @@
       "calories": 700,
       "protein": 40,
       "carbs": 30,
-      "fat": 45
+      "fat": 45,
+      "fiber": 11
     },
     "instructions": [
       "Grill or pan-sear steak",
@@ -2408,6 +2617,9 @@
     "tags": [
       "special-occasion",
       "high-protein"
+    ],
+    "allergens": [
+      "dairy"
     ]
   },
   {
@@ -2443,7 +2655,8 @@
       "calories": 450,
       "protein": 35,
       "carbs": 40,
-      "fat": 15
+      "fat": 15,
+      "fiber": 8
     },
     "instructions": [
       "Roast tenderloin and veggies at 400F",
@@ -2452,7 +2665,8 @@
     "tags": [
       "healthy",
       "lean"
-    ]
+    ],
+    "allergens": []
   },
   {
     "id": "recipe_53",
@@ -2482,7 +2696,8 @@
       "calories": 800,
       "protein": 40,
       "carbs": 50,
-      "fat": 50
+      "fat": 50,
+      "fiber": 9
     },
     "instructions": [
       "Slow cook ribs for 3 hours",
@@ -2492,7 +2707,8 @@
     "tags": [
       "weekend",
       "indulgent"
-    ]
+    ],
+    "allergens": []
   },
   {
     "id": "recipe_54",
@@ -2527,7 +2743,8 @@
       "calories": 600,
       "protein": 30,
       "carbs": 50,
-      "fat": 25
+      "fat": 25,
+      "fiber": 5
     },
     "instructions": [
       "Mix shredded pork with sauce",
@@ -2536,7 +2753,8 @@
     "tags": [
       "family-friendly",
       "fun"
-    ]
+    ],
+    "allergens": []
   },
   {
     "id": "recipe_55",
@@ -2571,7 +2789,8 @@
       "calories": 350,
       "protein": 30,
       "carbs": 45,
-      "fat": 8
+      "fat": 8,
+      "fiber": 7
     },
     "instructions": [
       "Pan fry tilapia",
@@ -2581,6 +2800,9 @@
     "tags": [
       "healthy",
       "light"
+    ],
+    "allergens": [
+      "fish"
     ]
   },
   {
@@ -2616,7 +2838,8 @@
       "calories": 400,
       "protein": 25,
       "carbs": 40,
-      "fat": 15
+      "fat": 15,
+      "fiber": 5
     },
     "instructions": [
       "Fry or bake fish",
@@ -2626,6 +2849,10 @@
     "tags": [
       "fun",
       "family-friendly"
+    ],
+    "allergens": [
+      "fish",
+      "gluten"
     ]
   },
   {
@@ -2661,7 +2888,8 @@
       "calories": 400,
       "protein": 18,
       "carbs": 60,
-      "fat": 12
+      "fat": 12,
+      "fiber": 17
     },
     "instructions": [
       "Cook lentils",
@@ -2673,6 +2901,9 @@
       "vegan",
       "vegetarian",
       "healthy"
+    ],
+    "allergens": [
+      "dairy"
     ]
   },
   {
@@ -2713,7 +2944,8 @@
       "calories": 550,
       "protein": 20,
       "carbs": 60,
-      "fat": 25
+      "fat": 25,
+      "fiber": 7
     },
     "instructions": [
       "Layer noodles, cheese, veggies, sauce",
@@ -2722,6 +2954,9 @@
     "tags": [
       "vegetarian",
       "comfort-food"
+    ],
+    "allergens": [
+      "dairy"
     ]
   },
   {
@@ -2757,7 +2992,8 @@
       "calories": 450,
       "protein": 12,
       "carbs": 65,
-      "fat": 15
+      "fat": 15,
+      "fiber": 7
     },
     "instructions": [
       "Saut\u00e9 mushrooms",
@@ -2768,6 +3004,9 @@
     "tags": [
       "vegetarian",
       "gluten-free"
+    ],
+    "allergens": [
+      "dairy"
     ]
   },
   {
@@ -2808,7 +3047,8 @@
       "calories": 350,
       "protein": 15,
       "carbs": 50,
-      "fat": 10
+      "fat": 10,
+      "fiber": 16
     },
     "instructions": [
       "Mix cooked rice, beans, salsa",
@@ -2819,6 +3059,9 @@
     "tags": [
       "vegetarian",
       "gluten-free"
+    ],
+    "allergens": [
+      "dairy"
     ]
   },
   {
@@ -2854,7 +3097,8 @@
       "calories": 400,
       "protein": 15,
       "carbs": 8,
-      "fat": 35
+      "fat": 35,
+      "fiber": 12
     },
     "instructions": [
       "Hard boil eggs and peel.",
@@ -2867,11 +3111,14 @@
       "low-carb",
       "vegetarian",
       "healthy"
+    ],
+    "allergens": [
+      "eggs"
     ]
   },
-    {
+  {
     "id": "recipe_220",
-    "name": "Tourtière (Quebec Meat Pie)",
+    "name": "Tourti\u00e8re (Quebec Meat Pie)",
     "cuisine": "Quebecois",
     "meal_type": "Dinner",
     "prep_time_minutes": 90,
@@ -2907,7 +3154,8 @@
       "calories": 700,
       "protein": 35,
       "carbs": 40,
-      "fat": 45
+      "fat": 45,
+      "fiber": 8
     },
     "instructions": [
       "Cook meats with onions and spices.",
@@ -2918,6 +3166,9 @@
       "quebec-specific",
       "comfort-food",
       "holiday"
+    ],
+    "allergens": [
+      "gluten"
     ]
   }
 ]

@@ -5,12 +5,30 @@ class UserUpdate(BaseModel):
     postal_code: Optional[str] = None
     household_size: Optional[int] = None
     dietary_preferences: Optional[str] = None
+    allergies: Optional[list[str]] = None
 
 class UserRead(BaseModel):
     id: int
     postal_code: str
     household_size: int
     dietary_preferences: Optional[str] = None
+    allergies: Optional[list[str]] = None
+
+    class Config:
+        orm_mode = True
+
+class NutritionSummaryRead(BaseModel):
+    totals: dict
+    daily_averages: dict
+
+class RecipeRead(BaseModel):
+    id: int
+    name: str
+    cuisine: Optional[str] = None
+    meal_type: Optional[str] = None
+    prep_time_minutes: Optional[int] = None
+    difficulty: Optional[str] = None
+    allergens: list[str] = []
 
     class Config:
         orm_mode = True
@@ -21,6 +39,7 @@ class UserNutritionGoalCreate(BaseModel):
     target_protein: Optional[float] = None
     target_carbs: Optional[float] = None
     target_fats: Optional[float] = None
+    target_fiber: Optional[float] = None
 
 class UserNutritionGoalRead(UserNutritionGoalCreate):
     id: int
@@ -37,6 +56,7 @@ class DailyNutritionRead(BaseModel):
     protein: float
     carbs: float
     fats: float
+    fiber: Optional[float] = None
     micronutrients_json: str
 
     class Config:

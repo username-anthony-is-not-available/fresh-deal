@@ -1,3 +1,4 @@
+import json
 from typing import Optional, List
 from sqlmodel import SQLModel, Field, Relationship
 from datetime import datetime, date, timezone
@@ -13,12 +14,23 @@ class User(SQLModel, table=True):
     postal_code: str
     household_size: int
     dietary_preferences: Optional[str] = None  # JSON string or comma-separated
+    allergies_json: Optional[str] = Field(default="[]")
     created_at: datetime = Field(default_factory=utc_now)
 
     ratings: List["RecipeRating"] = Relationship(back_populates="user")
     favorites: List["UserFavorite"] = Relationship(back_populates="user")
     nutrition_goal: Optional["UserNutritionGoal"] = Relationship(back_populates="user")
     daily_nutritions: List["DailyNutrition"] = Relationship(back_populates="user")
+
+    @property
+    def allergies(self) -> List[str]:
+        if self.allergies_json:
+            return json.loads(self.allergies_json)
+        return []
+
+    @allergies.setter
+    def allergies(self, value: List[str]):
+        self.allergies_json = json.dumps(value)
 
 
 class Store(SQLModel, table=True):
@@ -58,6 +70,8 @@ class Recipe(SQLModel, table=True):
 
     ingredients_json: str = Field(default="[]") # JSON list of strings (display)
     instructions_json: str = Field(default="[]") # JSON list of strings (display)
+    allergens_json: str = Field(default="[]")
+    nutrition_json: str = Field(default="{}")
 
     prep_time_minutes: Optional[int] = None
     difficulty: Optional[str] = None
@@ -114,6 +128,7 @@ class UserNutritionGoal(SQLModel, table=True):
     target_protein: Optional[float] = None
     target_carbs: Optional[float] = None
     target_fats: Optional[float] = None
+    target_fiber: Optional[float] = None
     updated_at: datetime = Field(default_factory=utc_now)
 
     user: "User" = Relationship(back_populates="nutrition_goal")
@@ -127,6 +142,7 @@ class DailyNutrition(SQLModel, table=True):
     protein: float
     carbs: float
     fats: float
+    fiber: Optional[float] = None
     micronutrients_json: str = Field(default="{}")
     created_at: datetime = Field(default_factory=utc_now)
     updated_at: datetime = Field(default_factory=utc_now)
