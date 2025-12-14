@@ -5,10 +5,12 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import toast from 'react-hot-toast';
 import SettingsService from '../services/SettingsService';
 
-// Mock the services
+// Mock the services and hooks
 vi.mock('../services/SettingsService');
-
 vi.mock('react-hot-toast');
+vi.mock('../context/AuthContext', () => ({
+  useAuth: () => ({ currentUser: { id: 1, name: 'Test User' } }),
+}));
 
 describe('SettingsPage', () => {
   beforeEach(() => {

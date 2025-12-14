@@ -20,3 +20,6 @@ aiohttp==3.12.14
 python-json-logger
 prometheus-fastapi-instrumentator
 sentry-sdk[fastapi]
+passlib==1.7.4
+python-jose==3.4.0
+bcrypt==4.1.3

@@ -6,7 +6,8 @@ import { describe, it, expect } from 'vitest';
 describe('MealCard', () => {
   it('renders meal name and type', () => {
     const meal = {
-      name: 'Test Chicken Pasta',
+      recipe_id: 1,
+      recipe_name: 'Test Chicken Pasta',
       ingredients: [{ item: 'Chicken' }, { item: 'Pasta' }]
     };
     render(<MealCard type="Dinner" meal={meal} />);
@@ -18,7 +19,8 @@ describe('MealCard', () => {
 
   it('renders ingredients correctly when they are strings', () => {
     const meal = {
-      name: 'Simple Salad',
+      recipe_id: 2,
+      recipe_name: 'Simple Salad',
       ingredients: ['Lettuce', 'Tomato']
     };
     render(<MealCard type="Lunch" meal={meal} />);

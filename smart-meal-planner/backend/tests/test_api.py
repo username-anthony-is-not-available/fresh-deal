@@ -22,7 +22,7 @@ engine = create_async_engine(
     poolclass=StaticPool
 )
 
-@pytest_asyncio.fixture(name="session")
+@pytest_asyncio.fixture(name="session", scope="function")
 async def session_fixture():
     async with engine.begin() as conn:
         await conn.run_sync(SQLModel.metadata.create_all)
@@ -33,7 +33,11 @@ async def session_fixture():
     async with async_session() as session:
         yield session
 
-@pytest_asyncio.fixture(name="client")
+    async with engine.begin() as conn:
+        await conn.run_sync(SQLModel.metadata.drop_all)
+
+
+@pytest_asyncio.fixture(name="client", scope="function")
 async def client_fixture(session: AsyncSession):
     def get_session_override():
         return session
@@ -47,20 +51,26 @@ async def client_fixture(session: AsyncSession):
     app.dependency_overrides.clear()
 
 @pytest.mark.asyncio
-async def test_root(client: AsyncClient):
-    response = await client.get("/")
+async def test_health_check(client: AsyncClient):
+    response = await client.get("/health")
     assert response.status_code == 200
-    assert response.json() == {"message": "Smart Meal Planner API is running"}
+    assert response.json() == {"status": "ok"}
 
 @pytest.mark.asyncio
-async def test_onboard_user(client: AsyncClient):
+async def test_register(client: AsyncClient):
     response = await client.post(
-        "/api/onboard",
-        json={"postal_code": "H4T 1V6", "household_size": 2, "dietary_preferences": "None"}
+        "/auth/register",
+        json={
+            "email": "test@example.com",
+            "password": "password",
+            "postal_code": "H4T 1V6",
+            "household_size": 2,
+            "dietary_preferences": "None",
+        },
     )
     assert response.status_code == 200
     data = response.json()
-    assert data["postal_code"] == "H4T 1V6"
+    assert data["email"] == "test@example.com"
     assert "id" in data
 
 @pytest.mark.asyncio
@@ -74,7 +84,7 @@ async def test_get_user(client: AsyncClient):
     # First, create a user to fetch
     onboard_response = await client.post(
         "/api/onboard",
-        json={"postal_code": "H1A 1A1", "household_size": 1, "dietary_preferences": "Vegetarian"}
+        json={"email": "test@test.com", "password": "password", "postal_code": "H1A 1A1", "household_size": 1, "dietary_preferences": "Vegetarian"}
     )
     user_id = onboard_response.json()["id"]
 
@@ -92,7 +102,7 @@ async def test_update_user(client: AsyncClient):
     # First, create a user to update
     onboard_response = await client.post(
         "/api/onboard",
-        json={"postal_code": "H2B 2B2", "household_size": 3, "dietary_preferences": "None"}
+        json={"email": "test@test.com", "password": "password", "postal_code": "H2B 2B2", "household_size": 3, "dietary_preferences": "None"}
     )
     user_id = onboard_response.json()["id"]
 

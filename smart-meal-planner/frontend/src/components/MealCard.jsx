@@ -1,8 +1,39 @@
-import React from 'react';
-import { Clock, Users } from 'lucide-react';
+import React, { useState } from 'react';
+import StarRating from './StarRating';
+import FavoriteButton from './FavoriteButton';
+import { api } from '../services/api';
 
 const MealCard = ({ type, meal }) => {
-  // Simple heuristic for image placeholder based on meal name
+  const [rating, setRating] = useState(meal.user_rating || 0);
+  const [isFavorited, setIsFavorited] = useState(meal.is_favorited || false);
+
+  const handleRate = async (newRating) => {
+    setRating(newRating);
+    try {
+      await api.post(`/recipes/${meal.recipe_id}/rate`, { rating: newRating });
+    } catch (error) {
+      console.error('Failed to rate recipe:', error);
+      // Revert rating on error
+      setRating(rating);
+    }
+  };
+
+  const handleToggleFavorite = async () => {
+    const newIsFavorited = !isFavorited;
+    setIsFavorited(newIsFavorited);
+    try {
+      if (newIsFavorited) {
+        await api.post(`/recipes/${meal.recipe_id}/favorite`);
+      } else {
+        await api.delete(`/recipes/${meal.recipe_id}/favorite`);
+      }
+    } catch (error) {
+      console.error('Failed to toggle favorite:', error);
+      // Revert favorite status on error
+      setIsFavorited(!newIsFavorited);
+    }
+  };
+
   const getEmoji = (name) => {
     if (name.toLowerCase().includes('salad')) return '🥗';
     if (name.toLowerCase().includes('pasta')) return '🍝';
@@ -14,16 +45,17 @@ const MealCard = ({ type, meal }) => {
   };
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 p-4 hover:border-primary-300 transition-colors h-full">
-      <div className="flex items-center gap-2 mb-2">
+    <div className="bg-white rounded-lg border border-gray-200 p-4 hover:border-primary-300 transition-colors h-full flex flex-col">
+      <div className="flex justify-between items-start mb-2">
         <span className="text-xs font-semibold text-primary-600 bg-primary-50 px-2 py-0.5 rounded-full uppercase">
           {type}
         </span>
+        <FavoriteButton isFavorited={isFavorited} onToggle={handleToggleFavorite} />
       </div>
 
       <h3 className="font-medium text-gray-900 mb-2 flex items-center gap-2">
-        <span className="text-xl">{getEmoji(meal.name)}</span>
-        {meal.name}
+        <span className="text-xl">{getEmoji(meal.recipe_name)}</span>
+        {meal.recipe_name}
       </h3>
 
       <div className="text-sm text-gray-500 mb-3">
@@ -39,10 +71,13 @@ const MealCard = ({ type, meal }) => {
         </ul>
       </div>
 
-      {/* Mock Nutrition Badges */}
-      <div className="flex gap-2 text-xs text-gray-500 mt-auto pt-2 border-t border-gray-100">
-         <span title="Calories">🔥 ~500 kcal</span>
-         <span title="Protein">💪 30g</span>
+      <div className="mt-auto pt-2 border-t border-gray-100">
+        <div className="flex justify-between items-center">
+          <StarRating rating={rating} onRate={handleRate} />
+          <div className="text-xs text-gray-500">
+            {meal.average_rating ? `${meal.average_rating.toFixed(1)} stars` : 'No rating'}
+          </div>
+        </div>
       </div>
     </div>
   );

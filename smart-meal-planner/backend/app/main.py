@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.core.config import settings
+from app.core.config import Settings
 from app.core.db import init_db
 from contextlib import asynccontextmanager
 from app.api.endpoints import router as api_router
@@ -8,6 +8,10 @@ from app.core.logging_config import setup_logging
 import logging
 from prometheus_fastapi_instrumentator import Instrumentator
 import sentry_sdk
+from app.api import auth_endpoints
+
+settings = Settings()
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -25,18 +29,19 @@ async def lifespan(app: FastAPI):
     yield
     # Shutdown
 
+
 app = FastAPI(
     title=settings.PROJECT_NAME,
     openapi_url=f"{settings.API_V1_STR}/openapi.json",
-    lifespan=lifespan
+    lifespan=lifespan,
 )
 
 Instrumentator().instrument(app).expose(app)
 
 # Restrict CORS to specific origins (frontend)
 origins = [
-    "http://localhost:5173", # Vite dev server
-    "http://localhost:80",   # Production (if applicable)
+    "http://localhost:5173",  # Vite dev server
+    "http://localhost:80",  # Production (if applicable)
 ]
 
 app.add_middleware(
@@ -47,8 +52,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(api_router, prefix="/api")
+app.include_router(api_router, prefix="/api", tags=["api"])
+app.include_router(auth_endpoints.router, prefix="/auth", tags=["auth"])
 
-@app.get("/")
-def root():
-    return {"message": "Smart Meal Planner API is running"}
+
+@app.get("/health")
+def health_check():
+    return {"status": "ok"}

@@ -1,4 +1,3 @@
-
 import os
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -31,6 +30,10 @@ class Settings(BaseSettings):
 
     # Sentry
     SENTRY_DSN: str | None = None
+
+    # Auth
+    SECRET_KEY: str = "a_very_secret_key"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 
     model_config = SettingsConfigDict(env_file=".env", case_sensitive=True)
 
