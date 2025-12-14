@@ -17,6 +17,8 @@ class User(SQLModel, table=True):
 
     ratings: List["RecipeRating"] = Relationship(back_populates="user")
     favorites: List["UserFavorite"] = Relationship(back_populates="user")
+    nutrition_goal: Optional["UserNutritionGoal"] = Relationship(back_populates="user")
+    daily_nutritions: List["DailyNutrition"] = Relationship(back_populates="user")
 
 
 class Store(SQLModel, table=True):
@@ -102,3 +104,31 @@ class UserFavorite(SQLModel, table=True):
 
     user: "User" = Relationship(back_populates="favorites")
     recipe: "Recipe" = Relationship(back_populates="favorited_by")
+
+
+class UserNutritionGoal(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: int = Field(foreign_key="user.id", unique=True)
+    goal_type: str = Field(default="maintenance")  # "weight_loss", "muscle_gain"
+    target_calories: Optional[float] = None
+    target_protein: Optional[float] = None
+    target_carbs: Optional[float] = None
+    target_fats: Optional[float] = None
+    updated_at: datetime = Field(default_factory=utc_now)
+
+    user: "User" = Relationship(back_populates="nutrition_goal")
+
+
+class DailyNutrition(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: int = Field(foreign_key="user.id")
+    date: date
+    calories: float
+    protein: float
+    carbs: float
+    fats: float
+    micronutrients_json: str = Field(default="{}")
+    created_at: datetime = Field(default_factory=utc_now)
+    updated_at: datetime = Field(default_factory=utc_now)
+
+    user: "User" = Relationship(back_populates="daily_nutritions")

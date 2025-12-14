@@ -10,6 +10,7 @@ import ScrapingDashboardPage from './pages/ScrapingDashboardPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import FavoritesPage from './pages/FavoritesPage';
+import NutritionDashboard from './pages/NutritionDashboard';
 import AuthContext, { AuthProvider } from './context/AuthContext';
 import { Toaster } from 'react-hot-toast';
 
@@ -48,6 +49,10 @@ function AppRoutes() {
         <Route
           path="favorites"
           element={<PrivateRoute><FavoritesPage /></PrivateRoute>}
+        />
+        <Route
+          path="nutrition"
+          element={<PrivateRoute><NutritionDashboard /></PrivateRoute>}
         />
       </Route>
     </Routes>

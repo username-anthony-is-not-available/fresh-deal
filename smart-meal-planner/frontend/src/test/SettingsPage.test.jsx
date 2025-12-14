@@ -1,5 +1,6 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { BrowserRouter } from 'react-router-dom';
 import SettingsPage from '../pages/SettingsPage';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import toast from 'react-hot-toast';
@@ -10,6 +11,15 @@ vi.mock('../services/SettingsService');
 vi.mock('react-hot-toast');
 vi.mock('../context/AuthContext', () => ({
   useAuth: () => ({ currentUser: { id: 1, name: 'Test User' } }),
+}));
+vi.mock('react-i18next', () => ({
+    useTranslation: () => ({
+        t: (key) => key,
+        i18n: {
+            changeLanguage: vi.fn(),
+            language: 'en',
+        },
+    }),
 }));
 
 describe('SettingsPage', () => {
@@ -25,20 +35,20 @@ describe('SettingsPage', () => {
   });
 
   it('renders and loads initial data', async () => {
-    render(<SettingsPage />);
+    render(<BrowserRouter><SettingsPage /></BrowserRouter>);
 
     // Wait for the postal code field to be populated
     const postalCodeInput = await screen.findByDisplayValue('H4T 1V6');
     expect(postalCodeInput).toBeInTheDocument();
 
-    expect(screen.getByLabelText('Household Size')).toHaveValue('4');
-    expect(screen.getByLabelText('Dietary Preferences')).toHaveValue('None');
+    expect(screen.getByLabelText('household_size')).toHaveValue('4');
+    expect(screen.getByLabelText('dietary_preferences')).toHaveValue('None');
   });
 
   it('updates form data on input change', async () => {
-    render(<SettingsPage />);
+    render(<BrowserRouter><SettingsPage /></BrowserRouter>);
 
-    const postalCodeInput = await screen.findByLabelText('Postal Code');
+    const postalCodeInput = await screen.findByLabelText('postal_code');
     fireEvent.change(postalCodeInput, { target: { value: 'G1A 1A1' } });
     expect(postalCodeInput).toHaveValue('G1A 1A1');
   });

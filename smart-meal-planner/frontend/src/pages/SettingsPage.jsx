@@ -4,6 +4,7 @@ import { Save } from 'lucide-react';
 import toast from 'react-hot-toast';
 import SettingsService from '../services/SettingsService';
 import { useAuth } from '../context/AuthContext.jsx';
+import NutritionGoalSettings from '../components/NutritionGoalSettings';
 
 const SettingsPage = () => {
   const { t, i18n } = useTranslation();
@@ -172,6 +173,7 @@ const SettingsPage = () => {
           </div>
         </form>
       </div>
+      <NutritionGoalSettings />
     </div>
   );
 };
