@@ -2,10 +2,12 @@ import React, { useState } from 'react';
 import StarRating from './StarRating';
 import FavoriteButton from './FavoriteButton';
 import { api } from '../services/api';
+import { Check, X } from 'lucide-react';
 
 const MealCard = ({ type, meal }) => {
   const [rating, setRating] = useState(meal.user_rating || 0);
   const [isFavorited, setIsFavorited] = useState(meal.is_favorited || false);
+  const [feedbackStatus, setFeedbackStatus] = useState(null); // 'made_it' or 'skipped'
 
   const handleRate = async (newRating) => {
     setRating(newRating);
@@ -31,6 +33,17 @@ const MealCard = ({ type, meal }) => {
       console.error('Failed to toggle favorite:', error);
       // Revert favorite status on error
       setIsFavorited(!newIsFavorited);
+    }
+  };
+
+  const handleFeedback = async (status) => {
+    const originalStatus = feedbackStatus;
+    setFeedbackStatus(status);
+    try {
+      await api.post(`/recipes/${meal.recipe_id}/feedback`, { status });
+    } catch (error) {
+      console.error('Failed to submit feedback:', error);
+      setFeedbackStatus(originalStatus); // Revert on error
     }
   };
 
@@ -74,9 +87,28 @@ const MealCard = ({ type, meal }) => {
       <div className="mt-auto pt-2 border-t border-gray-100">
         <div className="flex justify-between items-center">
           <StarRating rating={rating} onRate={handleRate} />
-          <div className="text-xs text-gray-500">
-            {meal.average_rating ? `${meal.average_rating.toFixed(1)} stars` : 'No rating'}
-          </div>
+          {feedbackStatus ? (
+            <div className="text-sm text-gray-600 font-medium">
+              Thanks for the feedback!
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => handleFeedback('made_it')}
+                className="p-1.5 rounded-full bg-green-100 text-green-700 hover:bg-green-200"
+                title="I made this"
+              >
+                <Check size={16} />
+              </button>
+              <button
+                onClick={() => handleFeedback('skipped')}
+                className="p-1.5 rounded-full bg-red-100 text-red-700 hover:bg-red-200"
+                title="I skipped this"
+              >
+                <X size={16} />
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>
