@@ -7,14 +7,18 @@ const DealsPage = () => {
   const [deals, setDeals] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('');
+  const [sortBy, setSortBy] = useState('');
 
   useEffect(() => {
     fetchDeals();
-  }, []);
+  }, [sortBy]);
 
   const fetchDeals = async () => {
     try {
-      const data = await api.get('/deals');
+      const params = new URLSearchParams({
+        sort_by: sortBy,
+      }).toString();
+      const data = await api.get(`/deals?${params}`);
       setDeals(data);
     } catch (e) {
       console.warn("Failed to fetch deals", e);
@@ -57,10 +61,14 @@ const DealsPage = () => {
                  onChange={(e) => setFilter(e.target.value)}
               />
            </div>
-           <button className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg bg-white hover:bg-gray-50 text-gray-700">
-              <Filter className="w-4 h-4" />
-              Filter
-           </button>
+           <select
+             value={sortBy}
+             onChange={(e) => setSortBy(e.target.value)}
+             className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg bg-white hover:bg-gray-50 text-gray-700"
+           >
+             <option value="">Sort by</option>
+             <option value="category">Category</option>
+           </select>
         </div>
       </div>
 
