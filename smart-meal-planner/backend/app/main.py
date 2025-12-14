@@ -10,6 +10,12 @@ import logging
 from prometheus_fastapi_instrumentator import Instrumentator
 import sentry_sdk
 from app.api import auth_endpoints
+from app.core.limiter import limiter
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
+from starlette.requests import Request
+from starlette.responses import JSONResponse
+
 
 settings = Settings()
 
@@ -36,6 +42,42 @@ app = FastAPI(
     openapi_url=f"{settings.API_V1_STR}/openapi.json",
     lifespan=lifespan,
 )
+
+
+import re
+
+def _rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded):
+    """
+    Custom exception handler for rate limit exceeded errors.
+    Calculates the Retry-After header from the exception detail.
+    """
+    response = JSONResponse(
+        {"detail": f"Rate limit exceeded: {exc.detail}"}, status_code=429
+    )
+
+    # Try to parse the retry-after value from the exception detail
+    retry_after = "60"  # Default value
+    if exc.detail:
+        match = re.search(r"(\d+)\s*(second|minute|hour|day)", exc.detail)
+        if match:
+            amount = int(match.group(1))
+            unit = match.group(2)
+            if unit == "second":
+                retry_after = str(amount)
+            elif unit == "minute":
+                retry_after = str(amount * 60)
+            elif unit == "hour":
+                retry_after = str(amount * 3600)
+            elif unit == "day":
+                retry_after = str(amount * 86400)
+
+    response.headers["Retry-After"] = retry_after
+    return response
+
+
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_middleware(SlowAPIMiddleware)
 
 Instrumentator().instrument(app).expose(app)
 
