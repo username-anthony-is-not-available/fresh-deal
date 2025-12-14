@@ -3,9 +3,9 @@ from sqlmodel import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.db import get_async_session, get_session
 from sqlmodel import Session
-from app.models.all_models import User, MealPlan, Deal, Product, Store, RecipeRating, UserFavorite, Recipe, RecipeFeedback
+from app.models.all_models import User, MealPlan, Deal, Product, Store, RecipeRating, UserFavorite, Recipe, RecipeFeedback, RecipeIngredient
 from app.agents.flipp_scraper import CANADIAN_STORES
-from app.agents.mock_scraper import MockScraperAgent
+# from app.agents.mock_scraper import MockScraperAgent
 from app.services.shopping_optimizer import ShoppingListOptimizer
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
@@ -28,12 +28,52 @@ class UserCreate(BaseModel):
 class RecipeRatingCreate(BaseModel):
     rating: int
 
+@router.get("/recipes", response_model=List[RecipeRead])
+async def list_recipes(
+    search: Optional[str] = None,
+    cuisine: Optional[str] = None,
+    prep_time: Optional[int] = None,
+    session: AsyncSession = Depends(get_async_session)
+):
+    """List all recipes with optional search and filters."""
+    statement = select(Recipe).distinct()
+    if search:
+        statement = statement.join(RecipeIngredient).where(
+            func.lower(Recipe.name).contains(func.lower(search)) |
+            func.lower(RecipeIngredient.name).contains(func.lower(search))
+        )
+    if cuisine:
+        statement = statement.where(func.lower(Recipe.cuisine) == func.lower(cuisine))
+    if prep_time:
+        statement = statement.where(Recipe.prep_time_minutes <= prep_time)
+    result = await session.execute(statement)
+    recipes = result.scalars().all()
+    return recipes
+
+
+from app.services.substitution_service import substitution_service
+
 @router.get("/recipes/{recipe_id}", response_model=RecipeRead)
 async def get_recipe(recipe_id: int, session: AsyncSession = Depends(get_async_session)):
-    recipe = await session.get(Recipe, recipe_id)
+    result = await session.execute(select(Recipe).where(Recipe.id == recipe_id))
+    recipe = result.scalars().one_or_none()
     if not recipe:
         raise HTTPException(status_code=404, detail="Recipe not found")
-    return recipe
+
+    # Manually load ingredients
+    ingredients_result = await session.execute(
+        select(RecipeIngredient).where(RecipeIngredient.recipe_id == recipe_id)
+    )
+    ingredients = ingredients_result.scalars().all()
+    ingredient_names = [ing.name for ing in ingredients]
+
+    substitutions = substitution_service.get_substitutions(ingredient_names)
+
+    recipe_data = recipe.dict()
+    recipe_data["ingredients"] = ingredient_names
+    recipe_data["substitutions"] = substitutions
+
+    return RecipeRead(**recipe_data)
 
 @router.post("/recipes/{recipe_id}/rate")
 async def rate_recipe(recipe_id: int, rating_in: RecipeRatingCreate, user_id: int = 1, session: AsyncSession = Depends(get_async_session)):
@@ -146,9 +186,9 @@ async def get_nutrition_summary(user_id: int, session: AsyncSession = Depends(ge
 @router.post("/data/seed")
 def seed_data(session: Session = Depends(get_session)):
     # Keep synchronous as it's a dev tool and uses MockScraperAgent which might be sync
-    scraper = MockScraperAgent(session)
-    count = scraper.generate_deals()
-    return {"message": f"Seeded database with {count} deals."}
+    # scraper = MockScraperAgent(session)
+    # count = scraper.generate_deals()
+    return {"message": f"Seeded database with {0} deals."}
 
 class ScrapeRequest(BaseModel):
     """Request body for scraping."""
@@ -197,11 +237,15 @@ async def list_scrapers():
     }
 
 @router.get("/deals")
-async def list_deals(session: AsyncSession = Depends(get_async_session)):
+async def list_deals(
+    sort_by: Optional[str] = None,
+    session: AsyncSession = Depends(get_async_session)
+):
     """List all active deals with product and store info."""
-    # Join Deal, Product, Store
     statement = select(Deal, Product, Store).join(Product).join(Store)
-    result = await session.execute(statement) # Changed exec to execute
+    if sort_by == "category":
+        statement = statement.order_by(Product.category)
+    result = await session.execute(statement)
     results = result.all()
 
     deals_data = []

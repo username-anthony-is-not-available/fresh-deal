@@ -25,6 +25,11 @@ elif "sqlite://" in async_connection_string:
 async_engine = create_async_engine(async_connection_string, echo=True)
 
 async def get_async_session():
+    # In a real app, you might use Alembic for migrations.
+    # For this test setup, we'll create tables on startup.
+    async with async_engine.begin() as conn:
+        await conn.run_sync(SQLModel.metadata.create_all)
+
     async_session = sessionmaker(
         async_engine, class_=AsyncSession, expire_on_commit=False
     )

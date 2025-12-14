@@ -1,0 +1,10 @@
+{
+  "chicken breast": ["chicken thighs", "tofu", "chickpeas"],
+  "ground beef": ["ground turkey", "ground chicken", "lentils"],
+  "white sugar": ["brown sugar", "maple syrup", "honey"],
+  "butter": ["margarine", "coconut oil", "olive oil"],
+  "milk": ["almond milk", "soy milk", "oat milk"],
+  "all-purpose flour": ["whole wheat flour", "almond flour", "oat flour"],
+  "eggs": ["flax eggs", "applesauce", "yogurt"],
+  "cheddar cheese": ["mozzarella cheese", "provolone cheese", "swiss cheese"]
+}

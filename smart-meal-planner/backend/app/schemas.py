@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List, Dict
 
 class UserUpdate(BaseModel):
     postal_code: Optional[str] = None
@@ -36,6 +36,8 @@ class RecipeRead(BaseModel):
     meal_type: Optional[str] = None
     prep_time_minutes: Optional[int] = None
     difficulty: Optional[str] = None
+    ingredients: List[str] = []
+    substitutions: Dict[str, List[str]] = {}
     allergens: list[str] = []
 
     class Config:
@@ -43,9 +45,15 @@ class RecipeRead(BaseModel):
         schema_extra = {
             "example": {
                 "id": 1,
-                "postal_code": "H4T1V6",
-                "household_size": 4,
-                "dietary_preferences": "none"
+                "name": "Spaghetti Bolognese",
+                "cuisine": "Italian",
+                "meal_type": "Dinner",
+                "prep_time_minutes": 60,
+                "difficulty": "Easy",
+                "ingredients": ["ground beef", "spaghetti", "tomato sauce"],
+                "substitutions": {
+                    "ground beef": ["ground turkey", "lentils"]
+                }
             }
         }
 

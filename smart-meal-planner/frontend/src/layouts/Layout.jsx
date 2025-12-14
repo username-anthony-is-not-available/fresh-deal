@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
-import { Home, ShoppingCart, Calendar, Tag, Settings, Menu, Activity, Heart } from 'lucide-react';
+import { Home, ShoppingCart, Calendar, Tag, Settings, Menu, Activity, Heart, BookOpen } from 'lucide-react';
 import clsx from 'clsx';
 import { useTranslation } from 'react-i18next';
 import NetworkStatusIndicator from '../components/NetworkStatusIndicator';
@@ -13,6 +13,7 @@ const Layout = () => {
   const navItems = [
     { name: t('home'), path: '/', icon: Home },
     { name: t('deals'), path: '/deals', icon: Tag },
+    { name: t('recipes'), path: '/recipes', icon: BookOpen },
     { name: t('meal_plan'), path: '/plan', icon: Calendar },
     { name: t('shopping_list'), path: '/list', icon: ShoppingCart },
     { name: t('favorites', 'My Favorites'), path: '/favorites', icon: Heart },
