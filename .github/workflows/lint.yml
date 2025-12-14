@@ -1,0 +1,38 @@
+name: Lint Code
+
+on:
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  backend-lint:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./smart-meal-planner/backend
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+    - name: Install dependencies
+      run: pip install -r requirements.txt -r requirements-dev.txt
+    - name: Run linter
+      run: ruff check .
+
+  frontend-lint:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./smart-meal-planner/frontend
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+    - name: Install dependencies
+      run: npm install
+    - name: Run linter
+      run: npm run lint
