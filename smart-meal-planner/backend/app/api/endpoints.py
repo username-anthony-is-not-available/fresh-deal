@@ -4,7 +4,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.db import get_async_session, get_session
 from sqlmodel import Session
 from app.models.all_models import User, MealPlan, Deal, Product, Store, RecipeRating, UserFavorite, Recipe
-from app.agents.scraper_agent import MockScraperAgent
 from app.agents.flipp_scraper import CANADIAN_STORES
 from app.services.shopping_optimizer import ShoppingListOptimizer
 from pydantic import BaseModel
@@ -12,7 +11,7 @@ from typing import Optional, List, Dict, Any
 from celery.result import AsyncResult
 import json
 from datetime import datetime, timedelta
-from app.tasks import generate_meal_plan_task, scrape_metro_task, scrape_flipp_task
+from app.tasks import generate_meal_plan_task, scrape_task
 from app.services.user_service import UserService
 from app.schemas import UserUpdate, UserRead
 
@@ -120,80 +119,48 @@ def seed_data(session: Session = Depends(get_session)):
     count = scraper.generate_deals()
     return {"message": f"Seeded database with {count} deals."}
 
-@router.post("/admin/scrape/metro")
-async def trigger_metro_scrape(limit: int = 50):
-    """
-    Triggers the background task to scrape Metro.ca using browser automation.
-    
-    NOTE: This often gets blocked by Cloudflare. 
-    Use /admin/scrape/flipp instead for more reliable results.
-    """
-    task = scrape_metro_task.delay(limit)
-    return {"task_id": task.id, "status": "Processing", "scraper": "metro-playwright"}
-
-
-class FlippScrapeRequest(BaseModel):
-    """Request body for Flipp scraping."""
-    stores: Optional[List[str]] = None
+class ScrapeRequest(BaseModel):
+    """Request body for scraping."""
+    stores: List[str]
     postal_code: str = "H4T1V6"
-    limit: int = 100
+    limit_per_store: int = 50
 
-
-@router.post("/admin/scrape/flipp")
-async def trigger_flipp_scrape(request: FlippScrapeRequest = None):
+@router.post("/admin/scrape")
+async def trigger_scrape(request: ScrapeRequest):
     """
-    Triggers the background task to scrape grocery deals from Flipp API.
+    Triggers the background task to scrape grocery deals from the specified stores.
     
-    This is the RECOMMENDED scraper as it uses a public API and doesn't
-    get blocked like browser-based scrapers.
-    
-    Available stores:
-    - metro, maxi, provigo, super_c, loblaws, walmart, 
-    - food_basics, iga, no_frills, real_canadian_superstore
-    
-    Example: {"stores": ["metro", "walmart"], "postal_code": "H4T1V6", "limit": 100}
+    This endpoint uses the ScraperAgent to orchestrate the scraping process,
+    which may include direct browser scraping with a fallback to the Flipp API.
     """
-    if request is None:
-        request = FlippScrapeRequest()
-        
-    task = scrape_flipp_task.delay(
+    task = scrape_task.delay(
         stores=request.stores,
         postal_code=request.postal_code,
-        limit=request.limit
+        limit_per_store=request.limit_per_store
     )
     return {
         "task_id": task.id, 
         "status": "Processing", 
-        "scraper": "flipp-api",
-        "stores": request.stores or list(CANADIAN_STORES.keys()),
+        "stores": request.stores,
         "postal_code": request.postal_code
     }
-
 
 @router.get("/admin/scrapers")
 async def list_scrapers():
     """
     List available scrapers and their configurations.
     """
+    available_stores = ["metro", "walmart", "maxi", "provigo", "iga"]
     return {
         "scrapers": [
             {
-                "id": "flipp",
-                "name": "Flipp API",
-                "description": "Uses the Flipp public API to get flyer deals. Most reliable option.",
-                "endpoint": "/admin/scrape/flipp",
+                "id": "default",
+                "name": "Default Scraper",
+                "description": "Uses a combination of direct scraping and the Flipp API.",
+                "endpoint": "/admin/scrape",
                 "method": "POST",
                 "recommended": True,
-                "stores": {key: store.name for key, store in CANADIAN_STORES.items()}
-            },
-            {
-                "id": "metro",
-                "name": "Metro Playwright",
-                "description": "Uses Playwright browser automation. Often blocked by Cloudflare.",
-                "endpoint": "/admin/scrape/metro",
-                "method": "POST",
-                "recommended": False,
-                "stores": {"metro": "Metro"}
+                "stores": {store: store.capitalize() for store in available_stores}
             }
         ]
     }
