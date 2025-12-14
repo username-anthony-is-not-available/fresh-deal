@@ -19,8 +19,11 @@ class UserCreate(BaseModel):
     dietary_preferences: str
 
 
-@router.post("/register", response_model=User)
+@router.post("/register", response_model=User, summary="Register a new user")
 async def register(user_in: UserCreate, session: AsyncSession = Depends(get_async_session)):
+    """
+    Create a new user account.
+    """
     result = await session.execute(select(User).where(User.email == user_in.email))
     if result.scalars().first():
         raise HTTPException(status_code=400, detail="Email already registered")
@@ -38,11 +41,14 @@ async def register(user_in: UserCreate, session: AsyncSession = Depends(get_asyn
     return user
 
 
-@router.post("/login/access-token")
+@router.post("/login/access-token", summary="User login")
 @limiter.limit("10/minute")
 async def login(
     request: Request, session: AsyncSession = Depends(get_async_session), form_data: OAuth2PasswordRequestForm = Depends()
 ):
+    """
+    Authenticate a user and return a JWT access token.
+    """
     result = await session.execute(select(User).where(User.email == form_data.username))
     user = result.scalars().first()
     if not user or not verify_password(form_data.password, user.hashed_password):

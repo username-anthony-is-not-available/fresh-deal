@@ -6,6 +6,14 @@ class UserUpdate(BaseModel):
     household_size: Optional[int] = None
     dietary_preferences: Optional[str] = None
 
+    class Config:
+        schema_extra = {
+            "example": {
+                "household_size": 2,
+                "dietary_preferences": "vegetarian"
+            }
+        }
+
 class UserRead(BaseModel):
     id: int
     postal_code: str
@@ -14,11 +22,27 @@ class UserRead(BaseModel):
 
     class Config:
         orm_mode = True
+        schema_extra = {
+            "example": {
+                "id": 1,
+                "postal_code": "H4T1V6",
+                "household_size": 4,
+                "dietary_preferences": "none"
+            }
+        }
 
 
 class RecipeFeedbackCreate(BaseModel):
     status: str
     notes: Optional[str] = None
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "status": "made_it",
+                "notes": "The cooking time was a bit too long."
+            }
+        }
 
 class UserNutritionGoalCreate(BaseModel):
     goal_type: str = "maintenance"
@@ -27,12 +51,32 @@ class UserNutritionGoalCreate(BaseModel):
     target_carbs: Optional[float] = None
     target_fats: Optional[float] = None
 
+    class Config:
+        schema_extra = {
+            "example": {
+                "goal_type": "weight_loss",
+                "target_calories": 2000,
+                "target_protein": 150
+            }
+        }
+
 class UserNutritionGoalRead(UserNutritionGoalCreate):
     id: int
     user_id: int
 
     class Config:
         orm_mode = True
+        schema_extra = {
+            "example": {
+                "id": 1,
+                "user_id": 1,
+                "goal_type": "weight_loss",
+                "target_calories": 2000,
+                "target_protein": 150,
+                "target_carbs": 200,
+                "target_fats": 60
+            }
+        }
 
 class DailyNutritionRead(BaseModel):
     id: int
@@ -46,3 +90,15 @@ class DailyNutritionRead(BaseModel):
 
     class Config:
         orm_mode = True
+        schema_extra = {
+            "example": {
+                "id": 1,
+                "user_id": 1,
+                "date": "2024-07-29",
+                "calories": 2100.5,
+                "protein": 155.2,
+                "carbs": 205.0,
+                "fats": 65.8,
+                "micronutrients_json": "{\"vitamin_c\": 80, \"iron\": 15}"
+            }
+        }
