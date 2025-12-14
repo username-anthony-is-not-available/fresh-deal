@@ -31,6 +31,10 @@ class Settings(BaseSettings):
     # Sentry
     SENTRY_DSN: str | None = None
 
+    # FatSecret API
+    FATSECRET_API_KEY: str | None = None
+    FATSECRET_API_SECRET: str | None = None
+
     # Auth
     SECRET_KEY: str = "a_very_secret_key"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30

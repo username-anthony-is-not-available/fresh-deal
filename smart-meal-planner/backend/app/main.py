@@ -4,6 +4,7 @@ from app.core.config import Settings
 from app.core.db import init_db
 from contextlib import asynccontextmanager
 from app.api.endpoints import router as api_router
+from app.api import nutrition
 from app.core.logging_config import setup_logging
 import logging
 from prometheus_fastapi_instrumentator import Instrumentator
@@ -54,6 +55,7 @@ app.add_middleware(
 
 app.include_router(api_router, prefix="/api", tags=["api"])
 app.include_router(auth_endpoints.router, prefix="/auth", tags=["auth"])
+app.include_router(nutrition.router, prefix="/api", tags=["nutrition"])
 
 
 @app.get("/health")

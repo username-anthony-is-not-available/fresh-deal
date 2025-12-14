@@ -14,3 +14,30 @@ class UserRead(BaseModel):
 
     class Config:
         orm_mode = True
+
+class UserNutritionGoalCreate(BaseModel):
+    goal_type: str = "maintenance"
+    target_calories: Optional[float] = None
+    target_protein: Optional[float] = None
+    target_carbs: Optional[float] = None
+    target_fats: Optional[float] = None
+
+class UserNutritionGoalRead(UserNutritionGoalCreate):
+    id: int
+    user_id: int
+
+    class Config:
+        orm_mode = True
+
+class DailyNutritionRead(BaseModel):
+    id: int
+    user_id: int
+    date: str
+    calories: float
+    protein: float
+    carbs: float
+    fats: float
+    micronutrients_json: str
+
+    class Config:
+        orm_mode = True
