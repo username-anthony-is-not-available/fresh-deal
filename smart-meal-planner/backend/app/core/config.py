@@ -1,9 +1,13 @@
 import os
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "Smart Meal Planner"
     API_V1_STR: str = "/api/v1"
+
+    # Environment: development, staging, production
+    ENVIRONMENT: str = "development"
 
     # Database
     POSTGRES_USER: str = "postgres"
@@ -41,6 +45,18 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
 
     model_config = SettingsConfigDict(env_file=".env", case_sensitive=True)
+
+    @model_validator(mode='after')
+    def validate_settings(self) -> 'Settings':
+        # Check for OpenRouter API key if not using mock AI
+        if not self.USE_MOCK_AI and not self.OPENROUTER_API_KEY:
+            raise ValueError("OPENROUTER_API_KEY must be set when USE_MOCK_AI is False.")
+
+        # Check for default secret key in production/staging environments
+        if self.ENVIRONMENT in ["production", "staging"] and self.SECRET_KEY == "a_very_secret_key":
+            raise ValueError("Default SECRET_KEY is not allowed in production or staging environments. Please generate a new one.")
+
+        return self
 
     @property
     def SQLALCHEMY_DATABASE_URI(self) -> str:
