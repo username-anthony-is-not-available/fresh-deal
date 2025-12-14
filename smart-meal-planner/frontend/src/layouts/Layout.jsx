@@ -4,6 +4,7 @@ import { Home, ShoppingCart, Calendar, Tag, Settings, Menu, Activity, Heart } fr
 import clsx from 'clsx';
 import { useTranslation } from 'react-i18next';
 import NetworkStatusIndicator from '../components/NetworkStatusIndicator';
+import ThemeToggle from '../components/ThemeToggle';
 
 const Layout = () => {
   const { t } = useTranslation();
@@ -20,10 +21,10 @@ const Layout = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-800 flex flex-col">
       <NetworkStatusIndicator />
       {/* Header */}
-      <header className="bg-white shadow-sm sticky top-0 z-10">
+      <header className="bg-white dark:bg-gray-900 shadow-sm sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
             <div className="flex items-center">
@@ -42,8 +43,8 @@ const Layout = () => {
                     clsx(
                       'flex items-center gap-2 px-1 pt-1 border-b-2 text-sm font-medium transition-colors',
                       isActive
-                        ? 'border-primary-500 text-gray-900'
-                        : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                        ? 'border-primary-500 text-gray-900 dark:text-white'
+                        : 'border-transparent text-gray-500 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-500 hover:text-gray-700 dark:hover:text-white'
                     )
                   }
                 >
@@ -51,13 +52,15 @@ const Layout = () => {
                   {item.name}
                 </NavLink>
               ))}
+              <ThemeToggle />
             </div>
 
             {/* Mobile Menu Button */}
             <div className="flex items-center sm:hidden">
+              <ThemeToggle />
               <button
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                className="p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none"
+                className="p-2 rounded-md text-gray-400 dark:text-gray-400 hover:text-gray-500 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none"
               >
                 <Menu className="w-6 h-6" />
               </button>
@@ -67,7 +70,7 @@ const Layout = () => {
 
         {/* Mobile Nav */}
         {isMobileMenuOpen && (
-          <div className="sm:hidden bg-white border-t border-gray-200">
+          <div className="sm:hidden bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700">
             <div className="pt-2 pb-3 space-y-1">
               {navItems.map((item) => (
                 <NavLink
@@ -78,8 +81,8 @@ const Layout = () => {
                     clsx(
                       'block pl-3 pr-4 py-2 border-l-4 text-base font-medium',
                       isActive
-                        ? 'bg-primary-50 border-primary-500 text-primary-700'
-                        : 'border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700'
+                        ? 'bg-primary-50 dark:bg-primary-900/10 border-primary-500 text-primary-700 dark:text-white'
+                        : 'border-transparent text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-600 hover:text-gray-700 dark:hover:text-white'
                     )
                   }
                 >
@@ -100,9 +103,9 @@ const Layout = () => {
       </main>
 
       {/* Footer */}
-      <footer className="bg-white border-t border-gray-200 mt-auto">
+      <footer className="bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 mt-auto">
         <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-          <p className="text-center text-sm text-gray-500">
+          <p className="text-center text-sm text-gray-500 dark:text-gray-400">
             &copy; 2025 Smart Meal Planner. Quebec Edition.
           </p>
         </div>

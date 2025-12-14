@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import StarRating from './StarRating';
 import FavoriteButton from './FavoriteButton';
-import { api } from '../services/api';
+import api from '../services/api';
 
 const MealCard = ({ type, meal }) => {
   const [rating, setRating] = useState(meal.user_rating || 0);
