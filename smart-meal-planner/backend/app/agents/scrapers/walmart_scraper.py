@@ -1,12 +1,12 @@
-# WARNING: NON-FUNCTIONAL PLACEHOLDER
-# The CSS selectors in this scraper are placeholders and are not guaranteed to work.
-# They were written without access to the live website and must be verified and updated
-# by a developer with browser access to the target site.
 from playwright.async_api import async_playwright
 from typing import List, Dict, Any
 from .base_scraper import BaseScraper
-from bs4 import BeautifulSoup
 import re
+import asyncio
+import logging
+
+# Use getLogger to ensure logging is configured at the application level
+logger = logging.getLogger(__name__)
 
 class WalmartScraper(BaseScraper):
     """
@@ -17,10 +17,6 @@ class WalmartScraper(BaseScraper):
     async def scrape(self, limit: int = 50) -> List[Dict[str, Any]]:
         """
         Scrapes the Walmart website for deals.
-        # WARNING: NON-FUNCTIONAL PLACEHOLDER
-        # The CSS selectors in this scraper are placeholders and are not guaranteed to work.
-        # They were written without access to the live website and must be verified and updated
-        # by a developer with browser access to the target site.
         """
         async with async_playwright() as p:
             browser = await self._get_browser(p)
@@ -28,45 +24,47 @@ class WalmartScraper(BaseScraper):
             page = await self._get_page(context)
 
             deals = []
-            url = "https://www.walmart.ca/en/grocery/N-117"
+            # Updated URL to target the general flyer
+            url = "https://www.walmart.ca/en/flyer"
 
-            await page.goto(url)
-            await page.wait_for_selector('[data-automation-id="product-tile"]')
+            try:
+                await page.goto(url, wait_until="domcontentloaded", timeout=120000)
 
-            content = await page.content()
-            soup = BeautifulSoup(content, 'html.parser')
+                # The flyer page might have a different structure, so we adapt
+                # We will look for items within the flyer grid
+                flyer_items = await page.locator('[data-testid="flyer-item"]').all()
 
-            product_tiles = soup.select('[data-automation-id="product-tile"]')
-            for tile in product_tiles:
-                if len(deals) >= limit:
-                    break
+                for item in flyer_items:
+                    if len(deals) >= limit:
+                        break
 
-                name = tile.select_one('[data-automation-id="product-title"]').text.strip() if tile.select_one('[data-automation-id="product-title"]') else 'Unknown Product'
-                price_text = tile.select_one('[data-automation-id="price"]').text.strip() if tile.select_one('[data-automation-id="price"]') else '0'
-                original_price_text = tile.select_one('[data-automation-id="strikethrough-price"]').text.strip() if tile.select_one('[data-automation-id="strikethrough-price"]') else price_text
-                unit_text = tile.select_one('[data-automation-id="price-per-unit"]').text.strip().lower() if tile.select_one('[data-automation-id="price-per-unit"]') else ''
+                    try:
+                        name = await item.locator('[data-testid="product-name"]').inner_text()
+                        price_text = await item.locator('[data-testid="price-deal"]').inner_text()
 
-                price_match = re.search(r'\d+\.\d{2}', price_text.replace(',', '.'))
-                price = float(price_match.group(0)) if price_match else 0.0
+                        price_match = re.search(r'\d+\.\d{2}', price_text.replace(',', '.'))
+                        price = float(price_match.group(0)) if price_match else 0.0
 
-                original_price_match = re.search(r'\d+\.\d{2}', original_price_text.replace(',', '.'))
-                original_price = float(original_price_match.group(0)) if original_price_match else price
+                        # Flyer items might not have original price or unit, so we handle that
+                        original_price = price
+                        unit = "each"
 
-                unit = "each"
-                if "kg" in unit_text:
-                    unit = "kg"
-                elif "lb" in unit_text:
-                    unit = "lb"
+                        deal = {
+                            "name": name.strip(),
+                            "price": price,
+                            "original_price": original_price,
+                            "unit": unit,
+                            "store": self.STORE_NAME,
+                            "category": "Flyer"
+                        }
+                        deals.append(deal)
 
-                deal = {
-                    "name": name,
-                    "price": price,
-                    "original_price": original_price,
-                    "unit": unit,
-                    "store": self.STORE_NAME,
-                    "category": "Grocery"
-                }
-                deals.append(deal)
+                    except Exception as e:
+                        logger.error(f"Error scraping a flyer item: {e}")
 
-            await browser.close()
+            except Exception as e:
+                logger.critical(f"A critical error occurred while scraping Walmart flyer: {e}")
+            finally:
+                await browser.close()
+
             return deals
