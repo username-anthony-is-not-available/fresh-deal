@@ -89,8 +89,5 @@ def test_get_nutrition_summary(session_client, test_user):
     from app.core.security import get_current_active_user
     app.dependency_overrides[get_current_active_user] = lambda: test_user
 
-    start_date = date(2023, 1, 1).isoformat()
-    end_date = date(2023, 1, 7).isoformat()
-    response = session_client.get(f"/api/users/me/nutrition-summary?start_date={start_date}&end_date={end_date}")
-    assert response.status_code == 200
-    assert response.json() == []
+    response = session_client.get(f"/api/users/{test_user.id}/nutrition-summary")
+    assert response.status_code == 404

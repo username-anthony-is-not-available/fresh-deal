@@ -203,6 +203,8 @@ class LLMService:
 
         USER CONTEXT:
         - Household: {household_size} people. Scale recipe ingredients and shopping quantities accordingly.
+        - Nutritional Goals: Aim for a daily average of {user_prefs.get('target_calories', 2000)} calories and {user_prefs.get('target_fiber', 30)}g of fiber.
+        - Allergies to Avoid: {json.dumps(user_prefs.get('allergies', []))}
 
         USER'S FAVORITE RECIPES (HIGHEST PRIORITY):
         {json.dumps(user_favorites)}
@@ -280,12 +282,28 @@ class LLMService:
             elif isinstance(ingredients, list) and len(ingredients) > 0 and isinstance(ingredients[0], dict):
                  ingredients = [i.get('item', '') for i in ingredients]
 
+            nutrition = r.get('nutrition', {})
+            allergens = r.get('allergens', [])
+            if isinstance(allergens, str):
+                try:
+                    allergens = json.loads(allergens)
+                except:
+                    allergens = []
+
             formatted.append({
                 'id': r.get('id'),
                 'name': r.get('name'),
                 'ingredients': ingredients,
                 'meal_type': r.get('meal_type', 'Any'),
-                'average_rating': r.get('average_rating')
+                'average_rating': r.get('average_rating'),
+                'nutrition': {
+                    'calories': nutrition.get('calories'),
+                    'protein': nutrition.get('protein'),
+                    'carbs': nutrition.get('carbs'),
+                    'fat': nutrition.get('fat'),
+                    'fiber': nutrition.get('fiber')
+                },
+                'allergens': allergens
             })
         return formatted
 

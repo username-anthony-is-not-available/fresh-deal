@@ -14,7 +14,7 @@ import json
 from datetime import datetime, timedelta
 from app.tasks import generate_meal_plan_task, scrape_task
 from app.services.user_service import UserService
-from app.schemas import UserUpdate, UserRead, RecipeFeedbackCreate
+from app.schemas import UserUpdate, UserRead, RecipeRead, NutritionSummaryRead, RecipeFeedbackCreate
 
 router = APIRouter()
 
@@ -27,6 +27,13 @@ class UserCreate(BaseModel):
 
 class RecipeRatingCreate(BaseModel):
     rating: int
+
+@router.get("/recipes/{recipe_id}", response_model=RecipeRead)
+async def get_recipe(recipe_id: int, session: AsyncSession = Depends(get_async_session)):
+    recipe = await session.get(Recipe, recipe_id)
+    if not recipe:
+        raise HTTPException(status_code=404, detail="Recipe not found")
+    return recipe
 
 @router.post("/recipes/{recipe_id}/rate")
 async def rate_recipe(recipe_id: int, rating_in: RecipeRatingCreate, user_id: int = 1, session: AsyncSession = Depends(get_async_session)):
@@ -127,6 +134,14 @@ async def update_user(user_id: int, user_in: UserUpdate, session: AsyncSession =
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     return user
+
+@router.get("/users/{user_id}/nutrition-summary", response_model=NutritionSummaryRead)
+async def get_nutrition_summary(user_id: int, session: AsyncSession = Depends(get_async_session)):
+    user_service = UserService(session)
+    summary = await user_service.get_meal_plan_nutrition_summary(user_id)
+    if not summary:
+        raise HTTPException(status_code=404, detail="Nutrition summary not found")
+    return summary
 
 @router.post("/data/seed")
 def seed_data(session: Session = Depends(get_session)):

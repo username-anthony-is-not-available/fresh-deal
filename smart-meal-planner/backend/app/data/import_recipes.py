@@ -26,9 +26,11 @@ class RecipeImporter:
 
             # Create Recipe object
             recipe = Recipe(
-                name=r.get("title"),
+                name=r.get("name"),
                 ingredients_json=json.dumps(r.get("ingredients", [])),
-                instructions_json=json.dumps(r.get("directions", [])),
+                instructions_json=json.dumps(r.get("instructions", [])),
+                allergens_json=json.dumps(r.get("allergens", [])),
+                nutrition_json=json.dumps(r.get("nutrition", {})),
                 source_url=r.get("link", ""),
                 # Kaggle dataset might not have these, assume generic defaults or None
                 cuisine=None,
