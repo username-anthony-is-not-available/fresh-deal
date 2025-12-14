@@ -8,7 +8,9 @@ connection_string = settings.SQLALCHEMY_DATABASE_URI
 if connection_string and connection_string.startswith("postgres://"):
     connection_string = connection_string.replace("postgres://", "postgresql://", 1)
 
-connect_args = {"check_same_thread": False} if "sqlite" in connection_string else {}
+connect_args = {}
+if settings.SQLALCHEMY_DATABASE_URI and "sqlite" in settings.SQLALCHEMY_DATABASE_URI:
+    connect_args["check_same_thread"] = False
 
 engine = create_engine(connection_string, connect_args=connect_args, echo=True)
 

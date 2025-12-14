@@ -16,6 +16,7 @@ class User(SQLModel, table=True):
     created_at: datetime = Field(default_factory=utc_now)
 
     ratings: List["RecipeRating"] = Relationship(back_populates="user")
+    feedback: List["RecipeFeedback"] = Relationship(back_populates="user")
     favorites: List["UserFavorite"] = Relationship(back_populates="user")
     nutrition_goal: Optional["UserNutritionGoal"] = Relationship(back_populates="user")
     daily_nutritions: List["DailyNutrition"] = Relationship(back_populates="user")
@@ -68,6 +69,7 @@ class Recipe(SQLModel, table=True):
     ingredients: List["RecipeIngredient"] = Relationship(back_populates="recipe")
 
     ratings: List["RecipeRating"] = Relationship(back_populates="recipe")
+    feedback: List["RecipeFeedback"] = Relationship(back_populates="recipe")
     favorited_by: List["UserFavorite"] = Relationship(back_populates="recipe")
 
 class RecipeIngredient(SQLModel, table=True):
@@ -95,6 +97,19 @@ class RecipeRating(SQLModel, table=True):
 
     user: "User" = Relationship(back_populates="ratings")
     recipe: "Recipe" = Relationship(back_populates="ratings")
+
+
+class RecipeFeedback(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: int = Field(foreign_key="user.id")
+    recipe_id: int = Field(foreign_key="recipe.id")
+    status: str  # "made_it", "skipped"
+    notes: Optional[str] = None
+    created_at: datetime = Field(default_factory=utc_now)
+
+    user: "User" = Relationship(back_populates="feedback")
+    recipe: "Recipe" = Relationship(back_populates="feedback")
+
 
 class UserFavorite(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
