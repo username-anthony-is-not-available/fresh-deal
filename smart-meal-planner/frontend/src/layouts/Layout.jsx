@@ -2,8 +2,8 @@ import React from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { Home, ShoppingCart, Calendar, Tag, Settings, Menu, Activity, Heart } from 'lucide-react';
 import clsx from 'clsx';
-import { Toaster } from 'react-hot-toast';
 import { useTranslation } from 'react-i18next';
+import NetworkStatusIndicator from '../components/NetworkStatusIndicator';
 
 const Layout = () => {
   const { t } = useTranslation();
@@ -21,7 +21,7 @@ const Layout = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
-      <Toaster position="top-center" reverseOrder={false} />
+      <NetworkStatusIndicator />
       {/* Header */}
       <header className="bg-white shadow-sm sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

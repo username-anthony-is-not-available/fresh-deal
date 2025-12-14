@@ -11,6 +11,7 @@ import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import FavoritesPage from './pages/FavoritesPage';
 import AuthContext, { AuthProvider } from './context/AuthContext';
+import { Toaster } from 'react-hot-toast';
 
 const PrivateRoute = ({ children }) => {
   const { user } = useContext(AuthContext);
@@ -57,6 +58,7 @@ function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
+        <Toaster position="top-center" reverseOrder={false} />
         <AppRoutes />
       </AuthProvider>
     </BrowserRouter>
