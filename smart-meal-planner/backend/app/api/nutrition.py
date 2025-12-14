@@ -10,7 +10,7 @@ from app.schemas import UserNutritionGoalCreate, UserNutritionGoalRead, DailyNut
 
 router = APIRouter()
 
-@router.post("/users/me/nutrition-goal", response_model=UserNutritionGoalRead)
+@router.post("/users/me/nutrition-goal", response_model=UserNutritionGoalRead, summary="Create or update nutrition goal")
 def create_or_update_nutrition_goal(
     *,
     session: Session = Depends(get_session),
@@ -18,7 +18,7 @@ def create_or_update_nutrition_goal(
     goal: UserNutritionGoalCreate
 ):
     """
-    Create or update the nutrition goal for the current user.
+    Set or update the daily nutrition goals (calories, protein, etc.) for the logged-in user.
     """
     goal_query = select(UserNutritionGoal).where(UserNutritionGoal.user_id == current_user.id)
     db_goal = session.exec(goal_query).first()
@@ -36,14 +36,14 @@ def create_or_update_nutrition_goal(
     session.refresh(db_goal)
     return db_goal
 
-@router.get("/users/me/nutrition-goal", response_model=UserNutritionGoalRead)
+@router.get("/users/me/nutrition-goal", response_model=UserNutritionGoalRead, summary="Get nutrition goal")
 def get_nutrition_goal(
     *,
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_active_user)
 ):
     """
-    Get the nutrition goal for the current user.
+    Retrieve the current daily nutrition goals for the logged-in user.
     """
     goal_query = select(UserNutritionGoal).where(UserNutritionGoal.user_id == current_user.id)
     goal = session.exec(goal_query).first()
@@ -51,7 +51,7 @@ def get_nutrition_goal(
         raise HTTPException(status_code=404, detail="Nutrition goal not found")
     return goal
 
-@router.get("/users/me/nutrition-summary", response_model=List[DailyNutritionRead])
+@router.get("/users/me/nutrition-summary", response_model=List[DailyNutritionRead], summary="Get nutrition summary")
 def get_nutrition_summary(
     *,
     session: Session = Depends(get_session),
@@ -60,7 +60,7 @@ def get_nutrition_summary(
     end_date: date
 ):
     """
-    Get the daily nutrition summary for the current user over a date range.
+    Get a summary of daily nutritional intake for the logged-in user over a specified date range.
     """
     summary_query = (
         select(DailyNutrition)

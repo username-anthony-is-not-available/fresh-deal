@@ -38,7 +38,9 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title=settings.PROJECT_NAME,
+    title="Smart Meal Planner API",
+    description="API for managing meal plans, recipes, and grocery deals.",
+    version="0.1.0",
     openapi_url=f"{settings.API_V1_STR}/openapi.json",
     lifespan=lifespan,
 )
