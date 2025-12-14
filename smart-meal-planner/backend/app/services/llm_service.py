@@ -3,9 +3,14 @@ import json
 import logging
 import redis
 import hashlib
+import json
+import logging
+import redis
+import hashlib
 from typing import List, Dict, Any, Optional
 from datetime import datetime, timedelta
-from openai import OpenAI, APIError
+from openai import OpenAI, APIError, RateLimitError, APITimeoutError, APIConnectionError, InternalServerError
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
@@ -142,42 +147,50 @@ class LLMService:
             logger.error(f"LLM generation failed: {e}. Falling back to mock data.")
             return self._generate_mock_plan(user_prefs, recipes_db, week_dates)
 
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=2, min=2, max=30),
+        retry=retry_if_exception_type((RateLimitError, APITimeoutError, APIConnectionError, InternalServerError)),
+        before_sleep=lambda retry_state: logger.warning(f"Retrying LLM call due to {retry_state.outcome.exception()}...")
+    )
+    def _make_api_request(self, model: str, prompt: str) -> str:
+        """Makes a single, retriable API call to the LLM."""
+        completion = self.client.chat.completions.create(
+            model=model,
+            messages=[
+                {"role": "system", "content": "You are a helpful meal planning assistant that outputs valid JSON."},
+                {"role": "user", "content": prompt}
+            ],
+            response_format={"type": "json_object"},
+            timeout=120,
+        )
+        content = completion.choices[0].message.content
+        if not content:
+            raise ValueError(f"Empty response from LLM model {model}")
+        return content
+
     def _call_llm(self, prompt: str) -> str:
-        """Calls the LLM API."""
+        """
+        Calls the LLM API, handling mock mode, primary/fallback models, and retries.
+        """
         if settings.USE_MOCK_AI or not settings.OPENROUTER_API_KEY:
-            # We raise an error to trigger the fallback logic in the caller methods
+            logger.info("Mock AI enabled or API Key missing. Triggering fallback.")
             raise APIError("Mock AI enabled or API Key missing", request=None, body=None)
 
+        # Try primary model
         try:
-            completion = self.client.chat.completions.create(
-                model=self.model,
-                messages=[
-                    {"role": "system", "content": "You are a helpful meal planning assistant that outputs valid JSON."},
-                    {"role": "user", "content": prompt}
-                ],
-                response_format={"type": "json_object"}
-            )
-            content = completion.choices[0].message.content
-            if not content:
-                 raise ValueError("Empty response from LLM")
-            return content
+            logger.info(f"Calling primary LLM model: {self.model}")
+            return self._make_api_request(self.model, prompt)
         except Exception as e:
-            logger.warning(f"Primary model failed: {e}. Trying fallback.")
-            try:
-                completion = self.client.chat.completions.create(
-                    model=self.fallback_model,
-                    messages=[
-                        {"role": "system", "content": "You are a helpful meal planning assistant that outputs valid JSON."},
-                        {"role": "user", "content": prompt}
-                    ],
-                    response_format={"type": "json_object"}
-                )
-                content = completion.choices[0].message.content
-                if not content:
-                    raise ValueError("Empty response from LLM fallback")
-                return content
-            except Exception as e2:
-                raise APIError(f"Both models failed: {e2}", request=None, body=None)
+            logger.warning(f"Primary LLM model '{self.model}' failed after retries: {e}")
+
+        # Try fallback model
+        try:
+            logger.info(f"Calling fallback LLM model: {self.fallback_model}")
+            return self._make_api_request(self.fallback_model, prompt)
+        except Exception as e2:
+            logger.error(f"Fallback LLM model '{self.fallback_model}' also failed after retries: {e2}")
+            raise APIError(f"Both primary and fallback LLM models failed.", request=None, body=None)
 
     def _construct_meal_plan_prompt(self, user_prefs: Dict, deals: List[Dict], recipes: List[Dict], week_dates: List[Dict], user_favorites: List[int]) -> str:
         formatted_deals = self.format_deals_for_llm(deals)

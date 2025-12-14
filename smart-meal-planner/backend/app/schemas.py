@@ -33,6 +33,11 @@ class RecipeRead(BaseModel):
     class Config:
         orm_mode = True
 
+
+class RecipeFeedbackCreate(BaseModel):
+    status: str
+    notes: Optional[str] = None
+
 class UserNutritionGoalCreate(BaseModel):
     goal_type: str = "maintenance"
     target_calories: Optional[float] = None

@@ -10,6 +10,8 @@ from sqlalchemy.orm import sessionmaker
 from sqlmodel.pool import StaticPool
 from app.main import app
 from app.core.db import get_async_session, get_session
+from app.models.all_models import User, Recipe, RecipeFeedback
+from sqlmodel import select
 import pytest_asyncio
 
 # Use aiosqlite for async testing
@@ -123,3 +125,31 @@ async def test_update_user(client: AsyncClient):
     get_data = get_response.json()
     assert get_data["postal_code"] == "J7Y 5K2"
     assert get_data["household_size"] == 4
+
+
+@pytest.mark.asyncio
+async def test_submit_recipe_feedback(client: AsyncClient, session: AsyncSession):
+    # 1. Create a user and a recipe
+    user = User(email="feedback@test.com", hashed_password="password", postal_code="A1A 1A1", household_size=1)
+    recipe = Recipe(name="Test Soup", ingredients_json="[]", instructions_json="[]")
+    session.add(user)
+    session.add(recipe)
+    await session.commit()
+    await session.refresh(user)
+    await session.refresh(recipe)
+
+    # 2. Submit feedback
+    feedback_data = {"status": "made_it", "notes": "It was delicious!"}
+    response = await client.post(f"/api/recipes/{recipe.id}/feedback", json=feedback_data)
+
+    assert response.status_code == 200
+    assert response.json() == {"message": "Feedback submitted successfully"}
+
+    # 3. Verify the feedback was saved in the database
+    statement = select(RecipeFeedback).where(RecipeFeedback.recipe_id == recipe.id, RecipeFeedback.user_id == user.id)
+    result = await session.execute(statement)
+    feedback_entry = result.scalars().first()
+
+    assert feedback_entry is not None
+    assert feedback_entry.status == "made_it"
+    assert feedback_entry.notes == "It was delicious!"

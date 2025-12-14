@@ -3,8 +3,9 @@ from sqlmodel import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.db import get_async_session, get_session
 from sqlmodel import Session
-from app.models.all_models import User, MealPlan, Deal, Product, Store, RecipeRating, UserFavorite, Recipe
+from app.models.all_models import User, MealPlan, Deal, Product, Store, RecipeRating, UserFavorite, Recipe, RecipeFeedback
 from app.agents.flipp_scraper import CANADIAN_STORES
+from app.agents.mock_scraper import MockScraperAgent
 from app.services.shopping_optimizer import ShoppingListOptimizer
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
@@ -13,7 +14,7 @@ import json
 from datetime import datetime, timedelta
 from app.tasks import generate_meal_plan_task, scrape_task
 from app.services.user_service import UserService
-from app.schemas import UserUpdate, UserRead, RecipeRead, NutritionSummaryRead
+from app.schemas import UserUpdate, UserRead, RecipeRead, NutritionSummaryRead, RecipeFeedbackCreate
 
 router = APIRouter()
 
@@ -51,6 +52,21 @@ async def rate_recipe(recipe_id: int, rating_in: RecipeRatingCreate, user_id: in
 
     await session.commit()
     return {"message": "Rating submitted successfully"}
+
+
+@router.post("/recipes/{recipe_id}/feedback")
+async def submit_recipe_feedback(recipe_id: int, feedback_in: RecipeFeedbackCreate, user_id: int = 1, session: AsyncSession = Depends(get_async_session)):
+    # Hardcoded user_id=1 for MVP
+    feedback = RecipeFeedback(
+        user_id=user_id,
+        recipe_id=recipe_id,
+        status=feedback_in.status,
+        notes=feedback_in.notes
+    )
+    session.add(feedback)
+    await session.commit()
+    return {"message": "Feedback submitted successfully"}
+
 
 @router.get("/recipes/{recipe_id}/average-rating")
 async def get_average_rating(recipe_id: int, session: AsyncSession = Depends(get_async_session)):
