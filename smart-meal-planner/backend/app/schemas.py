@@ -6,6 +6,7 @@ class UserUpdate(BaseModel):
     household_size: Optional[int] = None
     dietary_preferences: Optional[str] = None
     allergies: Optional[list[str]] = None
+    preferred_loyalty_programs: Optional[list[str]] = None
 
     class Config:
         schema_extra = {
@@ -21,6 +22,7 @@ class UserRead(BaseModel):
     household_size: int
     dietary_preferences: Optional[str] = None
     allergies: Optional[list[str]] = None
+    preferred_loyalty_programs: Optional[list[str]] = None
 
     class Config:
         orm_mode = True
@@ -130,3 +132,19 @@ class DailyNutritionRead(BaseModel):
                 "micronutrients_json": "{\"vitamin_c\": 80, \"iron\": 15}"
             }
         }
+
+
+class DealRead(BaseModel):
+    id: int
+    product_id: int
+    store_id: int
+    price: float
+    original_price: Optional[float] = None
+    discount_pct: Optional[float] = None
+    valid_from: str
+    valid_until: str
+    loyalty_program: Optional[str] = None
+    loyalty_points: Optional[int] = None
+
+    class Config:
+        orm_mode = True
