@@ -23,6 +23,9 @@ class UserService:
         if 'allergies' in update_data and update_data['allergies'] is not None:
             user.allergies = update_data.pop('allergies')
 
+        if 'preferred_loyalty_programs' in update_data and update_data['preferred_loyalty_programs'] is not None:
+            user.preferred_loyalty_programs = update_data.pop('preferred_loyalty_programs')
+
         for key, value in update_data.items():
             setattr(user, key, value)
 

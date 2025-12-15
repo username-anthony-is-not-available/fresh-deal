@@ -18,6 +18,14 @@ from app.schemas import UserUpdate, UserRead, RecipeRead, NutritionSummaryRead, 
 
 router = APIRouter()
 
+# Approximate CAD value per point for major loyalty programs
+LOYALTY_POINT_VALUES = {
+    "PC Optimum": 0.001,  # $10 per 10,000 points
+    "Scene+": 0.01,       # $10 per 1,000 points
+    "Moi": 0.008,        # $1 per 125 points
+    "AIR MILES": 0.105,   # Approx. $10 per 95 miles, can vary
+}
+
 class UserCreate(BaseModel):
     email: str
     password: str
@@ -238,27 +246,51 @@ async def list_scrapers():
 
 @router.get("/deals")
 async def list_deals(
-    sort_by: Optional[str] = None,
+    sort_by: Optional[str] = Query(None, enum=["category", "effective_discount", "discount_pct"]),
     session: AsyncSession = Depends(get_async_session)
 ):
-    """List all active deals with product and store info."""
+    """
+    List all active deals with product and store info.
+    Sort by 'category', 'effective_discount' (price after points), or 'discount_pct'.
+    """
     statement = select(Deal, Product, Store).join(Product).join(Store)
+
+    # Sorting by category is done at the DB level for efficiency
     if sort_by == "category":
         statement = statement.order_by(Product.category)
+
     result = await session.execute(statement)
     results = result.all()
 
     deals_data = []
     for deal, product, store in results:
-        deals_data.append({
+        deal_item = {
             "id": deal.id,
             "product": product,
             "store": store,
             "price": deal.price,
             "original_price": deal.original_price,
             "discount_pct": deal.discount_pct,
-            "valid_until": deal.valid_until
-        })
+            "valid_until": deal.valid_until,
+            "loyalty_program": deal.loyalty_program,
+            "loyalty_points": deal.loyalty_points,
+        }
+
+        # Calculate effective price for sorting and display
+        effective_price = deal.price
+        if deal.loyalty_program and deal.loyalty_points:
+            point_value = LOYALTY_POINT_VALUES.get(deal.loyalty_program, 0)
+            effective_price -= deal.loyalty_points * point_value
+
+        deal_item['effective_price'] = round(effective_price, 2)
+        deals_data.append(deal_item)
+
+    # In-memory sorting for calculated fields
+    if sort_by == "effective_discount":
+        deals_data.sort(key=lambda x: (x['effective_price'], x['price']))
+    elif sort_by == "discount_pct":
+        deals_data.sort(key=lambda x: x.get('discount_pct') or 0, reverse=True)
+
     return deals_data
 
 @router.post("/plans/generate")

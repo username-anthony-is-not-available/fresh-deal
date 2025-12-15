@@ -8,6 +8,7 @@ const DealsPage = () => {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('');
   const [sortBy, setSortBy] = useState('');
+  const [loyaltyFilter, setLoyaltyFilter] = useState('');
 
   useEffect(() => {
     fetchDeals();
@@ -37,10 +38,12 @@ const DealsPage = () => {
     }
   };
 
-  const filteredDeals = deals.filter(d =>
-     d.product.name.toLowerCase().includes(filter.toLowerCase()) ||
-     d.product.category.toLowerCase().includes(filter.toLowerCase())
-  );
+  const filteredDeals = deals.filter(d => {
+    const nameMatch = d.product.name.toLowerCase().includes(filter.toLowerCase());
+    const categoryMatch = d.product.category.toLowerCase().includes(filter.toLowerCase());
+    const loyaltyMatch = loyaltyFilter ? d.loyalty_program === loyaltyFilter : true;
+    return (nameMatch || categoryMatch) && loyaltyMatch;
+  });
 
   return (
     <div>
@@ -64,10 +67,24 @@ const DealsPage = () => {
            <select
              value={sortBy}
              onChange={(e) => setSortBy(e.target.value)}
-             className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg bg-white hover:bg-gray-50 text-gray-700"
+             className="px-4 py-2 border border-gray-300 rounded-lg bg-white hover:bg-gray-50 text-gray-700"
            >
              <option value="">Sort by</option>
+             <option value="effective_discount">Effective Discount</option>
+             <option value="discount_pct">Discount %</option>
              <option value="category">Category</option>
+           </select>
+           <select
+             value={loyaltyFilter}
+             onChange={(e) => setLoyaltyFilter(e.target.value)}
+             className="px-4 py-2 border border-gray-300 rounded-lg bg-white hover:bg-gray-50 text-gray-700"
+             aria-label="Filter by loyalty program"
+           >
+             <option value="">All Loyalty Programs</option>
+             <option value="PC Optimum">PC Optimum</option>
+             <option value="Scene+">Scene+</option>
+             <option value="Moi">Moi</option>
+             <option value="AIR MILES">AIR MILES</option>
            </select>
         </div>
       </div>
@@ -82,9 +99,7 @@ const DealsPage = () => {
           {filteredDeals.map((deal) => (
             <DealCard
                key={deal.id}
-               product={deal.product}
                deal={deal}
-               store={deal.store}
             />
           ))}
         </div>

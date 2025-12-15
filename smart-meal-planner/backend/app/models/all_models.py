@@ -15,6 +15,7 @@ class User(SQLModel, table=True):
     household_size: int
     dietary_preferences: Optional[str] = None  # JSON string or comma-separated
     allergies_json: Optional[str] = Field(default="[]")
+    preferred_loyalty_programs_json: Optional[str] = Field(default="[]")
     created_at: datetime = Field(default_factory=utc_now)
 
     ratings: List["RecipeRating"] = Relationship(back_populates="user")
@@ -58,6 +59,9 @@ class Deal(SQLModel, table=True):
     discount_pct: Optional[float] = None
     valid_from: date
     valid_until: date
+
+    loyalty_program: Optional[str] = None
+    loyalty_points: Optional[int] = None
 
     product: Product = Relationship(back_populates="deals")
     store: Store = Relationship(link_model=None) # Simple relationship

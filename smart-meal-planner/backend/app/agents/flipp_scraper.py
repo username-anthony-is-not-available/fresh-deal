@@ -20,7 +20,8 @@ Supported Canadian stores include:
 
 import asyncio
 import aiohttp
-from typing import List, Dict, Any, Optional
+import re
+from typing import List, Dict, Any, Optional, Tuple
 from dataclasses import dataclass
 import random
 
@@ -30,8 +31,17 @@ class GroceryStore:
     """Represents a grocery store in the Flipp network."""
     id: int
     name: str
-    
-    
+
+
+# Loyalty programs mapping
+LOYALTY_PROGRAMS = {
+    "PC Optimum": ["PC Optimum", "Optimum"],
+    "Scene+": ["Scene+"],
+    "Moi": ["Moi"],
+    "AIR MILES": ["AIR MILES", "Air Miles"]
+}
+
+
 # Major Canadian grocery stores on Flipp
 CANADIAN_STORES = {
     "metro": GroceryStore(2269, "Metro"),
@@ -112,6 +122,25 @@ class FlippScraper:
                 store_ids.add(CANADIAN_STORES[store_key.lower()].id)
         return store_ids if store_ids else None
     
+    def _parse_loyalty_points(self, text: str) -> Optional[Tuple[str, int]]:
+        """Parse loyalty points from text, e.g., 'Earn 2000 PC Optimum points'."""
+        if not text:
+            return None
+
+        text_lower = text.lower()
+        for program, keywords in LOYALTY_PROGRAMS.items():
+            for keyword in keywords:
+                if keyword.lower() in text_lower:
+                    # Regex to find numbers, handling commas
+                    match = re.search(r'(\d{1,3}(,\d{3})*|\d+)\s*(points)?', text_lower)
+                    if match:
+                        try:
+                            points_str = match.group(1).replace(',', '')
+                            return program, int(points_str)
+                        except (ValueError, IndexError):
+                            continue
+        return None
+
     def _parse_flyer_item(self, item: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """Parse a flyer item from the API response."""
         try:
@@ -161,6 +190,10 @@ class FlippScraper:
             # Get sale info if available
             sale_story = item.get("sale_story", "")
             
+            # Parse loyalty points
+            loyalty_info = self._parse_loyalty_points(sale_story)
+            loyalty_program, loyalty_points = loyalty_info if loyalty_info else (None, None)
+
             return {
                 "name": name,
                 "category": category,
@@ -169,6 +202,8 @@ class FlippScraper:
                 "unit": unit,
                 "store": merchant,
                 "sale_info": sale_story,
+                "loyalty_program": loyalty_program,
+                "loyalty_points": loyalty_points,
                 "image_url": item.get("clean_image_url", ""),
                 "valid_from": item.get("valid_from", ""),
                 "valid_to": item.get("valid_to", ""),
