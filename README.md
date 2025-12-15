@@ -65,6 +65,7 @@ Create `backend/.env`:
 OPENROUTER_API_KEY=your_key_here
 DATABASE_URL=postgresql://user:password@localhost:5432/mealplanner
 USE_SQLITE_LOCAL=False  # Set to True for SQLite
+PROXY_POOL=http://user:pass@proxy1.example.com:8080,http://user:pass@proxy2.example.com:8080
 ```
 
 ## API Endpoints
