@@ -35,12 +35,21 @@ class User(SQLModel, table=True):
         self.allergies_json = json.dumps(value)
 
 
+from datetime import timedelta
+
 class Store(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     name: str
     chain: str  # Walmart, Provigo, IGA
     postal_code: str
     address: Optional[str] = None
+    last_scraped_at: Optional[datetime] = Field(default=None)
+
+    @property
+    def is_stale(self) -> bool:
+        if not self.last_scraped_at:
+            return True
+        return self.last_scraped_at < datetime.now(timezone.utc) - timedelta(days=7)
 
 class Product(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
