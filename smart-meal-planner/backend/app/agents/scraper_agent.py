@@ -28,15 +28,15 @@ class ScraperAgent:
             "iga": IgaScraper(),
         }
 
-    async def scrape(self, stores: List[str], limit_per_store: int = 50) -> List[Dict[str, Any]]:
+    async def scrape(self, stores: List[str], limit_per_store: int = 50) -> Dict[str, List[Dict[str, Any]]]:
         """
         Scrapes a list of stores for grocery deals.
         For each store, it first attempts to use a direct scraper and falls back to Flipp API on failure.
         """
-        all_deals = []
+        all_deals = {}
         for store_name in stores:
             store_deals = await self._scrape_store(store_name, limit_per_store)
-            all_deals.extend(store_deals)
+            all_deals[store_name] = store_deals
         return all_deals
 
     async def _scrape_store(self, store_name: str, limit: int) -> List[Dict[str, Any]]:

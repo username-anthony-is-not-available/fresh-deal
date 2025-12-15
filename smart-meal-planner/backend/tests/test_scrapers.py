@@ -39,8 +39,10 @@ async def test_scraper_agent_orchestration_with_mocked_scrapers(session: Session
 
         # Assert
         assert len(deals) == 2
-        assert any(d["store"] == "Metro" for d in deals)
-        assert any(d["store"] == "Walmart" for d in deals)
+        assert "metro" in deals
+        assert "walmart" in deals
+        assert deals["metro"][0]["store"] == "Metro"
+        assert deals["walmart"][0]["store"] == "Walmart"
         mock_metro_scrape.assert_called_once()
         mock_walmart_scrape.assert_called_once()
 
