@@ -1,8 +1,9 @@
 from abc import ABC, abstractmethod
 import asyncio
 import random
-from playwright.async_api import async_playwright
+from playwright.async_api import async_playwright, Playwright, Page
 from typing import List, Dict, Any, Optional
+from app.core.proxy_manager import ProxyManager
 
 class BaseScraper(ABC):
     """
@@ -10,33 +11,60 @@ class BaseScraper(ABC):
     Provides a common interface and shared functionalities for browser automation.
     """
 
-    def __init__(self, headless: bool = True, proxy: Optional[str] = None):
+    def __init__(self, headless: bool = True, proxy_manager: Optional[ProxyManager] = None):
         self.headless = headless
-        self.proxy = proxy
+        self.proxy_manager = proxy_manager or ProxyManager()
         self.user_agents = [
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36",
             "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36",
         ]
 
     @abstractmethod
-    async def scrape(self, limit: int = 50) -> List[Dict[str, Any]]:
+    async def _scrape_page(self, page: Page, limit: int) -> List[Dict[str, Any]]:
         """
-        The main method to be implemented by each scraper.
-        It should navigate to the store's website, scrape the deals, and return them.
+        The main scraping logic to be implemented by each scraper subclass.
+        This method receives a configured Page object.
         """
         pass
 
-    async def _get_browser(self, playwright):
+    async def scrape(self, limit: int = 50) -> List[Dict[str, Any]]:
+        """
+        The main method that handles browser setup, teardown, and proxy rotation.
+        It calls the _scrape_page method where the actual scraping logic resides.
+        """
+        proxy = self.proxy_manager.get_proxy()
+
+        async with async_playwright() as p:
+            browser = None
+            try:
+                browser = await self._get_browser(p, proxy)
+                context = await self._get_context(browser)
+                page = await self._get_page(context)
+
+                deals = await self._scrape_page(page, limit)
+                return deals
+            except Exception as e:
+                print(f"Scraping failed with proxy {proxy}: {e}")
+                if proxy:
+                    self.proxy_manager.blacklist_proxy(proxy)
+                return []
+            finally:
+                if browser:
+                    await browser.close()
+
+    async def _get_browser(self, playwright: Playwright, proxy: Optional[str]):
         """
         Launches a new browser instance with randomized fingerprinting and proxy support.
         """
         browser_args = ["--disable-blink-features=AutomationControlled"]
-        if self.proxy:
-            browser_args.append(f"--proxy-server={self.proxy}")
+        proxy_config = None
+        if proxy:
+            proxy_config = { "server": proxy }
 
         return await playwright.chromium.launch(
             headless=self.headless,
-            args=browser_args
+            args=browser_args,
+            proxy=proxy_config
         )
 
     async def _get_context(self, browser):
