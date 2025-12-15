@@ -31,21 +31,36 @@ class MetroScraper(BaseScraper):
         for category, url in categories.items():
             if len(deals) >= limit:
                 break
-            await page.goto(url)
-            await page.wait_for_selector('.product-tile')
+            await page.goto(url, wait_until='domcontentloaded')
+            try:
+                # Handle the cookie consent banner first
+                cookie_banner_button = await page.query_selector('#onetrust-accept-btn-handler')
+                if cookie_banner_button:
+                    await page.click('#onetrust-accept-btn-handler')
+                    # Wait a bit for the banner to disappear and content to potentially load
+                    await page.wait_for_timeout(2000)
+
+                await page.wait_for_selector('.default-product-tile', timeout=20000)
+            except Exception as e:
+                print(f"Selector not found for Metro's {category} page. Saving debug info. Error: {e}")
+                await page.screenshot(path=f'metro_debug_{category}.png')
+                with open(f'metro_debug_{category}.html', 'w') as f:
+                    f.write(await page.content())
+                continue # Skip to the next category
 
             content = await page.content()
             soup = BeautifulSoup(content, 'html.parser')
 
-            product_tiles = soup.select('.product-tile')
+            product_tiles = soup.select('.default-product-tile')
             for tile in product_tiles:
                 if len(deals) >= limit:
                     break
 
                 name = tile.select_one('.head__title').text.strip() if tile.select_one('.head__title') else 'Unknown Product'
-                price_text = tile.select_one('.pricing__sale-price').text.strip() if tile.select_one('.pricing__sale-price') else '0'
-                original_price_text = tile.select_one('.pricing__regular-price').text.strip() if tile.select_one('.pricing__regular-price') else price_text
-                unit_text = tile.select_one('.pi--weight').text.strip().lower() if tile.select_one('.pi--weight') else ''
+                price_text = tile.select_one('.price-update').text.strip() if tile.select_one('.price-update') else '0'
+                # Metro does not consistently show original price, so we'll use the current price as the original.
+                original_price_text = price_text
+                unit_text = tile.select_one('.unit-price').text.strip().lower() if tile.select_one('.unit-price') else ''
 
                 price_match = re.search(r'\d+\.\d{2}', price_text.replace(',', '.'))
                 price = float(price_match.group(0)) if price_match else 0.0
