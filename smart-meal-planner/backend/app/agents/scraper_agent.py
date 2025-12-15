@@ -9,6 +9,8 @@ from .scrapers.walmart_scraper import WalmartScraper
 from .scrapers.maxi_scraper import MaxiScraper
 from .scrapers.provigo_scraper import ProvigoScraper
 from .scrapers.iga_scraper import IgaScraper
+from .scrapers.adonis_scraper import AdonisScraper
+from .scrapers.costco_scraper import CostcoScraper
 
 class ScraperAgent:
     """
@@ -26,6 +28,8 @@ class ScraperAgent:
             "maxi": MaxiScraper(),
             "provigo": ProvigoScraper(),
             "iga": IgaScraper(),
+            "adonis": AdonisScraper(postal_code=self.postal_code),
+            "costco": CostcoScraper(),
         }
 
     async def scrape(self, stores: List[str], limit_per_store: int = 50) -> Dict[str, List[Dict[str, Any]]]:
