@@ -11,7 +11,7 @@ from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 from celery.result import AsyncResult
 import json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from app.tasks import generate_meal_plan_task, scrape_task
 from app.services.user_service import UserService
 from app.schemas import UserUpdate, UserRead, RecipeRead, NutritionSummaryRead, RecipeFeedbackCreate
@@ -236,15 +236,40 @@ async def list_scrapers():
         ]
     }
 
+@router.get("/admin/status/scrapers")
+async def get_scraper_status(session: AsyncSession = Depends(get_async_session)):
+    """
+    Returns the last scraped timestamp for each store.
+    """
+    result = await session.execute(select(Store))
+    stores = result.scalars().all()
+
+    return [
+        {
+            "id": store.id,
+            "name": store.name,
+            "chain": store.chain,
+            "last_scraped_at": store.last_scraped_at,
+            "is_stale": store.is_stale,
+        }
+        for store in stores
+    ]
+
 @router.get("/deals")
 async def list_deals(
     sort_by: Optional[str] = None,
     session: AsyncSession = Depends(get_async_session)
 ):
     """List all active deals with product and store info."""
-    statement = select(Deal, Product, Store).join(Product).join(Store)
+    statement = (
+        select(Deal, Product, Store)
+        .join(Product)
+        .join(Store)
+    )
+
     if sort_by == "category":
         statement = statement.order_by(Product.category)
+
     result = await session.execute(statement)
     results = result.all()
 
@@ -257,7 +282,8 @@ async def list_deals(
             "price": deal.price,
             "original_price": deal.original_price,
             "discount_pct": deal.discount_pct,
-            "valid_until": deal.valid_until
+            "valid_until": deal.valid_until,
+            "is_stale": store.is_stale,
         })
     return deals_data
 

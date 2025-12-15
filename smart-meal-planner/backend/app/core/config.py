@@ -44,6 +44,11 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     ALGORITHM: str = "HS256"
 
+    # Scraping
+    DEFAULT_POSTAL_CODE: str = "H4T1V6"
+    SUPPORTED_STORES: list[str] = ["metro", "walmart", "maxi", "provigo", "iga"]
+    WEBHOOK_URL: str | None = None
+
     model_config = SettingsConfigDict(env_file=".env", case_sensitive=True)
 
     @model_validator(mode='after')

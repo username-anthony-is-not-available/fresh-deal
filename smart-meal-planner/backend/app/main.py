@@ -15,9 +15,13 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from app.scheduled_jobs import run_scheduled_scrape
+import os
 
 
 settings = Settings()
+scheduler = AsyncIOScheduler()
 
 
 @asynccontextmanager
@@ -33,8 +37,33 @@ async def lifespan(app: FastAPI):
         )
     logging.getLogger(__name__).info("Application startup")
     init_db()
+
+    # Scheduler
+    cron_schedule_str = os.environ.get("REFRESH_CRON_SCHEDULE", "0 6 * * *")
+    try:
+        cron_parts = cron_schedule_str.split()
+        if len(cron_parts) != 5:
+            raise ValueError("CRON schedule must have 5 parts.")
+        scheduler.add_job(
+            run_scheduled_scrape,
+            "cron",
+            minute=cron_parts[0],
+            hour=cron_parts[1],
+            day=cron_parts[2],
+            month=cron_parts[3],
+            day_of_week=cron_parts[4],
+        )
+    except ValueError as e:
+        logging.getLogger(__name__).warning(
+            f"Invalid CRON schedule '{cron_schedule_str}', falling back to default '0 6 * * *'. Error: {e}"
+        )
+        scheduler.add_job(run_scheduled_scrape, "cron", hour=6, minute=0)
+    scheduler.start()
+
     yield
+
     # Shutdown
+    scheduler.shutdown()
 
 
 app = FastAPI(
