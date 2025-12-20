@@ -8,11 +8,13 @@ afterEach(() => {
   cleanup();
 });
 
-// Mock ResizeObserver
-const ResizeObserver = vi.fn(() => ({
-    observe: vi.fn(),
-    unobserve: vi.fn(),
-    disconnect: vi.fn(),
-}));
+// Mock ResizeObserver for Recharts compatibility in tests
+class ResizeObserverMock {
+  constructor() {
+    this.observe = vi.fn();
+    this.unobserve = vi.fn();
+    this.disconnect = vi.fn();
+  }
+}
 
-vi.stubGlobal('ResizeObserver', ResizeObserver);
+vi.stubGlobal('ResizeObserver', ResizeObserverMock);
