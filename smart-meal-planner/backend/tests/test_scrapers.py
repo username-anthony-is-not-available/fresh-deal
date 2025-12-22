@@ -3,7 +3,10 @@ from sqlmodel import Session, SQLModel, create_engine, select
 from app.agents.scraper_agent import ScraperAgent
 from app.models.all_models import Store, Product, Deal
 import asyncio
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, patch, MagicMock
+from app.agents.scrapers.walmart_scraper import WalmartScraper
+from app.agents.scrapers.provigo_scraper import ProvigoScraper
+import os
 
 # In-memory SQLite database for testing
 engine = create_engine("sqlite:///:memory:")
@@ -68,3 +71,72 @@ def test_persist_deals(session: Session):
     assert len(stores) == 1
     assert deals[0].discount_pct == 33
     assert deals[1].original_price == 0.99
+
+
+@pytest.mark.asyncio
+async def test_walmart_scraper_parsing_logic():
+    """
+    Tests the parsing logic of the WalmartScraper using mock HTML content.
+    """
+    # Arrange
+    scraper = WalmartScraper()
+    mock_page = AsyncMock()
+
+    # Construct an absolute path to the mock HTML file
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    mock_html_path = os.path.join(current_dir, "mock_walmart_flyer.html")
+
+    with open(mock_html_path, "r") as f:
+        mock_html = f.read()
+
+    # Mock the navigation call and set the content
+    mock_page.goto = AsyncMock()
+    mock_page.content = AsyncMock(return_value=mock_html)
+
+    # Act
+    deals = await scraper._scrape_page(mock_page, limit=10)
+
+    # Assert
+    assert len(deals) == 2
+    assert deals[0]["name"] == "Red Seedless Grapes"
+    assert deals[0]["price"] == 2.97
+    assert deals[0]["unit"] == "lb"
+    assert deals[1]["name"] == "Wonder Bread"
+    assert deals[1]["price"] == 5.00
+
+@pytest.mark.asyncio
+async def test_provigo_scraper_parsing_logic():
+    """
+    Tests the parsing logic of the ProvigoScraper using mock HTML content.
+    """
+    # Arrange
+    scraper = ProvigoScraper()
+    mock_page = AsyncMock()
+
+    # Construct an absolute path to the mock HTML file
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    mock_html_path = os.path.join(current_dir, "mock_provigo_flyer.html")
+
+    with open(mock_html_path, "r") as f:
+        mock_html = f.read()
+
+    # Mock the navigation and interaction calls to simulate a successful run
+    mock_page.goto = AsyncMock()
+    # Configure the locator to return a mock that can be clicked
+    mock_locator = AsyncMock()
+    mock_locator.click = AsyncMock()
+    mock_page.locator.return_value = mock_locator
+    mock_page.wait_for_load_state = AsyncMock()
+    mock_page.content = AsyncMock(return_value=mock_html)
+
+    # Act
+    deals = await scraper._scrape_page(mock_page, limit=10)
+
+    # Assert
+    assert len(deals) == 2
+    assert deals[0]["name"] == "PC® Free From® Fresh Air-Chilled, Skinless Boneless Chicken Breasts"
+    assert deals[0]["price"] == 12.99
+    assert deals[0]["unit"] == "kg"
+    assert deals[1]["name"] == "Black Diamond Cheese Slices"
+    assert deals[1]["price"] == 2.49
+    assert deals[1]["unit"] == "each"
