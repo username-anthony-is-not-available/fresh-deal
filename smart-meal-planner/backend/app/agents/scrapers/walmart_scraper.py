@@ -1,10 +1,11 @@
+
 from playwright.async_api import Page
 from typing import List, Dict, Any
 from .base_scraper import BaseScraper
+from bs4 import BeautifulSoup
 import re
 import logging
 
-# Use getLogger to ensure logging is configured at the application level
 logger = logging.getLogger(__name__)
 
 class WalmartScraper(BaseScraper):
@@ -18,35 +19,34 @@ class WalmartScraper(BaseScraper):
         Scrapes the Walmart website for deals.
         """
         deals = []
-        # Updated URL to target the general flyer
         url = "https://www.walmart.ca/en/flyer"
 
         try:
-            await page.goto(url, wait_until="domcontentloaded", timeout=120000)
+            await page.goto(url, wait_until="networkidle", timeout=120000)
+            content = await page.content()
+            soup = BeautifulSoup(content, 'html.parser')
 
-            # The flyer page might have a different structure, so we adapt
-            # We will look for items within the flyer grid
-            flyer_items = await page.locator('[data-testid="flyer-item"]').all()
+            flyer_items = soup.select('[data-testid="flyer-item"]')
 
             for item in flyer_items:
                 if len(deals) >= limit:
                     break
 
                 try:
-                    name = await item.locator('[data-testid="product-name"]').inner_text()
-                    price_text = await item.locator('[data-testid="price-deal"]').inner_text()
+                    name = item.select_one('[data-testid="product-name"]').text.strip()
+                    price_text = item.select_one('[data-testid="price-deal"]').text.strip()
 
-                    price_match = re.search(r'\d+\.\d{2}', price_text.replace(',', '.'))
-                    price = float(price_match.group(0)) if price_match else 0.0
+                    price_match = re.search(r'(\d+\.\d{2})', price_text.replace(',', '.'))
+                    price = float(price_match.group(1)) if price_match else 0.0
 
-                    # Flyer items might not have original price or unit, so we handle that
-                    original_price = price
                     unit = "each"
+                    if "/lb" in price_text:
+                        unit = "lb"
 
                     deal = {
                         "name": name.strip(),
                         "price": price,
-                        "original_price": original_price,
+                        "original_price": price,
                         "unit": unit,
                         "store": self.STORE_NAME,
                         "category": "Flyer"
@@ -57,6 +57,6 @@ class WalmartScraper(BaseScraper):
                     logger.error(f"Error scraping a flyer item: {e}")
 
         except Exception as e:
-            logger.critical(f"A critical error occurred while scraping Walmart flyer: {e}")
+            logger.critical(f"A critical error occurred while scraping Walmart: {e}")
 
         return deals
