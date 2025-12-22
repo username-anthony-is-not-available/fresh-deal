@@ -1,8 +1,13 @@
 # Smart Meal Planner & Deal Aggregator
 
+[![Tests](https://github.com/username-anthony-is-not-available/fresh-deal/actions/workflows/test.yml/badge.svg)](https://github.com/username-anthony-is-not-available/fresh-deal/actions/workflows/test.yml)
+[![Lint](https://github.com/username-anthony-is-not-available/fresh-deal/actions/workflows/lint.yml/badge.svg)](https://github.com/username-anthony-is-not-available/fresh-deal/actions/workflows/lint.yml)
+[![CodeQL](https://github.com/username-anthony-is-not-available/fresh-deal/actions/workflows/codeql.yml/badge.svg)](https://github.com/username-anthony-is-not-available/fresh-deal/actions/workflows/codeql.yml)
+
 A "Walking Skeleton" Proof of Concept (POC) for an AI-powered meal planner that optimizes for grocery deals.
 
 ## Features (POC)
+
 - **Mock Scraper**: Generates realistic deal data for Walmart, Provigo, IGA, Metro, and Maxi (Quebec).
 - **Meal Planner**: AI-driven generation of **7-day meal plans** (21 meals) based on dietary preferences (Vegetarian/Vegan supported).
 - **Deal Optimization**: Prioritizes ingredients currently on sale.
@@ -12,6 +17,7 @@ A "Walking Skeleton" Proof of Concept (POC) for an AI-powered meal planner that 
 ## Key Features Demonstrated
 
 ### 🎯 Multi-Store Price Optimization
+
 - Compares prices across 5 major Quebec retailers
 - Two shopping strategies:
   - **Min Cost**: Split shopping across 2-3 stores for maximum savings (25-35% typical)
@@ -19,18 +25,21 @@ A "Walking Skeleton" Proof of Concept (POC) for an AI-powered meal planner that 
 - Real-time savings calculation
 
 ### 🍽️ AI-Powered Meal Planning
+
 - 7-day plans (21 meals) with nutritional balance
 - 50+ curated recipes covering diverse cuisines
 - Respects dietary preferences (vegetarian, vegan, gluten-free)
 - No repeated meals within 14 days
 
 ### 📊 Smart Shopping Lists
+
 - Consolidated ingredients across all meals
 - Unit conversions (kg/lb, L/cups)
 - Best price highlighting
 - Deal expiration tracking
 
 ### 🏪 Store Intelligence
+
 - Distinct inventories per retailer
 - Realistic pricing patterns
 - Quebec-specific product availability
@@ -38,15 +47,17 @@ A "Walking Skeleton" Proof of Concept (POC) for an AI-powered meal planner that 
 ## Demo Highlights
 
 ### Example Savings
+
 Based on a typical week for a family of 4:
 
-| Strategy | Stores Visited | Total Cost | Savings vs Single Store |
-|----------|---------------|------------|------------------------|
-| Min Cost | Provigo + Walmart | $88.50 | $28.20 (24%) |
-| Convenience | Provigo only | $104.30 | $12.40 (11%) |
-| Baseline (no deals) | - | $116.70 | - |
+| Strategy            | Stores Visited    | Total Cost | Savings vs Single Store |
+| ------------------- | ----------------- | ---------- | ----------------------- |
+| Min Cost            | Provigo + Walmart | $88.50     | $28.20 (24%)            |
+| Convenience         | Provigo only      | $104.30    | $12.40 (11%)            |
+| Baseline (no deals) | -                 | $116.70    | -                       |
 
 ### Sample Shopping List Optimization
+
 ```
 🛒 PROVIGO (12 items - $52.30)
   ✅ Chicken breast 2kg @ $4.99/kg [SALE 40% OFF]
@@ -63,26 +74,50 @@ Based on a typical week for a family of 4:
 ## Quick Start (5 minutes)
 
 ### Prerequisites
+
 - Python 3.11+
 - Node.js 18+
 
 ### Step 1: Backend
+
 ```bash
 cd smart-meal-planner/backend
 pip install -r requirements.txt
 USE_SQLITE_LOCAL=True uvicorn app.main:app --reload
 ```
-*The API will be available at `http://localhost:8000`*
+
+_The API will be available at `http://localhost:8000`_
 
 ### Step 2: Frontend (new terminal)
+
 ```bash
 cd smart-meal-planner/frontend
 npm install
 npm run dev
 ```
-*Access the application at `http://localhost:5173`*
+
+_Access the application at `http://localhost:5173`_
 
 **That's it! No Docker or database setup required for local development.**
+
+## Running Tests
+
+### Backend Tests
+
+```bash
+cd smart-meal-planner/backend
+pip install -r requirements.txt -r requirements-dev.txt
+python -m pytest -v
+```
+
+### Frontend Tests
+
+```bash
+cd smart-meal-planner/frontend
+npm install
+npm test -- --run      # Unit tests (Vitest)
+npm run test:e2e       # E2E tests (Playwright)
+```
 
 ## Current Limitations (MVP v0.1)
 
@@ -103,6 +138,7 @@ npm run dev
 - Bilingual support (EN/FR)
 
 ## Running with Docker (Production-like)
+
 1. Ensure you have Docker and Docker Compose installed.
 2. Create a `.env` file in the root directory (see `.env.example`).
 3. Run:
