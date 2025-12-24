@@ -6,6 +6,7 @@ import asyncio
 from unittest.mock import AsyncMock, patch, MagicMock
 from app.agents.scrapers.walmart_scraper import WalmartScraper
 from app.agents.scrapers.provigo_scraper import ProvigoScraper
+from app.agents.scrapers.iga_scraper import IgaScraper
 import os
 
 # In-memory SQLite database for testing
@@ -139,4 +140,36 @@ async def test_provigo_scraper_parsing_logic():
     assert deals[0]["unit"] == "kg"
     assert deals[1]["name"] == "Black Diamond Cheese Slices"
     assert deals[1]["price"] == 2.49
+    assert deals[1]["unit"] == "each"
+
+@pytest.mark.asyncio
+async def test_iga_scraper_parsing_logic():
+    """
+    Tests the parsing logic of the IgaScraper using mock HTML content.
+    """
+    # Arrange
+    scraper = IgaScraper()
+    mock_page = AsyncMock()
+    # Construct an absolute path to the mock HTML file
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    mock_html_path = os.path.join(current_dir, "mock_iga_flyer.html")
+    with open(mock_html_path, "r") as f:
+        mock_html = f.read()
+    # Mock the navigation and interaction calls to simulate a successful run
+    mock_page.goto = AsyncMock()
+    # Configure the locator to return a mock that can be clicked
+    mock_locator = AsyncMock()
+    mock_locator.click = AsyncMock()
+    mock_page.locator.return_value = mock_locator
+    mock_page.wait_for_load_state = AsyncMock()
+    mock_page.content = AsyncMock(return_value=mock_html)
+    # Act
+    deals = await scraper._scrape_page(mock_page, limit=10)
+    # Assert
+    assert len(deals) == 2
+    assert deals[0]["name"] == "Organic Bananas"
+    assert deals[0]["price"] == 1.99
+    assert deals[0]["unit"] == "lb"
+    assert deals[1]["name"] == "Compliments Large Eggs"
+    assert deals[1]["price"] == 3.49
     assert deals[1]["unit"] == "each"

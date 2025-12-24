@@ -1,66 +1,90 @@
-# WARNING: NON-FUNCTIONAL PLACEHOLDER
-# The CSS selectors in this scraper are placeholders and are not guaranteed to work.
-# They were written without access to the live website and must be verified and updated
-# by a developer with browser access to the target site.
+
 from playwright.async_api import Page
 from typing import List, Dict, Any
 from .base_scraper import BaseScraper
 from bs4 import BeautifulSoup
 import re
+import logging
+
+logger = logging.getLogger(__name__)
 
 class IgaScraper(BaseScraper):
     """
-    Scraper for IGA.net.
+    A functional scraper for IGA.net that handles the online flyer.
     """
     STORE_NAME = "IGA"
 
     async def _scrape_page(self, page: Page, limit: int = 50) -> List[Dict[str, Any]]:
         """
-        Scrapes the IGA website for deals.
-        # WARNING: NON-FUNCTIONAL PLACEHOLDER
-        # The CSS selectors in this scraper are placeholders and are not guaranteed to work.
-        # They were written without access to the live website and must be verified and updated
-        # by a developer with browser access to the target site.
+        Scrapes the IGA website for deals by navigating to the flyer page,
+        handling cookies, and parsing product information.
         """
         deals = []
         url = "https://www.iga.net/en/online-flyer"
 
-        await page.goto(url)
-        await page.wait_for_selector('.product-tile')
+        try:
+            logger.info("Navigating to the IGA flyer page.")
+            await page.goto(url, wait_until="networkidle", timeout=60000)
 
-        content = await page.content()
-        soup = BeautifulSoup(content, 'html.parser')
+            # Handle the cookie consent button
+            try:
+                cookie_button_selector = 'button:has-text("Accept All")'
+                await page.locator(cookie_button_selector).click(timeout=10000)
+                logger.info("Successfully clicked the 'Accept All' cookie button.")
+                await page.wait_for_load_state("networkidle", timeout=20000)
+            except Exception as e:
+                logger.warning(f"Could not find or click the cookie button: {e}")
 
-        product_tiles = soup.select('.product-tile')
-        for tile in product_tiles:
-            if len(deals) >= limit:
-                break
+            logger.info("Parsing the page content for deals.")
+            content = await page.content()
+            soup = BeautifulSoup(content, 'html.parser')
 
-            name = tile.select_one('.product-tile-name').text.strip() if tile.select_one('.product-tile-name') else 'Unknown Product'
-            price_text = tile.select_one('.product-tile-price').text.strip() if tile.select_one('.product-tile-price') else '0'
-            original_price_text = tile.select_one('.product-tile-was-price').text.strip() if tile.select_one('.product-tile-was-price') else price_text
-            unit_text = tile.select_one('.product-tile-package-size').text.strip().lower() if tile.select_one('.product-tile-package-size') else ''
+            # Using a more specific selector to target flyer items
+            product_tiles = soup.select('div[class*="product-tile-wrapper"]')
 
-            price_match = re.search(r'\d+\.\d{2}', price_text.replace(',', '.'))
-            price = float(price_match.group(0)) if price_match else 0.0
+            if not product_tiles:
+                logger.warning("No product tiles found on the page.")
+                return []
 
-            original_price_match = re.search(r'\d+\.\d{2}', original_price_text.replace(',', '.'))
-            original_price = float(original_price_match.group(0)) if original_price_match else price
+            for tile in product_tiles:
+                if len(deals) >= limit:
+                    break
 
-            unit = "each"
-            if "kg" in unit_text:
-                unit = "kg"
-            elif "lb" in unit_text:
-                unit = "lb"
+                try:
+                    name = tile.select_one('h3[class*="product-tile-name"]').text.strip()
+                    price_text = tile.select_one('div[class*="product-tile-price"]').text.strip()
 
-            deal = {
-                "name": name,
-                "price": price,
-                "original_price": original_price,
-                "unit": unit,
-                "store": self.STORE_NAME,
-                "category": "Grocery"
-            }
-            deals.append(deal)
+                    price_match = re.search(r'(\d+[\.,]\d{2})', price_text)
+                    price = float(price_match.group(1).replace(',', '.')) if price_match else 0.0
 
+                    unit_text = (tile.select_one('div[class*="product-tile-package-size"]').text.strip().lower()
+                                 if tile.select_one('div[class*="product-tile-package-size"]') else "")
+
+                    unit = "each"
+                    if "kg" in unit_text:
+                        unit = "kg"
+                    elif "lb" in unit_text or "/lb" in name.lower():
+                        unit = "lb"
+
+                    deal = {
+                        "name": name,
+                        "price": price,
+                        "original_price": price,
+                        "unit": unit,
+                        "store": self.STORE_NAME,
+                        "category": "Grocery"
+                    }
+                    deals.append(deal)
+
+                except Exception as e:
+                    logger.error(f"Error parsing a product tile: {e}")
+
+        except Exception as e:
+            logger.critical(f"A critical error occurred while scraping IGA: {e}")
+            # Save a screenshot and HTML for debugging
+            await page.screenshot(path='iga_critical_error.png')
+            with open('iga_critical_error.html', 'w', encoding='utf-8') as f:
+                f.write(await page.content())
+
+        logger.info(f"Successfully scraped {len(deals)} deals from IGA.")
         return deals
