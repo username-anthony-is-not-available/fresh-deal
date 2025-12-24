@@ -1,87 +1,96 @@
-# WARNING: NON-FUNCTIONAL PLACEHOLDER
-# The CSS selectors in this scraper are placeholders and are not guaranteed to work.
-# They were written without access to the live website and must be verified and updated
-# by a developer with browser access to the target site.
+
 from playwright.async_api import Page
 from typing import List, Dict, Any
 from .base_scraper import BaseScraper
 from bs4 import BeautifulSoup
 import re
+import logging
+
+logger = logging.getLogger(__name__)
 
 class MetroScraper(BaseScraper):
     """
-    Scraper for Metro.ca.
+    Scraper for Metro.ca. This scraper is designed to handle the flyer page.
     """
     STORE_NAME = "Metro"
 
     async def _scrape_page(self, page: Page, limit: int = 50) -> List[Dict[str, Any]]:
         """
         Scrapes the Metro website for deals.
-        # WARNING: NON-FUNCTIONAL PLACEHOLDER
-        # The CSS selectors in this scraper are placeholders and are not guaranteed to work.
-        # They were written without access to the live website and must be verified and updated
-        # by a developer with browser access to the target site.
         """
         deals = []
-        categories = {
-            "fruits-vegetables": "https://www.metro.ca/en/online-grocery/aisle/fruits-vegetables",
-            "meat-poultry": "https://www.metro.ca/en/online-grocery/aisle/meat-poultry"
-        }
+        url = "https://www.metro.ca/en/online-grocery/flyer"
 
-        for category, url in categories.items():
-            if len(deals) >= limit:
-                break
-            await page.goto(url, wait_until='domcontentloaded')
+        try:
+            logger.info("Navigating to the Metro flyer page.")
+            await page.goto(url, wait_until="networkidle", timeout=60000)
+
+            # Handle cookie consent
             try:
-                # Handle the cookie consent banner first
-                cookie_banner_button = await page.query_selector('#onetrust-accept-btn-handler')
-                if cookie_banner_button:
-                    await page.click('#onetrust-accept-btn-handler')
-                    # Wait a bit for the banner to disappear and content to potentially load
-                    await page.wait_for_timeout(2000)
-
-                await page.wait_for_selector('.default-product-tile', timeout=20000)
+                cookie_button_selector = '#onetrust-accept-btn-handler'
+                await page.locator(cookie_button_selector).click(timeout=10000)
+                logger.info("Accepted cookie consent on Metro.")
+                await page.wait_for_load_state("networkidle", timeout=20000)
             except Exception as e:
-                print(f"Selector not found for Metro's {category} page. Saving debug info. Error: {e}")
-                await page.screenshot(path=f'metro_debug_{category}.png')
-                with open(f'metro_debug_{category}.html', 'w') as f:
-                    f.write(await page.content())
-                continue # Skip to the next category
+                logger.warning(f"Could not find or click the cookie button on Metro: {e}")
 
             content = await page.content()
             soup = BeautifulSoup(content, 'html.parser')
 
             product_tiles = soup.select('.default-product-tile')
+            logger.info(f"Found {len(product_tiles)} product tiles on Metro.")
+
+            if not product_tiles:
+                logger.warning("No product tiles found on the Metro page. This could be due to anti-bot measures.")
+                await page.screenshot(path='metro_debug.png')
+                with open('metro_debug.html', 'w', encoding='utf-8') as f:
+                    f.write(await page.content())
+                return []
+
             for tile in product_tiles:
                 if len(deals) >= limit:
                     break
 
-                name = tile.select_one('.head__title').text.strip() if tile.select_one('.head__title') else 'Unknown Product'
-                price_text = tile.select_one('.price-update').text.strip() if tile.select_one('.price-update') else '0'
-                # Metro does not consistently show original price, so we'll use the current price as the original.
-                original_price_text = price_text
-                unit_text = tile.select_one('.unit-price').text.strip().lower() if tile.select_one('.unit-price') else ''
+                try:
+                    name_element = tile.select_one('.head__title')
+                    price_element = tile.select_one('.price-update')
 
-                price_match = re.search(r'\d+\.\d{2}', price_text.replace(',', '.'))
-                price = float(price_match.group(0)) if price_match else 0.0
+                    if not name_element or not price_element:
+                        continue
 
-                original_price_match = re.search(r'\d+\.\d{2}', original_price_text.replace(',', '.'))
-                original_price = float(original_price_match.group(0)) if original_price_match else price
+                    name = name_element.text.strip()
+                    price_text = price_element.text.strip()
 
-                unit = "each"
-                if "kg" in unit_text:
-                    unit = "kg"
-                elif "lb" in unit_text:
-                    unit = "lb"
+                    price_match = re.search(r'(\d+\.\d{2})', price_text.replace(',', '.'))
+                    price = float(price_match.group(1)) if price_match else 0.0
 
-                deal = {
-                    "name": name,
-                    "price": price,
-                    "original_price": original_price,
-                    "unit": unit,
-                    "store": self.STORE_NAME,
-                    "category": category
-                }
-                deals.append(deal)
+                    unit_element = tile.select_one('.unit-price')
+                    unit_text = unit_element.text.strip().lower() if unit_element else ""
 
+                    unit = "each"
+                    if "kg" in unit_text:
+                        unit = "kg"
+                    elif "lb" in unit_text:
+                        unit = "lb"
+
+                    deal = {
+                        "name": name,
+                        "price": price,
+                        "original_price": price,
+                        "unit": unit,
+                        "store": self.STORE_NAME,
+                        "category": "Grocery"
+                    }
+                    deals.append(deal)
+
+                except Exception as e:
+                    logger.error(f"Error parsing a Metro product tile: {e}")
+
+        except Exception as e:
+            logger.critical(f"A critical error occurred while scraping Metro: {e}")
+            await page.screenshot(path='metro_critical_error.png')
+            with open('metro_critical_error.html', 'w', encoding='utf-8') as f:
+                f.write(await page.content())
+
+        logger.info(f"Scraped {len(deals)} deals from Metro.")
         return deals

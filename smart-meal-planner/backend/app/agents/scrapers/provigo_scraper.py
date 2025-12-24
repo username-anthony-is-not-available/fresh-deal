@@ -23,7 +23,8 @@ class ProvigoScraper(BaseScraper):
         url = "https://www.provigo.ca/en/flyer"
 
         try:
-            await page.goto(url, wait_until="domcontentloaded", timeout=60000)
+            logger.info("Navigating to the Provigo flyer page.")
+            await page.goto(url, wait_until="networkidle", timeout=60000)
 
             cookie_button_selector = 'button:has-text("Accept All")'
             try:
@@ -37,7 +38,15 @@ class ProvigoScraper(BaseScraper):
             soup = BeautifulSoup(content, 'html.parser')
 
             product_tiles = soup.select('[data-testid="product-tile"]')
-            logger.info(f"Found {len(product_tiles)} product tiles.")
+            logger.info(f"Found {len(product_tiles)} product tiles on Provigo.")
+
+            if not product_tiles:
+                logger.warning("No product tiles found on the Provigo page. This could be due to anti-bot measures.")
+                await page.screenshot(path='provigo_debug.png')
+                with open('provigo_debug.html', 'w', encoding='utf-8') as f:
+                    f.write(await page.content())
+                return []
+
 
             for tile in product_tiles:
                 if len(deals) >= limit:
@@ -45,10 +54,13 @@ class ProvigoScraper(BaseScraper):
 
                 try:
                     name_element = tile.select_one('[data-testid="product-title"]')
-                    name = name_element.text.strip() if name_element else "Unknown Product"
-
                     price_element = tile.select_one('.price__value')
-                    price_text = price_element.text.strip() if price_element else "0"
+
+                    if not name_element or not price_element:
+                        continue
+
+                    name = name_element.text.strip()
+                    price_text = price_element.text.strip()
 
                     price_match = re.search(r'(\d+\.\d{2})', price_text.replace(',', '.'))
                     price = float(price_match.group(1)) if price_match else 0.0
@@ -73,9 +85,14 @@ class ProvigoScraper(BaseScraper):
                     deals.append(deal)
 
                 except Exception as e:
-                    logger.error(f"Error parsing a product tile: {e}")
+                    logger.error(f"Error parsing a Provigo product tile: {e}")
 
         except Exception as e:
             logger.critical(f"A critical error occurred while scraping Provigo: {e}")
+            await page.screenshot(path='provigo_critical_error.png')
+            with open('provigo_critical_error.html', 'w', encoding='utf-8') as f:
+                f.write(await page.content())
 
+
+        logger.info(f"Scraped {len(deals)} deals from Provigo.")
         return deals
