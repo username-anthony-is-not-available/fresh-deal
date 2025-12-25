@@ -1,5 +1,9 @@
 
 import React, { useEffect, useState, useCallback } from 'react';
+import { DndProvider } from 'react-dnd';
+import { HTML5Backend } from 'react-dnd-html5-backend';
+import DraggableMealCard from '../components/DraggableMealCard';
+import MealSlot from '../components/MealSlot';
 import MealCard from '../components/MealCard';
 import { RefreshCw, Calendar as CalendarIcon, Lightbulb } from 'lucide-react';
 import api from '../services/api';
@@ -175,10 +179,41 @@ const MealPlanPage = () => {
   const endDate = planDays.length > 0 ? planDays[planDays.length - 1].date : "";
   const dateRange = startDate && endDate ? `${startDate} - ${endDate}` : "This Week";
 
+  const handleDrop = (item, target) => {
+    const { day: sourceDay, type: sourceType } = item;
+    const { day: targetDay, type: targetType } = target;
+
+    setPlan(currentPlan => {
+      // Deep copy the plan to avoid direct state mutation
+      const newPlan = JSON.parse(JSON.stringify(currentPlan));
+
+      const sourceDayIndex = newPlan.meal_plan.findIndex(d => d.day === sourceDay.day);
+      const targetDayIndex = newPlan.meal_plan.findIndex(d => d.day === targetDay.day);
+
+      if (sourceDayIndex === -1 || targetDayIndex === -1) return currentPlan;
+
+      const sourceMeals = newPlan.meal_plan[sourceDayIndex].meals;
+      const targetMeals = newPlan.meal_plan[targetDayIndex].meals;
+
+      const sourceMealIndex = sourceMeals.findIndex(m => m.type === sourceType);
+      const targetMealIndex = targetMeals.findIndex(m => m.type === targetType);
+
+      if (sourceMealIndex === -1 || targetMealIndex === -1) return currentPlan;
+
+      // Swap the meals
+      const tempMeal = sourceMeals[sourceMealIndex];
+      sourceMeals[sourceMealIndex] = targetMeals[targetMealIndex];
+      targetMeals[targetMealIndex] = tempMeal;
+
+      return newPlan;
+    });
+  };
+
   return (
-    <div>
-      <div className="flex items-center justify-between mb-8">
-        <div>
+    <DndProvider backend={HTML5Backend}>
+      <div>
+        <div className="flex items-center justify-between mb-8">
+          <div>
           <h1 className="text-3xl font-bold text-gray-900">Weekly Meal Plan</h1>
           <p className="text-gray-500">{dateRange}</p>
         </div>
@@ -215,15 +250,15 @@ const MealPlanPage = () => {
                 </div>
                 <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
                   {meals.map((meal, idx) => (
-                    <div key={idx} className="flex flex-col h-full">
-                      <MealCard type={meal.type} meal={{name: meal.recipe_name || meal.name, ...meal}} />
+                    <MealSlot key={idx} day={day} type={meal.type} onDrop={handleDrop}>
+                      <DraggableMealCard meal={{name: meal.recipe_name || meal.name, ...meal}} day={day} type={meal.type} />
                       {meal.reason && (
                         <div className="mt-2 text-xs text-blue-600 bg-blue-50 p-2 rounded flex gap-2 items-start">
                           <Lightbulb className="w-3 h-3 mt-0.5 flex-shrink-0" />
                           <span>{meal.reason}</span>
                         </div>
                       )}
-                    </div>
+                    </MealSlot>
                   ))}
                 </div>
               </div>
@@ -265,6 +300,7 @@ const MealPlanPage = () => {
         </div>
       </div>
     </div>
+    </DndProvider>
   );
 };
 
