@@ -105,6 +105,9 @@ class MealPlannerAgent:
                 if all(pref in r.get("tags", []) for pref in user.dietary_preferences)
             ]
 
+        # Sort by rating, putting highly-rated recipes first
+        filtered_recipes.sort(key=lambda r: r.get("average_rating") or 2.5, reverse=True)
+
         try:
             plan = self.llm_service.generate_meal_plan(user_prefs, deals, filtered_recipes, favorite_recipe_ids)
             validated_plan = self._validate_and_enrich(plan)

@@ -1,17 +1,23 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import api from '../services/api';
+import StarRating from '../components/StarRating';
+import RecipeFeedbackForm from '../components/RecipeFeedbackForm';
 
 const RecipeDetailPage = () => {
   const { id } = useParams();
   const [recipe, setRecipe] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [userRating, setUserRating] = useState(0);
 
   useEffect(() => {
     const fetchRecipe = async () => {
       try {
         const data = await api.get(`/recipes/${id}`);
         setRecipe(data);
+        // In a real app, you'd fetch the user's existing rating here
+        // For now, we'll just use the average rating as the initial display
+        setUserRating(Math.round(data.average_rating));
       } catch (e) {
         console.warn("Failed to fetch recipe", e);
       } finally {
@@ -20,6 +26,15 @@ const RecipeDetailPage = () => {
     };
     fetchRecipe();
   }, [id]);
+
+  const handleRatingSubmit = (newRating) => {
+    setUserRating(newRating);
+    // Optimistically update the average rating
+    setRecipe((prevRecipe) => ({
+      ...prevRecipe,
+      average_rating: (prevRecipe.average_rating + newRating) / 2, // simplified update
+    }));
+  };
 
   if (loading) {
     return <div>Loading...</div>;
@@ -30,12 +45,24 @@ const RecipeDetailPage = () => {
   }
 
   return (
-    <div>
+    <div className="container mx-auto p-4">
       <h1 className="text-3xl font-bold">{recipe.name}</h1>
       <p className="text-gray-500">{recipe.cuisine}</p>
-      <div className="mt-4">
-        <h2 className="text-xl font-bold">Ingredients</h2>
-        <ul>
+
+      <div className="mt-4 flex items-center space-x-2">
+        <StarRating
+          recipeId={id}
+          initialRating={userRating}
+          onRatingSubmit={handleRatingSubmit}
+        />
+        <span className="text-gray-600">
+          ({recipe.average_rating.toFixed(1)} average rating)
+        </span>
+      </div>
+
+      <div className="mt-8">
+        <h2 className="text-2xl font-bold">Ingredients</h2>
+        <ul className="list-disc list-inside mt-2">
           {recipe.ingredients.map((ingredient) => (
             <li key={ingredient}>
               {ingredient}
@@ -47,6 +74,11 @@ const RecipeDetailPage = () => {
             </li>
           ))}
         </ul>
+      </div>
+
+      <div className="mt-8">
+        <h2 className="text-2xl font-bold">Leave Feedback</h2>
+        <RecipeFeedbackForm recipeId={id} />
       </div>
     </div>
   );
