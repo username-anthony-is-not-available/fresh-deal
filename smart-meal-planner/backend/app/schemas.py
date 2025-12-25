@@ -41,6 +41,7 @@ class RecipeRead(BaseModel):
     ingredients: List[str] = []
     substitutions: Dict[str, List[str]] = {}
     allergens: list[str] = []
+    average_rating: float = 0
 
     class Config:
         orm_mode = True

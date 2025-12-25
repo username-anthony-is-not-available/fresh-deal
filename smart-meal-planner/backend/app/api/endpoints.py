@@ -17,7 +17,7 @@ from app.models.all_models import (
 )
 from app.agents.flipp_scraper import CANADIAN_STORES
 
-# from app.agents.mock_scraper import MockScraperAgent
+from app.agents.mock_scraper import MockScraperAgent
 from app.services.shopping_optimizer import ShoppingListOptimizer
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
@@ -65,7 +65,16 @@ async def list_recipes(
     session: AsyncSession = Depends(get_async_session),
 ):
     """List all recipes with optional search and filters."""
-    statement = select(Recipe).distinct()
+    statement = (
+        select(
+            Recipe,
+            func.coalesce(func.avg(RecipeRating.rating), 0).label("average_rating"),
+        )
+        .outerjoin(RecipeRating, Recipe.id == RecipeRating.recipe_id)
+        .group_by(Recipe.id)
+        .distinct()
+    )
+
     if search:
         statement = statement.join(RecipeIngredient).where(
             func.lower(Recipe.name).contains(func.lower(search))
@@ -75,9 +84,17 @@ async def list_recipes(
         statement = statement.where(func.lower(Recipe.cuisine) == func.lower(cuisine))
     if prep_time:
         statement = statement.where(Recipe.prep_time_minutes <= prep_time)
+
     result = await session.execute(statement)
-    recipes = result.scalars().all()
-    return recipes
+    recipes_with_ratings = result.all()
+
+    response = []
+    for recipe, average_rating in recipes_with_ratings:
+        recipe_data = recipe.dict()
+        recipe_data["average_rating"] = average_rating
+        response.append(RecipeRead(**recipe_data))
+
+    return response
 
 
 from app.services.substitution_service import substitution_service
@@ -87,25 +104,63 @@ from app.services.substitution_service import substitution_service
 async def get_recipe(
     recipe_id: int, session: AsyncSession = Depends(get_async_session)
 ):
-    result = await session.execute(select(Recipe).where(Recipe.id == recipe_id))
-    recipe = result.scalars().one_or_none()
-    if not recipe:
+    statement = (
+        select(
+            Recipe,
+            func.coalesce(func.avg(RecipeRating.rating), 0).label("average_rating"),
+        )
+        .outerjoin(RecipeRating, Recipe.id == RecipeRating.recipe_id)
+        .where(Recipe.id == recipe_id)
+        .group_by(Recipe.id)
+    )
+    result = await session.execute(statement)
+    result_tuple = result.one_or_none()
+
+    if not result_tuple:
         raise HTTPException(status_code=404, detail="Recipe not found")
 
-    # Manually load ingredients
+    recipe, average_rating = result_tuple
+
     ingredients_result = await session.execute(
         select(RecipeIngredient).where(RecipeIngredient.recipe_id == recipe_id)
     )
     ingredients = ingredients_result.scalars().all()
     ingredient_names = [ing.name for ing in ingredients]
-
     substitutions = substitution_service.get_substitutions(ingredient_names)
 
     recipe_data = recipe.dict()
     recipe_data["ingredients"] = ingredient_names
     recipe_data["substitutions"] = substitutions
+    recipe_data["average_rating"] = average_rating
 
     return RecipeRead(**recipe_data)
+
+
+@router.get("/recipes/top-rated", response_model=List[RecipeRead])
+async def get_top_rated_recipes(
+    limit: int = 10, session: AsyncSession = Depends(get_async_session)
+):
+    """Returns the top-rated recipes."""
+    statement = (
+        select(
+            Recipe,
+            func.coalesce(func.avg(RecipeRating.rating), 0).label("average_rating"),
+        )
+        .outerjoin(RecipeRating, Recipe.id == RecipeRating.recipe_id)
+        .group_by(Recipe.id)
+        .order_by(func.coalesce(func.avg(RecipeRating.rating), 0).desc())
+        .limit(limit)
+    )
+    result = await session.execute(statement)
+    recipes_with_ratings = result.all()
+
+    response = []
+    for recipe, average_rating in recipes_with_ratings:
+        recipe_data = recipe.dict()
+        recipe_data["average_rating"] = average_rating
+        response.append(RecipeRead(**recipe_data))
+
+    return response
 
 
 @router.post("/recipes/{recipe_id}/rate")
@@ -261,9 +316,9 @@ async def get_nutrition_summary(
 @router.post("/data/seed")
 def seed_data(session: Session = Depends(get_session)):
     # Keep synchronous as it's a dev tool and uses MockScraperAgent which might be sync
-    # scraper = MockScraperAgent(session)
-    # count = scraper.generate_deals()
-    return {"message": f"Seeded database with {0} deals."}
+    scraper = MockScraperAgent(session)
+    count = scraper.generate_deals()
+    return {"message": f"Seeded database with {count} deals."}
 
 
 class ScrapeRequest(BaseModel):
