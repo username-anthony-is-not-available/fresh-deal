@@ -13,7 +13,7 @@ class User(SQLModel, table=True):
     is_active: bool = Field(default=True)
     postal_code: str
     household_size: int
-    dietary_preferences: Optional[str] = None  # JSON string or comma-separated
+    dietary_preferences_json: Optional[str] = Field(default="[]")
     allergies_json: Optional[str] = Field(default="[]")
     preferred_loyalty_programs_json: Optional[str] = Field(default="[]")
     created_at: datetime = Field(default_factory=utc_now)
@@ -33,6 +33,16 @@ class User(SQLModel, table=True):
     @allergies.setter
     def allergies(self, value: List[str]):
         self.allergies_json = json.dumps(value)
+
+    @property
+    def dietary_preferences(self) -> List[str]:
+        if self.dietary_preferences_json:
+            return json.loads(self.dietary_preferences_json)
+        return []
+
+    @dietary_preferences.setter
+    def dietary_preferences(self, value: List[str]):
+        self.dietary_preferences_json = json.dumps(value)
 
 
 from datetime import timedelta

@@ -97,8 +97,16 @@ class MealPlannerAgent:
         fav_statement = select(UserFavorite.recipe_id).where(UserFavorite.user_id == user.id)
         favorite_recipe_ids = self.session.exec(fav_statement).all()
 
+        # Filter recipes based on dietary preferences
+        filtered_recipes = self.recipes
+        if user.dietary_preferences:
+            filtered_recipes = [
+                r for r in self.recipes
+                if all(pref in r.get("tags", []) for pref in user.dietary_preferences)
+            ]
+
         try:
-            plan = self.llm_service.generate_meal_plan(user_prefs, deals, self.recipes, favorite_recipe_ids)
+            plan = self.llm_service.generate_meal_plan(user_prefs, deals, filtered_recipes, favorite_recipe_ids)
             validated_plan = self._validate_and_enrich(plan)
             return validated_plan
         except Exception as e:
