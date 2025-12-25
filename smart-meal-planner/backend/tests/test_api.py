@@ -67,7 +67,7 @@ async def test_register(client: AsyncClient):
             "password": "password",
             "postal_code": "H4T 1V6",
             "household_size": 2,
-            "dietary_preferences": "None",
+            "dietary_preferences": [],
         },
     )
     assert response.status_code == 200
@@ -86,7 +86,7 @@ async def test_get_user(client: AsyncClient):
     # First, create a user to fetch
     onboard_response = await client.post(
         "/api/onboard",
-        json={"email": "test@test.com", "password": "password", "postal_code": "H1A 1A1", "household_size": 1, "dietary_preferences": "Vegetarian"}
+        json={"email": "test@test.com", "password": "password", "postal_code": "H1A 1A1", "household_size": 1, "dietary_preferences": ["vegetarian"]}
     )
     user_id = onboard_response.json()["id"]
 
@@ -97,14 +97,14 @@ async def test_get_user(client: AsyncClient):
     assert data["id"] == user_id
     assert data["postal_code"] == "H1A 1A1"
     assert data["household_size"] == 1
-    assert data["dietary_preferences"] == "Vegetarian"
+    assert data["dietary_preferences"] == ["vegetarian"]
 
 @pytest.mark.asyncio
 async def test_update_user(client: AsyncClient):
     # First, create a user to update
     onboard_response = await client.post(
         "/api/onboard",
-        json={"email": "test@test.com", "password": "password", "postal_code": "H2B 2B2", "household_size": 3, "dietary_preferences": "None"}
+        json={"email": "test@test.com", "password": "password", "postal_code": "H2B 2B2", "household_size": 3, "dietary_preferences": []}
     )
     user_id = onboard_response.json()["id"]
 
@@ -117,7 +117,7 @@ async def test_update_user(client: AsyncClient):
     assert data["id"] == user_id
     assert data["postal_code"] == "J7Y 5K2"
     assert data["household_size"] == 4
-    assert data["dietary_preferences"] == "None" # Should not be changed
+    assert data["dietary_preferences"] == [] # Should not be changed
 
     # Verify the changes by fetching the user again
     get_response = await client.get(f"/api/users/{user_id}")

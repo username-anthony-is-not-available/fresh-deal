@@ -44,8 +44,18 @@ const MealPlanPage = () => {
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState(null);
+  const [dietaryPreferences, setDietaryPreferences] = useState([]);
 
   const userId = localStorage.getItem('user_id') || 1;
+
+  const dietaryOptions = ["vegetarian", "vegan", "gluten-free", "keto", "paleo"];
+
+  const handleDietaryChange = (e) => {
+    const { value, checked } = e.target;
+    setDietaryPreferences(prev =>
+      checked ? [...prev, value] : prev.filter(pref => pref !== value)
+    );
+  };
 
   const fetchLatestPlan = useCallback(async () => {
     setLoading(true);
@@ -90,6 +100,10 @@ const MealPlanPage = () => {
     setGenerating(true);
     setError(null);
     try {
+      // First, update the user's dietary preferences
+      await api.patch(`/users/${userId}`, { dietary_preferences: dietaryPreferences });
+
+      // Then, trigger the meal plan generation
       const data = await api.post(`/plans/generate?user_id=${userId}`);
       if (data.task_id) {
         pollTaskStatus(data.task_id);
@@ -117,6 +131,24 @@ const MealPlanPage = () => {
         <p className="text-gray-500 mb-8 max-w-md mx-auto">
           Generate your first 7-day meal plan based on this week's best grocery deals.
         </p>
+
+        <div className="max-w-md mx-auto mb-8">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            {dietaryOptions.map(option => (
+              <label key={option} className="flex items-center space-x-3">
+                <input
+                  type="checkbox"
+                  value={option}
+                  checked={dietaryPreferences.includes(option)}
+                  onChange={handleDietaryChange}
+                  className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                />
+                <span className="text-sm text-gray-700">{option.charAt(0).toUpperCase() + option.slice(1)}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+
         <button
           onClick={generatePlan}
           className="bg-primary-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-primary-700 shadow-lg transition-all hover:scale-105"

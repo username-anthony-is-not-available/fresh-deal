@@ -11,12 +11,15 @@ from app.core.limiter import limiter
 router = APIRouter()
 
 
+import json
+from typing import List
+
 class UserCreate(BaseModel):
     email: str
     password: str
     postal_code: str
     household_size: int
-    dietary_preferences: str
+    dietary_preferences: List[str]
 
 
 @router.post("/register", response_model=User, summary="Register a new user")
@@ -33,7 +36,7 @@ async def register(user_in: UserCreate, session: AsyncSession = Depends(get_asyn
         hashed_password=hashed_password,
         postal_code=user_in.postal_code,
         household_size=user_in.household_size,
-        dietary_preferences=user_in.dietary_preferences,
+        dietary_preferences_json=json.dumps(user_in.dietary_preferences),
     )
     session.add(user)
     await session.commit()

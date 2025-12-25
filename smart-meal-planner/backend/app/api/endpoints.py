@@ -50,7 +50,7 @@ class UserCreate(BaseModel):
     password: str
     postal_code: str
     household_size: int
-    dietary_preferences: str
+    dietary_preferences: List[str]
 
 
 class RecipeRatingCreate(BaseModel):
@@ -217,7 +217,7 @@ async def onboard_user(
         hashed_password=user_in.password,  # In a real app, you'd hash this
         postal_code=user_in.postal_code,
         household_size=user_in.household_size,
-        dietary_preferences=user_in.dietary_preferences,
+        dietary_preferences_json=json.dumps(user_in.dietary_preferences),
     )
     session.add(user)
     await session.commit()

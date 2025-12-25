@@ -42,7 +42,10 @@ describe('SettingsPage', () => {
     expect(postalCodeInput).toBeInTheDocument();
 
     expect(screen.getByLabelText('household_size')).toHaveValue('4');
-    expect(screen.getByLabelText('dietary_preferences')).toHaveValue('None');
+
+    // Check that no dietary preferences are selected
+    const vegetarianCheckbox = await screen.findByLabelText('vegetarian');
+    expect(vegetarianCheckbox).not.toBeChecked();
   });
 
   it('updates form data on input change', async () => {

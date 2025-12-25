@@ -4,7 +4,7 @@ from typing import Optional, List, Dict
 class UserUpdate(BaseModel):
     postal_code: Optional[str] = None
     household_size: Optional[int] = None
-    dietary_preferences: Optional[str] = None
+    dietary_preferences: Optional[List[str]] = None
     allergies: Optional[list[str]] = None
     preferred_loyalty_programs: Optional[list[str]] = None
 
@@ -12,7 +12,7 @@ class UserUpdate(BaseModel):
         schema_extra = {
             "example": {
                 "household_size": 2,
-                "dietary_preferences": "vegetarian"
+                "dietary_preferences": ["vegetarian", "gluten-free"]
             }
         }
 
@@ -20,7 +20,7 @@ class UserRead(BaseModel):
     id: int
     postal_code: str
     household_size: int
-    dietary_preferences: Optional[str] = None
+    dietary_preferences: Optional[List[str]] = None
     allergies: Optional[list[str]] = None
     preferred_loyalty_programs: Optional[list[str]] = None
 

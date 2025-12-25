@@ -6,12 +6,14 @@ import SettingsService from '../services/SettingsService';
 import { useAuth } from '../context/AuthContext.jsx';
 import NutritionGoalSettings from '../components/NutritionGoalSettings';
 
+const dietaryOptions = ["vegetarian", "vegan", "gluten-free", "keto", "paleo"];
+
 const SettingsPage = () => {
   const { t, i18n } = useTranslation();
   const [formData, setFormData] = useState({
     postal_code: 'H4T 1V6',
     household_size: 4,
-    dietary_preferences: 'None',
+    dietary_preferences: [],
     budget_limit: 200,
     excluded_ingredients: ''
   });
@@ -23,6 +25,16 @@ const SettingsPage = () => {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
+  const handleDietaryChange = (e) => {
+    const { value, checked } = e.target;
+    setFormData(prev => {
+      const newPreferences = checked
+        ? [...prev.dietary_preferences, value]
+        : prev.dietary_preferences.filter(pref => pref !== value);
+      return { ...prev, dietary_preferences: newPreferences };
+    });
+  };
+
   useEffect(() => {
     if (!currentUser) return;
 
@@ -32,7 +44,7 @@ const SettingsPage = () => {
         setFormData({
           postal_code: response.data.postal_code,
           household_size: response.data.household_size,
-          dietary_preferences: response.data.dietary_preferences || 'None',
+          dietary_preferences: response.data.dietary_preferences || [],
           budget_limit: 200, // Not in model, keeping in state for now
           excluded_ingredients: '' // Not in model
         });
@@ -42,7 +54,7 @@ const SettingsPage = () => {
       }
     };
     fetchSettings();
-  }, []);
+  }, [currentUser, t]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -101,21 +113,22 @@ const SettingsPage = () => {
           </div>
 
           <div>
-             <label htmlFor="dietary_preferences" className="block text-sm font-medium text-gray-700 mb-1">{t('dietary_preferences')}</label>
-             <select
-                id="dietary_preferences"
-                name="dietary_preferences"
-                value={formData.dietary_preferences}
-                onChange={handleChange}
-                className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm p-2.5 border"
-             >
-               <option value="None">{t('no_restrictions')}</option>
-               <option value="Vegetarian">{t('vegetarian')}</option>
-               <option value="Vegan">{t('vegan')}</option>
-               <option value="Gluten-Free">{t('gluten_free')}</option>
-               <option value="Keto">{t('keto')}</option>
-               <option value="Paleo">{t('paleo')}</option>
-             </select>
+            <label className="block text-sm font-medium text-gray-700 mb-2">{t('dietary_preferences')}</label>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              {dietaryOptions.map(option => (
+                <label key={option} className="flex items-center space-x-3">
+                  <input
+                    type="checkbox"
+                    name="dietary_preferences"
+                    value={option}
+                    checked={formData.dietary_preferences.includes(option)}
+                    onChange={handleDietaryChange}
+                    className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                  />
+                  <span className="text-sm text-gray-700">{t(option)}</span>
+                </label>
+              ))}
+            </div>
           </div>
 
           <div>
