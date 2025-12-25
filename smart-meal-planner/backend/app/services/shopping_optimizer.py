@@ -342,6 +342,26 @@ class ShoppingListOptimizer:
             })
         single_store_formatted.sort(key=lambda x: (x["missing_count"], x["total"]))
 
+        # Create detailed comparison data
+        detailed_comparison = []
+        all_store_names = sorted(list(all_stores))
+        for item in priced_items:
+            ingredient_details = {
+                "ingredient": item["ingredient"],
+                "quantity": item["quantity"],
+                "unit": item["unit"],
+                "prices": {}
+            }
+            # Create a map of store_name -> price for the current item
+            options_by_store = {opt["store_name"]: opt["price"] for opt in item["options"]}
+
+            # Populate prices for all known stores, using None if not available
+            for store_name in all_store_names:
+                price = options_by_store.get(store_name)
+                ingredient_details["prices"][store_name] = round(price * item["quantity"], 2) if price is not None else None
+
+            detailed_comparison.append(ingredient_details)
+
         return {
             "strategy": strategy,
             "recommended_stores": recommended_stores,
@@ -349,5 +369,7 @@ class ShoppingListOptimizer:
             "total_savings": round(total_estimated_savings, 2),
             "total_regular_cost": round(total_cost_regular, 2),
             "unmatched_items": [u["ingredient"] for u in unmatched_items],
-            "single_store_comparison": single_store_formatted
+            "single_store_comparison": single_store_formatted,
+            "detailed_comparison": detailed_comparison,
+            "all_stores": all_store_names,
         }

@@ -2,13 +2,15 @@
 import React, { useState, useEffect } from 'react';
 import ShoppingListItem from '../components/ShoppingListItem';
 import StoreComparison from '../components/StoreComparison';
-import { Download, Share2, TrendingDown, MapPin, DollarSign } from 'lucide-react';
+import IngredientPriceComparison from '../components/IngredientPriceComparison';
+import { Download, Share2, TrendingDown, MapPin, DollarSign, ListCollapse } from 'lucide-react';
 import api from '../services/api';
 
 const ShoppingListPage = () => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [strategy, setStrategy] = useState("min_cost");
+  const [showDetailed, setShowDetailed] = useState(false);
   const userId = localStorage.getItem('user_id') || 1;
 
   useEffect(() => {
@@ -69,6 +71,13 @@ const ShoppingListPage = () => {
               <button className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg">
                  <Share2 className="w-5 h-5" />
               </button>
+              <button
+                  onClick={() => setShowDetailed(!showDetailed)}
+                  className="p-2 px-3 text-gray-600 hover:bg-gray-100 rounded-lg flex items-center gap-2 border border-gray-300 bg-white"
+                >
+                   <ListCollapse className="w-5 h-5" />
+                   <span className="text-sm font-medium">{showDetailed ? 'Hide' : 'Show'} Details</span>
+                </button>
            </div>
         </div>
 
@@ -128,6 +137,13 @@ const ShoppingListPage = () => {
                        ))}
                    </ul>
                </div>
+           )}
+
+           {showDetailed && data.detailed_comparison && (
+             <IngredientPriceComparison
+               detailedComparison={data.detailed_comparison}
+               allStores={data.all_stores}
+             />
            )}
         </div>
       </div>
