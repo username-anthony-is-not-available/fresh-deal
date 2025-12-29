@@ -108,11 +108,12 @@ def test_single_store_comparison(mock_session):
 
     # Check single store comparison
     comp = result["single_store_comparison"]
-    store_a = next(s for s in comp if s["store"] == "Store A")
-    store_b = next(s for s in comp if s["store"] == "Store B")
+    store_a = next(s for s in comp if s["name"] == "Store A")
+    store_b = next(s for s in comp if s["name"] == "Store B")
 
     assert store_a["total"] == 5.00
-    assert store_a["missing_count"] == 0
-
     assert store_b["total"] == 1.50
-    assert store_b["missing_count"] == 1
+    assert store_a["items_count"] == 2
+    assert store_b["items_count"] == 1
+    # Check that store_a is ranked higher (comes first) because it has no missing items
+    assert comp[0]["name"] == "Store A"
