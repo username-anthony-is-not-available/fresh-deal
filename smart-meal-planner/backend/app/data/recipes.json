@@ -52,6 +52,7 @@
       "quick",
       "family-friendly"
     ],
+    "dietary_tags": [],
     "allergens": [
       "gluten",
       "soy"
@@ -109,6 +110,7 @@
       "comfort-food",
       "family-friendly"
     ],
+    "dietary_tags": [],
     "allergens": [
       "gluten"
     ]
@@ -160,6 +162,7 @@
       "high-protein",
       "pescatarian"
     ],
+    "dietary_tags": ["gluten-free", "pescatarian"],
     "allergens": [
       "fish"
     ]
@@ -217,6 +220,7 @@
       "vegan",
       "gluten-free"
     ],
+    "dietary_tags": ["vegetarian", "vegan", "gluten-free"],
     "allergens": [
       "dairy"
     ]
@@ -272,6 +276,7 @@
       "family-friendly",
       "quick"
     ],
+    "dietary_tags": [],
     "allergens": [
       "dairy",
       "gluten"
@@ -321,6 +326,7 @@
       "vegetarian",
       "healthy"
     ],
+    "dietary_tags": ["vegetarian"],
     "allergens": [
       "dairy",
       "gluten"
@@ -365,6 +371,7 @@
       "vegetarian",
       "quick"
     ],
+    "dietary_tags": ["vegetarian"],
     "allergens": [
       "dairy",
       "eggs",
@@ -421,6 +428,7 @@
       "healthy",
       "high-protein"
     ],
+    "dietary_tags": [],
     "allergens": [
       "dairy",
       "gluten"
@@ -474,6 +482,7 @@
       "quick",
       "kid-friendly"
     ],
+    "dietary_tags": [],
     "allergens": [
       "dairy",
       "eggs",
@@ -531,6 +540,7 @@
       "comfort-food",
       "family-friendly"
     ],
+    "dietary_tags": ["gluten-free"],
     "allergens": [
       "dairy"
     ]
@@ -580,6 +590,7 @@
       "gluten-free",
       "seasonal"
     ],
+    "dietary_tags": ["gluten-free"],
     "allergens": []
   },
   {
@@ -633,6 +644,7 @@
       "healthy",
       "meal-prep"
     ],
+    "dietary_tags": ["vegetarian", "gluten-free"],
     "allergens": []
   },
   {
@@ -685,6 +697,7 @@
       "vegetarian",
       "kid-friendly"
     ],
+    "dietary_tags": ["vegetarian"],
     "allergens": [
       "dairy",
       "eggs"
@@ -737,6 +750,7 @@
       "vegetarian",
       "healthy"
     ],
+    "dietary_tags": ["vegan", "vegetarian"],
     "allergens": [
       "gluten",
       "soy"
@@ -788,6 +802,7 @@
       "low-carb",
       "healthy"
     ],
+    "dietary_tags": ["gluten-free", "pescatarian"],
     "allergens": [
       "dairy",
       "fish"
@@ -844,6 +859,7 @@
       "high-protein",
       "meal-prep"
     ],
+    "dietary_tags": ["gluten-free"],
     "allergens": []
   },
   {
@@ -885,6 +901,7 @@
       "quick",
       "no-cook"
     ],
+    "dietary_tags": ["vegetarian"],
     "allergens": [
       "dairy",
       "gluten",
@@ -937,6 +954,7 @@
       "vegetarian",
       "comfort-food"
     ],
+    "dietary_tags": ["vegetarian"],
     "allergens": [
       "dairy",
       "gluten"
@@ -987,6 +1005,7 @@
       "low-carb",
       "keto"
     ],
+    "dietary_tags": ["gluten-free"],
     "allergens": []
   },
   {
@@ -1034,6 +1053,7 @@
       "vegetarian",
       "healthy"
     ],
+    "dietary_tags": ["vegetarian"],
     "allergens": [
       "eggs",
       "gluten"
@@ -1085,6 +1105,7 @@
       "vegetarian",
       "healthy"
     ],
+    "dietary_tags": ["vegan", "vegetarian", "gluten-free"],
     "allergens": [
       "dairy",
       "nuts"
@@ -1141,6 +1162,7 @@
       "vegetarian",
       "comfort-food"
     ],
+    "dietary_tags": ["vegetarian"],
     "allergens": [
       "dairy",
       "eggs",
@@ -1193,6 +1215,7 @@
       "vegetarian",
       "quick"
     ],
+    "dietary_tags": ["vegetarian"],
     "allergens": [
       "dairy",
       "eggs",
@@ -1246,6 +1269,7 @@
       "healthy",
       "no-cook"
     ],
+    "dietary_tags": ["vegan", "vegetarian", "gluten-free"],
     "allergens": [
       "dairy"
     ]
@@ -1296,6 +1320,7 @@
       "low-carb",
       "healthy"
     ],
+    "dietary_tags": ["vegetarian", "gluten-free"],
     "allergens": [
       "eggs"
     ]
@@ -1345,6 +1370,7 @@
       "pescatarian",
       "quick"
     ],
+    "dietary_tags": ["pescatarian"],
     "allergens": [
       "dairy",
       "fish",
@@ -1397,6 +1423,7 @@
       "vegetarian",
       "healthy"
     ],
+    "dietary_tags": ["vegan", "vegetarian", "gluten-free"],
     "allergens": [
       "dairy",
       "nuts"
@@ -1447,6 +1474,7 @@
       "quick",
       "pescatarian"
     ],
+    "dietary_tags": ["pescatarian"],
     "allergens": [
       "eggs",
       "fish",
@@ -1498,6 +1526,7 @@
       "vegetarian",
       "classic"
     ],
+    "dietary_tags": ["vegetarian"],
     "allergens": [
       "eggs",
       "gluten"
@@ -1550,6 +1579,7 @@
       "healthy",
       "meal-prep"
     ],
+    "dietary_tags": ["vegan", "vegetarian", "gluten-free"],
     "allergens": []
   },
   {
@@ -1597,6 +1627,7 @@
       "comfort-food",
       "low-fat"
     ],
+    "dietary_tags": [],
     "allergens": []
   },
   {
@@ -1649,6 +1680,7 @@
       "healthy",
       "low-carb"
     ],
+    "dietary_tags": ["gluten-free"],
     "allergens": []
   },
   {
@@ -1701,6 +1733,7 @@
       "vegetarian",
       "fresh"
     ],
+    "dietary_tags": ["vegetarian"],
     "allergens": []
   },
   {
@@ -1753,6 +1786,7 @@
       "comfort-food",
       "quick"
     ],
+    "dietary_tags": [],
     "allergens": [
       "eggs",
       "gluten"
@@ -1808,6 +1842,7 @@
       "classic",
       "high-protein"
     ],
+    "dietary_tags": [],
     "allergens": [
       "gluten"
     ]
@@ -1863,6 +1898,7 @@
       "low-carb",
       "high-protein"
     ],
+    "dietary_tags": ["gluten-free"],
     "allergens": [
       "dairy",
       "eggs"
@@ -1919,6 +1955,7 @@
       "vegetarian",
       "healthy"
     ],
+    "dietary_tags": ["vegan", "vegetarian"],
     "allergens": [
       "gluten"
     ]
@@ -1973,6 +2010,7 @@
       "vegetarian",
       "meal-prep"
     ],
+    "dietary_tags": ["vegetarian"],
     "allergens": [
       "gluten"
     ]
@@ -2028,6 +2066,7 @@
       "vegetarian",
       "healthy"
     ],
+    "dietary_tags": ["vegan", "vegetarian"],
     "allergens": [
       "gluten"
     ]
@@ -2075,6 +2114,7 @@
       "quick",
       "high-protein"
     ],
+    "dietary_tags": [],
     "allergens": [
       "dairy",
       "eggs",
@@ -2131,6 +2171,7 @@
       "vegetarian",
       "quick"
     ],
+    "dietary_tags": ["vegetarian"],
     "allergens": [
       "gluten"
     ]
@@ -2179,6 +2220,7 @@
       "family-friendly",
       "comfort-food"
     ],
+    "dietary_tags": ["gluten-free"],
     "allergens": []
   },
   {
@@ -2227,6 +2269,7 @@
       "gluten-free",
       "flavorful"
     ],
+    "dietary_tags": ["gluten-free"],
     "allergens": [
       "dairy"
     ]
@@ -2276,6 +2319,7 @@
       "healthy",
       "low-carb"
     ],
+    "dietary_tags": ["gluten-free"],
     "allergens": []
   },
   {
@@ -2323,6 +2367,7 @@
       "family-friendly",
       "fun"
     ],
+    "dietary_tags": [],
     "allergens": [
       "gluten"
     ]
@@ -2373,6 +2418,7 @@
       "comfort-food",
       "rich"
     ],
+    "dietary_tags": [],
     "allergens": [
       "dairy",
       "gluten"
@@ -2423,6 +2469,7 @@
       "flavorful",
       "easy"
     ],
+    "dietary_tags": ["gluten-free"],
     "allergens": []
   },
   {
@@ -2471,6 +2518,7 @@
       "high-protein",
       "quick"
     ],
+    "dietary_tags": [],
     "allergens": [
       "gluten",
       "soy"
@@ -2522,6 +2570,7 @@
       "family-friendly",
       "classic"
     ],
+    "dietary_tags": [],
     "allergens": [
       "gluten"
     ]
@@ -2571,6 +2620,7 @@
       "comfort-food",
       "hearty"
     ],
+    "dietary_tags": ["gluten-free"],
     "allergens": []
   },
   {
@@ -2618,6 +2668,7 @@
       "special-occasion",
       "high-protein"
     ],
+    "dietary_tags": ["gluten-free"],
     "allergens": [
       "dairy"
     ]
@@ -2666,6 +2717,7 @@
       "healthy",
       "lean"
     ],
+    "dietary_tags": ["gluten-free"],
     "allergens": []
   },
   {
@@ -2708,6 +2760,7 @@
       "weekend",
       "indulgent"
     ],
+    "dietary_tags": ["gluten-free"],
     "allergens": []
   },
   {
@@ -2754,6 +2807,7 @@
       "family-friendly",
       "fun"
     ],
+    "dietary_tags": [],
     "allergens": []
   },
   {
@@ -2801,6 +2855,7 @@
       "healthy",
       "light"
     ],
+    "dietary_tags": ["gluten-free", "pescatarian"],
     "allergens": [
       "fish"
     ]
@@ -2850,6 +2905,7 @@
       "fun",
       "family-friendly"
     ],
+    "dietary_tags": ["pescatarian"],
     "allergens": [
       "fish",
       "gluten"
@@ -2902,6 +2958,7 @@
       "vegetarian",
       "healthy"
     ],
+    "dietary_tags": ["vegan", "vegetarian", "gluten-free"],
     "allergens": [
       "dairy"
     ]
@@ -2955,6 +3012,7 @@
       "vegetarian",
       "comfort-food"
     ],
+    "dietary_tags": ["vegetarian"],
     "allergens": [
       "dairy"
     ]
@@ -3005,6 +3063,7 @@
       "vegetarian",
       "gluten-free"
     ],
+    "dietary_tags": ["vegetarian", "gluten-free"],
     "allergens": [
       "dairy"
     ]
@@ -3060,6 +3119,7 @@
       "vegetarian",
       "gluten-free"
     ],
+    "dietary_tags": ["vegetarian", "gluten-free"],
     "allergens": [
       "dairy"
     ]
@@ -3112,6 +3172,7 @@
       "vegetarian",
       "healthy"
     ],
+    "dietary_tags": ["vegetarian", "gluten-free", "keto"],
     "allergens": [
       "eggs"
     ]
@@ -3167,6 +3228,7 @@
       "comfort-food",
       "holiday"
     ],
+    "dietary_tags": [],
     "allergens": [
       "gluten"
     ]
