@@ -1,14 +1,44 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
-from fastapi.security import OAuth2PasswordRequestForm
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlmodel import Session, select
+from jose import JWTError, jwt
+from app.core.config import settings
 from app.core.db import get_async_session
 from app.core.security import create_access_token, get_password_hash, verify_password
 from app.models.all_models import User
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.limiter import limiter
+from typing import Optional
 
 router = APIRouter()
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/login/access-token")
+
+class TokenData(BaseModel):
+    id: Optional[str] = None
+
+async def get_current_user(
+    token: str = Depends(oauth2_scheme),
+    session: AsyncSession = Depends(get_async_session)
+):
+    credentials_exception = HTTPException(
+        status_code=401,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    try:
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        user_id = payload.get("sub")
+        if user_id is None:
+            raise credentials_exception
+        token_data = TokenData(id=user_id)
+    except JWTError:
+        raise credentials_exception
+    user = await session.get(User, int(token_data.id))
+    if user is None:
+        raise credentials_exception
+    return user
 
 
 import json
