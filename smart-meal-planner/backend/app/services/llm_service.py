@@ -205,6 +205,7 @@ class LLMService:
         - Household: {household_size} people. Scale recipe ingredients and shopping quantities accordingly.
         - Nutritional Goals: Aim for a daily average of {user_prefs.get('target_calories', 2000)} calories and {user_prefs.get('target_fiber', 30)}g of fiber.
         - Allergies to Avoid: {json.dumps(user_prefs.get('allergies', []))}
+        - Dietary Restrictions: {json.dumps(user_prefs.get('dietary_preferences', []))}
 
         USER'S FAVORITE RECIPES (HIGHEST PRIORITY):
         {json.dumps(user_favorites)}
@@ -290,6 +291,13 @@ class LLMService:
                 except:
                     allergens = []
 
+            dietary_tags = r.get('dietary_tags', [])
+            if isinstance(dietary_tags, str):
+                try:
+                    dietary_tags = json.loads(dietary_tags)
+                except:
+                    dietary_tags = []
+
             formatted.append({
                 'id': r.get('id'),
                 'name': r.get('name'),
@@ -303,7 +311,8 @@ class LLMService:
                     'fat': nutrition.get('fat'),
                     'fiber': nutrition.get('fiber')
                 },
-                'allergens': allergens
+                'allergens': allergens,
+                'dietary_tags': dietary_tags
             })
         return formatted
 

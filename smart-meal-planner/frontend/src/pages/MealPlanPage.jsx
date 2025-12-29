@@ -4,8 +4,8 @@ import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import DraggableMealCard from '../components/DraggableMealCard';
 import MealSlot from '../components/MealSlot';
-import MealCard from '../components/MealCard';
-import { RefreshCw, Calendar as CalendarIcon, Lightbulb } from 'lucide-react';
+import DietaryFilters from '../components/DietaryFilters';
+import { RefreshCw, Calendar as CalendarIcon, Lightbulb, Save } from 'lucide-react';
 import api from '../services/api';
 import SkeletonLoader from '../components/SkeletonLoader';
 import { showSuccessToast, showErrorToast } from '../utils/toast';
@@ -79,6 +79,21 @@ const MealPlanPage = () => {
     fetchLatestPlan();
   }, [fetchLatestPlan]);
 
+  useEffect(() => {
+    const fetchUserSettings = async () => {
+      if (!userId) return;
+      try {
+        const user = await api.get(`/users/${userId}`);
+        if (user && user.dietary_preferences) {
+          setDietaryPreferences(user.dietary_preferences);
+        }
+      } catch (err) {
+        console.error("Failed to fetch user settings", err);
+      }
+    };
+    fetchUserSettings();
+  }, [userId]);
+
   const pollTaskStatus = useCallback(async (taskId) => {
     const intervalId = setInterval(async () => {
       try {
@@ -100,12 +115,21 @@ const MealPlanPage = () => {
     }, 2000);
   }, []);
 
+  const savePreferences = async () => {
+    try {
+      await api.patch(`/users/${userId}`, { dietary_preferences: dietaryPreferences });
+      showSuccessToast('Dietary preferences saved!');
+    } catch (error) {
+      showErrorToast('Failed to save preferences.');
+    }
+  };
+
   const generatePlan = async () => {
     setGenerating(true);
     setError(null);
     try {
       // First, update the user's dietary preferences
-      await api.patch(`/users/${userId}`, { dietary_preferences: dietaryPreferences });
+      await savePreferences();
 
       // Then, trigger the meal plan generation
       const data = await api.post(`/plans/generate?user_id=${userId}`);
@@ -137,20 +161,7 @@ const MealPlanPage = () => {
         </p>
 
         <div className="max-w-md mx-auto mb-8">
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-            {dietaryOptions.map(option => (
-              <label key={option} className="flex items-center space-x-3">
-                <input
-                  type="checkbox"
-                  value={option}
-                  checked={dietaryPreferences.includes(option)}
-                  onChange={handleDietaryChange}
-                  className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-                />
-                <span className="text-sm text-gray-700">{option.charAt(0).toUpperCase() + option.slice(1)}</span>
-              </label>
-            ))}
-          </div>
+          <DietaryFilters selected={dietaryPreferences} onChange={handleDietaryChange} />
         </div>
 
         <button
@@ -229,6 +240,7 @@ const MealPlanPage = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
         <div className="lg:col-span-3 space-y-8">
+          <DietaryFilters selected={dietaryPreferences} onChange={handleDietaryChange} />
           {planDays.map((day) => {
             let meals = [];
             if (day.meals && Array.isArray(day.meals)) {

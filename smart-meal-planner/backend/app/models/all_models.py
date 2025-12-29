@@ -95,6 +95,7 @@ class Recipe(SQLModel, table=True):
     ingredients_json: str = Field(default="[]") # JSON list of strings (display)
     instructions_json: str = Field(default="[]") # JSON list of strings (display)
     allergens_json: str = Field(default="[]")
+    dietary_tags_json: str = Field(default="[]")
     nutrition_json: str = Field(default="{}")
 
     prep_time_minutes: Optional[int] = None
