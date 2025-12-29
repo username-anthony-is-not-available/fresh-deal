@@ -47,6 +47,7 @@ const MealPlanPage = () => {
   const [plan, setPlan] = useState(null);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
+  const [regeneratingMeal, setRegeneratingMeal] = useState(null); // e.g., { day: 1, type: 'Breakfast' }
   const [error, setError] = useState(null);
   const [dietaryPreferences, setDietaryPreferences] = useState([]);
 
@@ -63,13 +64,19 @@ const MealPlanPage = () => {
 
   const fetchLatestPlan = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
       const data = await api.get(`/plans/${userId}/latest`);
       setPlan(data);
     } catch (e) {
-      // The interceptor will show a toast, but we can also set a local error state
-      // if we want to display a message in the component.
-      setError('Failed to fetch the latest meal plan.');
+      // A 404 is an expected outcome for users without a plan yet.
+      // We don't treat it as a render-blocking error.
+      if (e.response && e.response.status === 404) {
+        setPlan(null); // Ensure plan is null to show the generation view
+      } else {
+        // For other errors (500, network issues), show an error message.
+        setError('Failed to fetch a meal plan. Please try generating a new one.');
+      }
     } finally {
       setLoading(false);
     }
@@ -220,6 +227,40 @@ const MealPlanPage = () => {
     });
   };
 
+  const handleRegenerateMeal = async (day, type) => {
+    const mealIdentifier = { day: day.day, type };
+    setRegeneratingMeal(mealIdentifier);
+
+    try {
+      const newMeal = await api.post(`/plans/regenerate-meal`, {
+        user_id: parseInt(userId),
+        day: day.day_name,
+        type: type,
+        dietary_preferences: dietaryPreferences,
+        existing_meals: plan.meal_plan.flatMap(d => d.meals)
+      });
+
+      setPlan(currentPlan => {
+        const newPlan = JSON.parse(JSON.stringify(currentPlan));
+        const dayIndex = newPlan.meal_plan.findIndex(d => d.day === day.day);
+        if (dayIndex === -1) return currentPlan;
+
+        const mealIndex = newPlan.meal_plan[dayIndex].meals.findIndex(m => m.type === type);
+        if (mealIndex === -1) return currentPlan;
+
+        newPlan.meal_plan[dayIndex].meals[mealIndex] = { ...newPlan.meal_plan[dayIndex].meals[mealIndex], ...newMeal };
+        return newPlan;
+      });
+
+      showSuccessToast(`${type} for ${day.day_name} has been regenerated!`);
+
+    } catch (err) {
+      showErrorToast(`Failed to regenerate meal. Please try again.`);
+    } finally {
+      setRegeneratingMeal(null);
+    }
+  };
+
   return (
     <DndProvider backend={HTML5Backend}>
       <div>
@@ -261,9 +302,17 @@ const MealPlanPage = () => {
                   </h3>
                 </div>
                 <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
-                  {meals.map((meal, idx) => (
+                  {meals.map((meal, idx) => {
+                    const isRegenerating = regeneratingMeal && regeneratingMeal.day === day.day && regeneratingMeal.type === meal.type;
+                    return (
                     <MealSlot key={idx} day={day} type={meal.type} onDrop={handleDrop}>
-                      <DraggableMealCard meal={{name: meal.recipe_name || meal.name, ...meal}} day={day} type={meal.type} />
+                      <DraggableMealCard
+                        meal={{name: meal.recipe_name || meal.name, ...meal}}
+                        day={day}
+                        type={meal.type}
+                        onRegenerate={() => handleRegenerateMeal(day, meal.type)}
+                        isRegenerating={isRegenerating}
+                        />
                       {meal.reason && (
                         <div className="mt-2 text-xs text-blue-600 bg-blue-50 p-2 rounded flex gap-2 items-start">
                           <Lightbulb className="w-3 h-3 mt-0.5 flex-shrink-0" />

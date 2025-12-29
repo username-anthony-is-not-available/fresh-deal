@@ -26,6 +26,7 @@ import json
 from datetime import datetime, timedelta, timezone
 from app.tasks import generate_meal_plan_task, scrape_task
 from app.services.user_service import UserService
+from app.services.llm_service import LLMService
 from app.schemas import (
     UserUpdate,
     UserRead,
@@ -454,6 +455,42 @@ async def generate_meal_plan(user_id: int):
     return {"task_id": task.id, "status": "Processing"}
 
 
+class RegenerateMealRequest(BaseModel):
+    user_id: int
+    day: str
+    type: str
+    dietary_preferences: List[str]
+    existing_meals: List[Dict[str, Any]]
+
+
+@router.post("/plans/regenerate-meal")
+async def regenerate_meal(
+    request: RegenerateMealRequest, session: AsyncSession = Depends(get_async_session)
+):
+    """
+    Generates a new, single meal to replace an existing one in a meal plan.
+    """
+    user = await session.get(User, request.user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    llm_service = LLMService(session)
+    new_meal = await llm_service.regenerate_single_meal(
+        user=user,
+        day=request.day,
+        meal_type=request.type,
+        dietary_preferences=request.dietary_preferences,
+        existing_meals=request.existing_meals,
+    )
+
+    if not new_meal:
+        raise HTTPException(
+            status_code=500, detail="Failed to generate a new meal from the meal plan."
+        )
+
+    return new_meal
+
+
 @router.get("/tasks/{task_id}")
 async def get_task_status(task_id: str):
     """
@@ -503,8 +540,8 @@ async def get_latest_plan(
     plan = (
         result.scalars().first()
     )  # scalars() needed for getting the objects directly if select(MealPlan)
-    if not plan:
-        raise HTTPException(status_code=404, detail="No plan found")
+    if not plan or not plan.content_json:
+        raise HTTPException(status_code=404, detail="No plan found or plan is empty.")
     return json.loads(plan.content_json)
 
 

@@ -2,9 +2,9 @@ import React, { useState } from "react";
 import StarRating from "./StarRating";
 import FavoriteButton from "./FavoriteButton";
 import api from "../services/api";
-import { Check, X } from "lucide-react";
+import { Check, X, RefreshCw } from "lucide-react";
 
-const MealCard = ({ type, meal }) => {
+const MealCard = ({ type, meal, onRegenerate, isRegenerating }) => {
   const [rating, setRating] = useState(meal.user_rating || 0);
   const [isFavorited, setIsFavorited] = useState(meal.is_favorited || false);
   const [feedbackStatus, setFeedbackStatus] = useState(null); // 'made_it' or 'skipped'
@@ -58,15 +58,27 @@ const MealCard = ({ type, meal }) => {
   };
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 p-4 hover:border-primary-300 transition-colors h-full flex flex-col">
-      <div className="flex justify-between items-start mb-2">
-        <span className="text-xs font-semibold text-primary-600 bg-primary-50 px-2 py-0.5 rounded-full uppercase">
-          {type}
-        </span>
+    <div className="relative bg-white rounded-lg border border-gray-200 p-4 hover:border-primary-300 transition-colors h-full flex flex-col group">
+       <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        {onRegenerate && (
+            <button
+              onClick={onRegenerate}
+              disabled={isRegenerating}
+              className="p-1.5 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 disabled:opacity-50"
+              title="Regenerate this meal"
+            >
+              <RefreshCw size={14} className={isRegenerating ? "animate-spin" : ""} />
+            </button>
+        )}
         <FavoriteButton
           isFavorited={isFavorited}
           onToggle={handleToggleFavorite}
         />
+       </div>
+      <div className="flex justify-between items-start mb-2">
+        <span className="text-xs font-semibold text-primary-600 bg-primary-50 px-2 py-0.5 rounded-full uppercase">
+          {type}
+        </span>
       </div>
 
       <h3 className="font-medium text-gray-900 mb-2 flex items-center gap-2">
