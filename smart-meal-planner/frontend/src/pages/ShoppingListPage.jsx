@@ -162,6 +162,10 @@ const ShoppingListPage = () => {
                </p>
             </div>
 
+            {data.single_store_comparison && data.single_store_comparison.length > 0 && (
+                <StoreComparison stores={data.single_store_comparison} />
+            )}
+
             <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
                 <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
                     <TrendingDown className="w-5 h-5 text-gray-500" />

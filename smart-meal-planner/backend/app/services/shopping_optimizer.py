@@ -233,7 +233,10 @@ class ShoppingListOptimizer:
             for opt in item["options"]:
                 all_stores.add(opt["store_name"])
 
-        single_store_baskets = {s: {"total": 0.0, "missing": []} for s in all_stores}
+        single_store_baskets = {
+            s: {"total": 0.0, "regular_total": 0.0, "items_count": 0, "missing": []}
+            for s in all_stores
+        }
 
         # Calculate single store totals
         for item in priced_items:
@@ -241,7 +244,17 @@ class ShoppingListOptimizer:
                 opt = next((o for o in item["options"] if o["store_name"] == store_name), None)
                 if opt:
                     cost = opt["price"] * item["quantity"]
+
+                    if opt.get("discount_pct") and opt["discount_pct"] > 0:
+                        regular_price = opt["price"] / (1 - (opt["discount_pct"] / 100))
+                    else:
+                        regular_price = opt["price"]
+
+                    regular_cost = regular_price * item["quantity"]
+
                     single_store_baskets[store_name]["total"] += cost
+                    single_store_baskets[store_name]["regular_total"] += regular_cost
+                    single_store_baskets[store_name]["items_count"] += 1
                 else:
                     single_store_baskets[store_name]["missing"].append(item["ingredient"])
 
@@ -255,7 +268,7 @@ class ShoppingListOptimizer:
             valid_options = []
             for opt in options:
                 cost = opt["price"] * item["quantity"]
-                if opt["discount_pct"] > 0:
+                if opt.get("discount_pct") and opt["discount_pct"] > 0:
                      reg_price = opt["price"] / (1 - (opt["discount_pct"]/100))
                      reg_cost = reg_price * item["quantity"]
                 else:
@@ -288,8 +301,9 @@ class ShoppingListOptimizer:
                         best_store = s_name
 
                 if best_store:
-                    selected_option = next(o for o in valid_options if o["store_name"] == best_store)
-                else:
+                    selected_option = next((o for o in valid_options if o["store_name"] == best_store), None)
+
+                if not selected_option:
                     valid_options.sort(key=lambda x: x["total_item_cost"])
                     selected_option = valid_options[0]
 
@@ -314,7 +328,7 @@ class ShoppingListOptimizer:
                 "unit": item["unit"],
                 "price_per_unit": selected_option["price"],
                 "cost": selected_option["total_item_cost"],
-                "discount_pct": selected_option["discount_pct"]
+                "discount_pct": selected_option.get("discount_pct")
             })
 
             stores_usage[s_name]["subtotal"] += selected_option["total_item_cost"]
@@ -335,12 +349,14 @@ class ShoppingListOptimizer:
         # Format single store comparison for frontend
         single_store_formatted = []
         for s_name, data in single_store_baskets.items():
+            savings = data["regular_total"] - data["total"]
             single_store_formatted.append({
-                "store": s_name,
+                "name": s_name,
                 "total": round(data["total"], 2),
-                "missing_count": len(data["missing"])
+                "items_count": data["items_count"],
+                "savings": round(savings, 2)
             })
-        single_store_formatted.sort(key=lambda x: (x["missing_count"], x["total"]))
+        single_store_formatted.sort(key=lambda x: (len(single_store_baskets[x["name"]]["missing"]), x["total"]))
 
         # Create detailed comparison data
         detailed_comparison = []
