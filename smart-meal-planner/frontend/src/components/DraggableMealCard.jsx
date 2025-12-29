@@ -2,7 +2,7 @@ import React from 'react';
 import { useDrag } from 'react-dnd';
 import MealCard from './MealCard';
 
-const DraggableMealCard = ({ meal, day, type }) => {
+const DraggableMealCard = ({ meal, day, type, onRegenerate, isRegenerating }) => {
   const [{ isDragging }, drag] = useDrag(() => ({
     type: 'meal',
     item: { meal, day, type },
@@ -19,7 +19,7 @@ const DraggableMealCard = ({ meal, day, type }) => {
         cursor: 'move',
       }}
     >
-      <MealCard meal={meal} type={type} />
+      <MealCard meal={meal} type={type} onRegenerate={onRegenerate} isRegenerating={isRegenerating} />
     </div>
   );
 };

@@ -12,6 +12,8 @@ from datetime import datetime, timedelta
 from openai import OpenAI, APIError, RateLimitError, APITimeoutError, APIConnectionError, InternalServerError
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 from app.core.config import settings
+from app.services.recipe_service import RecipeService
+from app.services.deal_service import DealService
 
 logger = logging.getLogger(__name__)
 
@@ -109,6 +111,120 @@ class LLMService:
             })
 
         return dates
+
+    async def regenerate_single_meal(
+        self,
+        user: Any,
+        day: str,
+        meal_type: str,
+        dietary_preferences: List[str],
+        existing_meals: List[Dict[str, Any]],
+        session,
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Generates a new, single meal, avoiding existing meals.
+        """
+        # This is a simplified version. A full implementation would need
+        # access to the full recipe DB and deals, similar to the main planner.
+        from app.services.recipe_service import RecipeService
+        from app.services.deal_service import DealService
+
+        recipe_service = RecipeService(session)
+        deal_service = DealService(session)
+
+        # Fetch necessary data
+        all_recipes = await recipe_service.get_all_recipes_as_dicts()
+        active_deals = await deal_service.get_active_deals_as_dicts()
+
+        prompt = self._construct_regenerate_meal_prompt(
+            user, day, meal_type, dietary_preferences, existing_meals, all_recipes, active_deals
+        )
+
+        try:
+            response = self._call_llm(prompt)
+            new_meal = self._parse_llm_response(response)
+            return new_meal.get(meal_type.lower())
+        except Exception as e:
+            logger.error(f"LLM single meal generation failed: {e}. Falling back to mock.")
+            return self._generate_mock_single_meal(meal_type, all_recipes)
+
+    def _construct_regenerate_meal_prompt(
+        self,
+        user: Any,
+        day: str,
+        meal_type: str,
+        dietary_preferences: List[str],
+        existing_meals: List[Dict[str, Any]],
+        recipes: List[Dict],
+        deals: List[Dict],
+    ) -> str:
+        """
+        Constructs the prompt for regenerating a single meal.
+        """
+        existing_meal_names = [
+            meal.get("recipe_name") or meal.get("name") for meal in existing_meals if meal
+        ]
+        formatted_deals = self.format_deals_for_llm(deals)
+
+        return f"""
+        Generate a single replacement meal for a user's meal plan.
+
+        USER CONTEXT:
+        - Household Size: {user.household_size}
+        - Dietary Preferences: {json.dumps(dietary_preferences)}
+
+        REPLACEMENT DETAILS:
+        - Day: {day}
+        - Meal Type: {meal_type}
+
+        RULES:
+        1.  The new meal MUST be different from these existing meals: {json.dumps(existing_meal_names)}.
+        2.  The new meal MUST be a '{meal_type}'.
+        3.  Prioritize recipes that use ingredients from the AVAILABLE DEALS.
+        4.  Respect all dietary preferences.
+
+        AVAILABLE DEALS:
+        {formatted_deals}
+
+        AVAILABLE RECIPES:
+        {json.dumps(self._format_recipes_for_prompt(recipes))}
+
+        RETURN JSON STRUCTURE for the single meal:
+        {{
+            "{meal_type.lower()}": {{
+                "recipe_id": "recipe_003",
+                "recipe_name": "New Recipe Name",
+                "reason": "Why this meal was chosen (e.g., uses deals, meets preferences).",
+                "servings": {user.household_size},
+                "scaled_for_household": true
+            }}
+        }}
+        """
+
+    def _generate_mock_single_meal(self, meal_type: str, recipes: List[Dict]) -> Optional[Dict]:
+        """Generates a single mock meal for fallback."""
+        import random
+
+        candidates = [
+            r
+            for r in recipes
+            if str(r.get("meal_type")).lower() == meal_type.lower()
+            or r.get("meal_type") == "Any"
+        ]
+        if not candidates:
+            candidates = recipes
+
+        if not candidates:
+            return None
+
+        recipe = random.choice(candidates)
+        return {
+            "recipe_id": recipe.get("id"),
+            "recipe_name": f"Mock {meal_type}: {recipe.get('name', 'Surprise Meal')}",
+            "reason": "Mock fallback for single meal regeneration.",
+            "servings": 1,
+            "scaled_for_household": True,
+        }
 
     def generate_meal_plan(self, user_prefs: Dict, available_deals: List[Dict], recipes_db: List[Dict], user_favorites: List[int] = None) -> Dict:
         """
