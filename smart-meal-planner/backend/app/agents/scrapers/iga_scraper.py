@@ -35,6 +35,16 @@ class IgaScraper(BaseScraper):
             except Exception as e:
                 logger.warning(f"Could not find or click the cookie button: {e}")
 
+            # Scroll to the bottom of the page to load all items
+            last_height = await page.evaluate("document.body.scrollHeight")
+            while True:
+                await page.evaluate("window.scrollTo(0, document.body.scrollHeight);")
+                await page.wait_for_timeout(3000)
+                new_height = await page.evaluate("document.body.scrollHeight")
+                if new_height == last_height:
+                    break
+                last_height = new_height
+
             logger.info("Parsing the page content for deals.")
             content = await page.content()
             soup = BeautifulSoup(content, 'html.parser')
@@ -53,6 +63,9 @@ class IgaScraper(BaseScraper):
                 try:
                     name = tile.select_one('h3[class*="product-tile-name"]').text.strip()
                     price_text = tile.select_one('div[class*="product-tile-price"]').text.strip()
+                    image_element = tile.select_one('img[class*="product-tile-image"]')
+
+                    image_url = image_element['src'] if image_element and image_element.has_attr('src') else None
 
                     price_match = re.search(r'(\d+[\.,]\d{2})', price_text)
                     price = float(price_match.group(1).replace(',', '.')) if price_match else 0.0
@@ -72,6 +85,7 @@ class IgaScraper(BaseScraper):
                         "original_price": price,
                         "unit": unit,
                         "store": self.STORE_NAME,
+                        "image_url": image_url,
                         "category": "Grocery"
                     }
                     deals.append(deal)

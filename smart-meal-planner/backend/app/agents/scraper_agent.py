@@ -11,6 +11,9 @@ from .scrapers.provigo_scraper import ProvigoScraper
 from .scrapers.iga_scraper import IgaScraper
 from .scrapers.adonis_scraper import AdonisScraper
 from .scrapers.costco_scraper import CostcoScraper
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.triggers.cron import CronTrigger
+import logging
 
 class ScraperAgent:
     """
@@ -31,6 +34,26 @@ class ScraperAgent:
             "adonis": AdonisScraper(postal_code=self.postal_code),
             "costco": CostcoScraper(),
         }
+        self.scheduler = AsyncIOScheduler()
+        self.scheduler.add_job(
+            self.run_daily_scrape,
+            trigger=CronTrigger(hour=3, minute=0),  # Runs every day at 3:00 AM
+            id="daily_scrape_job",
+            replace_existing=True,
+        )
+        self.scheduler.start()
+
+    async def run_daily_scrape(self):
+        """
+        A scheduled job to scrape all supported stores.
+        """
+        all_stores = list(self.scrapers.keys())
+        logging.info(f"Running daily scrape for stores: {all_stores}")
+        scraped_data = await self.scrape(stores=all_stores)
+        for store_name, deals in scraped_data.items():
+            if deals:
+                self.persist_deals(deals)
+        logging.info("Daily scrape finished.")
 
     async def scrape(self, stores: List[str], limit_per_store: int = 50) -> Dict[str, List[Dict[str, Any]]]:
         """
