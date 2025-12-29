@@ -3,6 +3,7 @@ from sqlmodel import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.db import get_async_session, get_session
 from sqlmodel import Session
+from app.api.auth_endpoints import get_current_user
 from app.models.all_models import (
     User,
     MealPlan,
@@ -168,13 +169,12 @@ async def get_top_rated_recipes(
 async def rate_recipe(
     recipe_id: int,
     rating_in: RecipeRatingCreate,
-    user_id: int = 1,
+    current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session),
 ):
-    # Hardcoded user_id=1 for MVP
     # Check if a rating already exists
     statement = select(RecipeRating).where(
-        RecipeRating.user_id == user_id, RecipeRating.recipe_id == recipe_id
+        RecipeRating.user_id == current_user.id, RecipeRating.recipe_id == recipe_id
     )
     result = await session.execute(statement)
     existing_rating = result.scalars().first()
@@ -184,7 +184,7 @@ async def rate_recipe(
         session.add(existing_rating)
     else:
         rating = RecipeRating(
-            user_id=user_id, recipe_id=recipe_id, rating=rating_in.rating
+            user_id=current_user.id, recipe_id=recipe_id, rating=rating_in.rating
         )
         session.add(rating)
 
@@ -196,12 +196,11 @@ async def rate_recipe(
 async def submit_recipe_feedback(
     recipe_id: int,
     feedback_in: RecipeFeedbackCreate,
-    user_id: int = 1,
+    current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session),
 ):
-    # Hardcoded user_id=1 for MVP
     feedback = RecipeFeedback(
-        user_id=user_id,
+        user_id=current_user.id,
         recipe_id=recipe_id,
         status=feedback_in.status,
         notes=feedback_in.notes,
@@ -223,12 +222,27 @@ async def get_average_rating(
     return {"average_rating": average_rating or 0}
 
 
+@router.get("/recipes/{recipe_id}/my-rating")
+async def get_my_rating(
+    recipe_id: int,
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_async_session),
+):
+    statement = select(RecipeRating).where(
+        RecipeRating.recipe_id == recipe_id, RecipeRating.user_id == current_user.id
+    )
+    result = await session.execute(statement)
+    rating = result.scalar_one_or_none()
+    return {"rating": rating.rating if rating else None}
+
+
 @router.post("/recipes/{recipe_id}/favorite")
 async def favorite_recipe(
-    recipe_id: int, user_id: int = 1, session: AsyncSession = Depends(get_async_session)
+    recipe_id: int,
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_async_session),
 ):
-    # Hardcoded user_id=1 for MVP
-    favorite = UserFavorite(user_id=user_id, recipe_id=recipe_id)
+    favorite = UserFavorite(user_id=current_user.id, recipe_id=recipe_id)
     session.add(favorite)
     await session.commit()
     return {"message": "Recipe favorited successfully"}
@@ -236,11 +250,12 @@ async def favorite_recipe(
 
 @router.delete("/recipes/{recipe_id}/favorite")
 async def unfavorite_recipe(
-    recipe_id: int, user_id: int = 1, session: AsyncSession = Depends(get_async_session)
+    recipe_id: int,
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_async_session),
 ):
-    # Hardcoded user_id=1 for MVP
     statement = select(UserFavorite).where(
-        UserFavorite.user_id == user_id, UserFavorite.recipe_id == recipe_id
+        UserFavorite.user_id == current_user.id, UserFavorite.recipe_id == recipe_id
     )
     result = await session.execute(statement)
     favorite = result.scalars().first()
@@ -255,10 +270,12 @@ async def unfavorite_recipe(
 
 @router.get("/users/me/favorites")
 async def get_user_favorites(
-    user_id: int = 1, session: AsyncSession = Depends(get_async_session)
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_async_session),
 ):
-    # Hardcoded user_id=1 for MVP
-    statement = select(Recipe).join(UserFavorite).where(UserFavorite.user_id == user_id)
+    statement = (
+        select(Recipe).join(UserFavorite).where(UserFavorite.user_id == current_user.id)
+    )
     result = await session.execute(statement)
     favorites = result.scalars().all()
     return favorites

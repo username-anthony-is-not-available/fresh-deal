@@ -11,20 +11,32 @@ const RecipeDetailPage = () => {
   const [userRating, setUserRating] = useState(0);
 
   useEffect(() => {
-    const fetchRecipe = async () => {
+    const fetchRecipeAndRating = async () => {
       try {
-        const data = await api.get(`/recipes/${id}`);
-        setRecipe(data);
-        // In a real app, you'd fetch the user's existing rating here
-        // For now, we'll just use the average rating as the initial display
-        setUserRating(Math.round(data.average_rating));
+        setLoading(true);
+        const recipeData = await api.get(`/recipes/${id}`);
+        setRecipe(recipeData);
+
+        // Fetch the user's rating
+        try {
+          const ratingData = await api.get(`/recipes/${id}/my-rating`);
+          if (ratingData && ratingData.rating) {
+            setUserRating(ratingData.rating);
+          }
+        } catch (ratingError) {
+          // It's okay if the user hasn't rated it yet, 404 is expected
+          if (ratingError.response && ratingError.response.status !== 404) {
+             console.warn("Failed to fetch user rating", ratingError);
+          }
+        }
+
       } catch (e) {
         console.warn("Failed to fetch recipe", e);
       } finally {
         setLoading(false);
       }
     };
-    fetchRecipe();
+    fetchRecipeAndRating();
   }, [id]);
 
   const handleRatingSubmit = (newRating) => {
