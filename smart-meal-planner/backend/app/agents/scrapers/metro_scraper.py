@@ -34,10 +34,20 @@ class MetroScraper(BaseScraper):
             except Exception as e:
                 logger.warning(f"Could not find or click the cookie button on Metro: {e}")
 
+            # Scroll to load more products
+            last_height = await page.evaluate("document.body.scrollHeight")
+            while True:
+                await page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+                await self._random_delay(2, 4)
+                new_height = await page.evaluate("document.body.scrollHeight")
+                if new_height == last_height:
+                    break
+                last_height = new_height
+
             content = await page.content()
             soup = BeautifulSoup(content, 'html.parser')
 
-            product_tiles = soup.select('.default-product-tile')
+            product_tiles = soup.select('div[class*="product-tile-group__list__item"]')
             logger.info(f"Found {len(product_tiles)} product tiles on Metro.")
 
             if not product_tiles:
@@ -52,19 +62,21 @@ class MetroScraper(BaseScraper):
                     break
 
                 try:
-                    name_element = tile.select_one('.head__title')
-                    price_element = tile.select_one('.price-update')
+                    name_element = tile.select_one('h3[class*="product-tile__name"]')
+                    price_element = tile.select_one('span[class*="price__value"]')
+                    image_element = tile.select_one('img[class*="product-tile__image__image"]')
 
                     if not name_element or not price_element:
                         continue
 
                     name = name_element.text.strip()
                     price_text = price_element.text.strip()
+                    image_url = image_element['src'] if image_element and image_element.has_attr('src') else None
 
                     price_match = re.search(r'(\d+\.\d{2})', price_text.replace(',', '.'))
                     price = float(price_match.group(1)) if price_match else 0.0
 
-                    unit_element = tile.select_one('.unit-price')
+                    unit_element = tile.select_one('span[class*="product-tile__package-size"]')
                     unit_text = unit_element.text.strip().lower() if unit_element else ""
 
                     unit = "each"
@@ -79,10 +91,10 @@ class MetroScraper(BaseScraper):
                         "original_price": price,
                         "unit": unit,
                         "store": self.STORE_NAME,
+                        "image_url": image_url,
                         "category": "Grocery"
                     }
                     deals.append(deal)
-
                 except Exception as e:
                     logger.error(f"Error parsing a Metro product tile: {e}")
 

@@ -25,16 +25,21 @@ class WalmartScraper(BaseScraper):
             logger.info("Navigating to the Walmart flyer page.")
             await page.goto(url, wait_until="networkidle", timeout=120000)
 
-            # Walmart's flyer is complex and may require scrolling to load all items
-            for _ in range(5): # Scroll a few times to load more content
+            # Walmart's flyer is complex and requires scrolling to load all items.
+            # We'll scroll until no new items are loaded.
+            last_item_count = 0
+            while True:
                 await page.evaluate("window.scrollBy(0, document.body.scrollHeight)")
                 await self._random_delay(2, 4)
 
+                content = await page.content()
+                soup = BeautifulSoup(content, 'html.parser')
+                flyer_items = soup.select('[data-testid="flyer-item"]')
 
-            content = await page.content()
-            soup = BeautifulSoup(content, 'html.parser')
+                if len(flyer_items) == last_item_count:
+                    break
+                last_item_count = len(flyer_items)
 
-            flyer_items = soup.select('[data-testid="flyer-item"]')
 
             if not flyer_items:
                 logger.warning("No flyer items found on the Walmart page. This could be due to anti-bot measures.")
@@ -51,12 +56,15 @@ class WalmartScraper(BaseScraper):
                 try:
                     name_element = item.select_one('[data-testid="product-name"]')
                     price_element = item.select_one('[data-testid="price-deal"]')
+                    image_element = item.select_one('img')
 
                     if not name_element or not price_element:
                         continue
 
                     name = name_element.text.strip()
                     price_text = price_element.text.strip()
+                    image_url = image_element['src'] if image_element else None
+
 
                     price_match = re.search(r'(\d+\.\d{2})', price_text.replace(',', '.'))
                     price = float(price_match.group(1)) if price_match else 0.0
@@ -73,6 +81,7 @@ class WalmartScraper(BaseScraper):
                         "original_price": price,
                         "unit": unit,
                         "store": self.STORE_NAME,
+                        "image_url": image_url,
                         "category": "Flyer"
                     }
                     deals.append(deal)

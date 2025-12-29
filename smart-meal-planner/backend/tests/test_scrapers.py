@@ -7,6 +7,7 @@ from unittest.mock import AsyncMock, patch, MagicMock
 from app.agents.scrapers.walmart_scraper import WalmartScraper
 from app.agents.scrapers.provigo_scraper import ProvigoScraper
 from app.agents.scrapers.iga_scraper import IgaScraper
+from app.agents.scrapers.metro_scraper import MetroScraper
 import os
 
 # In-memory SQLite database for testing
@@ -53,14 +54,15 @@ async def test_scraper_agent_orchestration_with_mocked_scrapers(session: Session
 
 def test_persist_deals(session: Session):
     # Arrange
-    agent = ScraperAgent(session)
-    deals_to_persist = [
-        {"name": "Test Product 1", "price": 1.99, "original_price": 2.99, "store": "Test Store", "category": "Test Category", "unit": "each"},
-        {"name": "Test Product 2", "price": 0.99, "store": "Test Store", "category": "Test Category", "unit": "kg"},
-    ]
+    with patch('app.agents.scraper_agent.AsyncIOScheduler'):
+        agent = ScraperAgent(session)
+        deals_to_persist = [
+            {"name": "Test Product 1", "price": 1.99, "original_price": 2.99, "store": "Test Store", "category": "Test Category", "unit": "each"},
+            {"name": "Test Product 2", "price": 0.99, "store": "Test Store", "category": "Test Category", "unit": "kg"},
+        ]
 
-    # Act
-    agent.persist_deals(deals_to_persist)
+        # Act
+        agent.persist_deals(deals_to_persist)
 
     # Assert
     deals = session.exec(select(Deal)).all()
@@ -113,14 +115,23 @@ async def test_provigo_scraper_parsing_logic():
     # Arrange
     scraper = ProvigoScraper()
     mock_page = AsyncMock()
-
-    # Construct an absolute path to the mock HTML file
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    mock_html_path = os.path.join(current_dir, "mock_provigo_flyer.html")
-
-    with open(mock_html_path, "r") as f:
-        mock_html = f.read()
-
+    mock_html = """
+    <html>
+        <body>
+            <div class="product-tile-group__list__item">
+                <h3 class="product-tile__name">PC Chicken Breasts</h3>
+                <span class="price__value">12.99</span>
+                <span class="product-tile__package-size">/kg</span>
+                <img class="product-tile__image__image" src="http://example.com/image1.jpg"/>
+            </div>
+            <div class="product-tile-group__list__item">
+                <h3 class="product-tile__name">Black Diamond Cheese</h3>
+                <span class="price__value">2.49</span>
+                <img class="product-tile__image__image" src="http://example.com/image2.jpg"/>
+            </div>
+        </body>
+    </html>
+    """
     # Mock the navigation and interaction calls to simulate a successful run
     mock_page.goto = AsyncMock()
     # Configure the locator to return a mock that can be clicked
@@ -129,18 +140,22 @@ async def test_provigo_scraper_parsing_logic():
     mock_page.locator.return_value = mock_locator
     mock_page.wait_for_load_state = AsyncMock()
     mock_page.content = AsyncMock(return_value=mock_html)
+    mock_page.evaluate = AsyncMock(return_value=1000)
+    mock_page.wait_for_timeout = AsyncMock()
 
     # Act
     deals = await scraper._scrape_page(mock_page, limit=10)
 
     # Assert
     assert len(deals) == 2
-    assert deals[0]["name"] == "PC® Free From® Fresh Air-Chilled, Skinless Boneless Chicken Breasts"
+    assert deals[0]["name"] == "PC Chicken Breasts"
     assert deals[0]["price"] == 12.99
     assert deals[0]["unit"] == "kg"
-    assert deals[1]["name"] == "Black Diamond Cheese Slices"
+    assert deals[0]["image_url"] == "http://example.com/image1.jpg"
+    assert deals[1]["name"] == "Black Diamond Cheese"
     assert deals[1]["price"] == 2.49
     assert deals[1]["unit"] == "each"
+    assert deals[1]["image_url"] == "http://example.com/image2.jpg"
 
 @pytest.mark.asyncio
 async def test_iga_scraper_parsing_logic():
@@ -173,3 +188,50 @@ async def test_iga_scraper_parsing_logic():
     assert deals[1]["name"] == "Compliments Large Eggs"
     assert deals[1]["price"] == 3.49
     assert deals[1]["unit"] == "each"
+
+
+@pytest.mark.asyncio
+async def test_metro_scraper_parsing_logic():
+    """
+    Tests the parsing logic of the MetroScraper using mock HTML content.
+    """
+    # Arrange
+    scraper = MetroScraper()
+    mock_page = AsyncMock()
+    mock_html = """
+    <html>
+        <body>
+            <div class="product-tile-group__list__item">
+                <h3 class="product-tile__name">Irresistibles Pastries</h3>
+                <span class="price__value">3.99</span>
+                <img class="product-tile__image__image" src="http://example.com/image1.jpg"/>
+            </div>
+            <div class="product-tile-group__list__item">
+                <h3 class="product-tile__name">Red Grill Rib Steak</h3>
+                <span class="price__value">8.88</span>
+                <span class="product-tile__package-size">/lb</span>
+                <img class="product-tile__image__image" src="http://example.com/image2.jpg"/>
+            </div>
+        </body>
+    </html>
+    """
+    # Mock the navigation and interaction calls to simulate a successful run
+    mock_page.goto = AsyncMock()
+    # Configure the locator to return a mock that can be clicked
+    mock_locator = AsyncMock()
+    mock_locator.click = AsyncMock()
+    mock_page.locator.return_value = mock_locator
+    mock_page.wait_for_load_state = AsyncMock()
+    mock_page.content = AsyncMock(return_value=mock_html)
+    # Act
+    deals = await scraper._scrape_page(mock_page, limit=10)
+    # Assert
+    assert len(deals) == 2
+    assert deals[0]["name"] == "Irresistibles Pastries"
+    assert deals[0]["price"] == 3.99
+    assert deals[0]["unit"] == "each"
+    assert deals[0]["image_url"] == "http://example.com/image1.jpg"
+    assert deals[1]["name"] == "Red Grill Rib Steak"
+    assert deals[1]["price"] == 8.88
+    assert deals[1]["unit"] == "lb"
+    assert deals[1]["image_url"] == "http://example.com/image2.jpg"
