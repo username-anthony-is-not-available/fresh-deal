@@ -73,6 +73,26 @@ class RecipeFeedbackCreate(BaseModel):
             }
         }
 
+
+class RecipeRatingCreate(BaseModel):
+    rating: int
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "rating": 5
+            }
+        }
+
+
+class RecipeRatingRead(RecipeRatingCreate):
+    id: int
+    user_id: int
+    recipe_id: int
+
+    class Config:
+        orm_mode = True
+
 class UserNutritionGoalCreate(BaseModel):
     goal_type: str = "maintenance"
     target_calories: Optional[float] = None
