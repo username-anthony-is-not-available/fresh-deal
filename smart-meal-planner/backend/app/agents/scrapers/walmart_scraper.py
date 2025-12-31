@@ -1,100 +1,111 @@
 
-from playwright.async_api import Page
-from typing import List, Dict, Any
-from .base_scraper import BaseScraper
-from bs4 import BeautifulSoup
-import re
+import asyncio
+import aiohttp
+from typing import List, Dict, Any, Optional
 import logging
 
 logger = logging.getLogger(__name__)
 
-class WalmartScraper(BaseScraper):
+class WalmartScraper:
     """
-    Scraper for Walmart.ca. This scraper attempts to handle the flyer page.
+    Scraper for Walmart.ca that uses the Flipp API.
+    This is more reliable than browser-based scraping.
     """
     STORE_NAME = "Walmart"
+    BASE_URL = "https://backflipp.wishabi.com/flipp"
+    ACCESS_TOKEN = "92bcff5f7d07c3aaa4b33e2c048d7728"
+    MERCHANT_ID = 234  # Walmart Canada's ID in Flipp
 
-    async def _scrape_page(self, page: Page, limit: int = 50) -> List[Dict[str, Any]]:
+    DEFAULT_SEARCH_TERMS = [
+        "chicken", "beef", "pork", "fish", "salmon",
+        "apple", "banana", "orange", "lettuce", "tomato",
+        "milk", "cheese", "yogurt", "eggs", "butter",
+        "bread", "rice", "pasta", "cereal",
+        "juice", "water", "coffee",
+        "chips", "cookies", "chocolate",
+        "frozen", "pizza", "ice cream"
+    ]
+
+    def __init__(self, headless: bool = True, postal_code: str = "H4T1V6", proxy_manager: Optional[Any] = None, storage_path: str = "/tmp"):
+        self.postal_code = postal_code
+
+    async def scrape(self, limit: int = 50) -> List[Dict[str, Any]]:
         """
-        Scrapes the Walmart website for deals.
+        Scrapes Walmart deals by searching for a list of common grocery items
+        via the Flipp API.
         """
         deals = []
-        url = "https://www.walmart.ca/en/flyer"
+        seen_items = set()
 
-        try:
-            logger.info("Navigating to the Walmart flyer page.")
-            await page.goto(url, wait_until="networkidle", timeout=120000)
-
-            # Walmart's flyer is complex and requires scrolling to load all items.
-            # We'll scroll until no new items are loaded.
-            last_item_count = 0
-            while True:
-                await page.evaluate("window.scrollBy(0, document.body.scrollHeight)")
-                await self._random_delay(2, 4)
-
-                content = await page.content()
-                soup = BeautifulSoup(content, 'html.parser')
-                flyer_items = soup.select('[data-testid="flyer-item"]')
-
-                if len(flyer_items) == last_item_count:
-                    break
-                last_item_count = len(flyer_items)
-
-
-            if not flyer_items:
-                logger.warning("No flyer items found on the Walmart page. This could be due to anti-bot measures.")
-                # Save debug information
-                await page.screenshot(path='walmart_debug.png')
-                with open('walmart_debug.html', 'w', encoding='utf-8') as f:
-                    f.write(await page.content())
-                return []
-
-            for item in flyer_items:
+        async with aiohttp.ClientSession() as session:
+            for term in self.DEFAULT_SEARCH_TERMS:
                 if len(deals) >= limit:
                     break
-
                 try:
-                    name_element = item.select_one('[data-testid="product-name"]')
-                    price_element = item.select_one('[data-testid="price-deal"]')
-                    image_element = item.select_one('img')
-
-                    if not name_element or not price_element:
-                        continue
-
-                    name = name_element.text.strip()
-                    price_text = price_element.text.strip()
-                    image_url = image_element['src'] if image_element else None
-
-
-                    price_match = re.search(r'(\d+\.\d{2})', price_text.replace(',', '.'))
-                    price = float(price_match.group(1)) if price_match else 0.0
-
-                    unit = "each"
-                    if "/lb" in price_text or "per lb" in price_text:
-                        unit = "lb"
-                    elif "/kg" in price_text or "per kg" in price_text:
-                        unit = "kg"
-
-                    deal = {
-                        "name": name.strip(),
-                        "price": price,
-                        "original_price": price,
-                        "unit": unit,
-                        "store": self.STORE_NAME,
-                        "image_url": image_url,
-                        "category": "Flyer"
+                    url = f"{self.BASE_URL}/items/search"
+                    params = {
+                        "q": term,
+                        "postal_code": self.postal_code,
+                        "locale": "en-ca",
+                        "access_token": self.ACCESS_TOKEN,
                     }
-                    deals.append(deal)
+                    headers = {"User-Agent": "Flipp/5.3.0 (iPhone; iOS 14.7.1; Scale/2.00)"}
+
+                    async with session.get(url, params=params, headers=headers) as response:
+                        if response.status != 200:
+                            logger.error(f"Flipp API returned status {response.status} for term '{term}'")
+                            continue
+
+                        data = await response.json()
+                        flyer_items = data.get("items", [])
+
+                        for item in flyer_items:
+                            if item.get("merchant_id") != self.MERCHANT_ID:
+                                continue
+
+                            if len(deals) >= limit:
+                                break
+
+                            parsed_deal = self._parse_flyer_item(item)
+                            if parsed_deal:
+                                item_key = f"{parsed_deal['name']}|{parsed_deal['price']}"
+                                if item_key not in seen_items:
+                                    deals.append(parsed_deal)
+                                    seen_items.add(item_key)
 
                 except Exception as e:
-                    logger.error(f"Error scraping a Walmart flyer item: {e}")
+                    logger.error(f"Error scraping Walmart deals for term '{term}': {e}")
 
-        except Exception as e:
-            logger.critical(f"A critical error occurred while scraping Walmart: {e}")
-            await page.screenshot(path='walmart_critical_error.png')
-            with open('walmart_critical_error.html', 'w', encoding='utf-8') as f:
-                f.write(await page.content())
-
-
-        logger.info(f"Scraped {len(deals)} deals from Walmart.")
+        logger.info(f"Scraped {len(deals)} deals from Walmart via Flipp API.")
         return deals
+
+    def _parse_flyer_item(self, item: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """Parses a flyer item from the Flipp API response."""
+        try:
+            name = item.get("name")
+            price_text = item.get("current_price")
+
+            if not name or price_text is None:
+                return None
+
+            price = float(price_text)
+            original_price = float(item.get("original_price", price))
+
+            unit = "each"
+            if item.get("post_price_text"):
+                if "/lb" in item["post_price_text"].lower():
+                    unit = "lb"
+                elif "/kg" in item["post_price_text"].lower():
+                    unit = "kg"
+
+            return {
+                "name": name.strip(),
+                "price": price,
+                "original_price": original_price,
+                "unit": unit,
+                "store": self.STORE_NAME,
+                "image_url": item.get("clean_image_url"),
+                "category": "Flyer"
+            }
+        except (ValueError, TypeError):
+            return None
