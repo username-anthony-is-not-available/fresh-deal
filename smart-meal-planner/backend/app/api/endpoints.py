@@ -34,6 +34,7 @@ from app.schemas import (
     RecipeRead,
     NutritionSummaryRead,
     RecipeFeedbackCreate,
+    RecipeRatingCreate,
 )
 
 router = APIRouter()
@@ -53,10 +54,6 @@ class UserCreate(BaseModel):
     postal_code: str
     household_size: int
     dietary_preferences: List[str]
-
-
-class RecipeRatingCreate(BaseModel):
-    rating: int
 
 
 @router.get("/recipes", response_model=List[RecipeRead])
