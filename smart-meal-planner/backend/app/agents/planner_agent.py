@@ -43,9 +43,15 @@ class MealPlannerAgent:
             try:
                 ingredients = json.loads(recipe.ingredients_json)
                 instructions = json.loads(recipe.instructions_json)
+                dietary_tags = json.loads(recipe.dietary_tags_json)
+                allergens = json.loads(recipe.allergens_json)
+                nutrition = json.loads(recipe.nutrition_json)
             except json.JSONDecodeError:
                 ingredients = []
                 instructions = []
+                dietary_tags = []
+                allergens = []
+                nutrition = {}
 
             recipe_dict = {
                 "id": recipe.id,
@@ -59,8 +65,9 @@ class MealPlannerAgent:
                 "average_rating": float(avg_rating) if avg_rating is not None else None,
                 "ingredients": ingredients,
                 "instructions": instructions,
-                "tags": [],  # Tags not in DB model, can be added later
-                "nutrition": {} # Nutrition not in DB model, can be added later
+                "dietary_tags": dietary_tags,
+                "allergens": allergens,
+                "nutrition": nutrition,
             }
             recipes_data.append(recipe_dict)
         return recipes_data
@@ -101,8 +108,12 @@ class MealPlannerAgent:
         filtered_recipes = self.recipes
         if user.dietary_preferences:
             filtered_recipes = [
-                r for r in self.recipes
-                if all(pref in r.get("tags", []) for pref in user.dietary_preferences)
+                r
+                for r in self.recipes
+                if all(
+                    pref in r.get("dietary_tags", [])
+                    for pref in user.dietary_preferences
+                )
             ]
 
         # Sort by rating, putting highly-rated recipes first
