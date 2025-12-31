@@ -17,7 +17,7 @@ const ShoppingListPage = () => {
     const fetchList = async () => {
       setLoading(true);
       try {
-        const result = await api.get(`/shopping/optimize?user_id=${userId}&strategy=${strategy}`);
+        const result = await api.get(`shopping/optimize?user_id=${userId}&strategy=${strategy}`);
         setData(result);
       } catch (e) {
         console.error("Failed to fetch shopping list", e);

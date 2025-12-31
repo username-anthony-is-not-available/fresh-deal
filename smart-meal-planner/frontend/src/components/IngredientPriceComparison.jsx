@@ -43,7 +43,7 @@ const IngredientPriceComparison = ({ detailedComparison, allStores }) => {
                   return (
                     <td key={storeName} className="px-6 py-4 whitespace-nowrap text-sm text-right">
                       {price !== null ? (
-                        <span className={isMinPrice ? 'font-bold text-primary-600' : 'text-gray-700'}>
+                        <span className={isMinPrice ? 'font-bold text-accent-600' : 'text-gray-700'}>
                           ${price.toFixed(2)}
                         </span>
                       ) : (

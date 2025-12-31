@@ -334,7 +334,8 @@ const MealPlanPage = () => {
                         </div>
                       )}
                     </MealSlot>
-                  ))}
+                  );
+                  })}
                 </div>
               </div>
             );
