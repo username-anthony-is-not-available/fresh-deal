@@ -67,6 +67,18 @@ const MealPlanPage = () => {
     setError(null);
     try {
       const data = await api.get(`/plans/${userId}/latest`);
+      // Normalize plan structure on fetch
+      if (data && !data.meal_plan && data.days) {
+        data.meal_plan = data.days.map(day => ({
+          ...day,
+          meals: [
+            { ...(day.breakfast || {}), type: 'Breakfast' },
+            { ...(day.lunch || {}), type: 'Lunch' },
+            { ...(day.dinner || {}), type: 'Dinner' },
+          ],
+        }));
+        delete data.days;
+      }
       setPlan(data);
     } catch (e) {
       // A 404 is an expected outcome for users without a plan yet.
@@ -198,32 +210,34 @@ const MealPlanPage = () => {
   const dateRange = startDate && endDate ? `${startDate} - ${endDate}` : "This Week";
 
   const handleDrop = (item, target) => {
-    const { day: sourceDay, type: sourceType } = item;
-    const { day: targetDay, type: targetType } = target;
+    const { day: sourceInfo, type: sourceType } = item;
+    const { day: targetInfo, type: targetType } = target;
 
     setPlan(currentPlan => {
-      // Deep copy the plan to avoid direct state mutation
-      const newPlan = JSON.parse(JSON.stringify(currentPlan));
+      const planToUpdate = JSON.parse(JSON.stringify(currentPlan));
 
-      const sourceDayIndex = newPlan.meal_plan.findIndex(d => d.day === sourceDay.day);
-      const targetDayIndex = newPlan.meal_plan.findIndex(d => d.day === targetDay.day);
+      if (!planToUpdate.meal_plan) return currentPlan;
+
+      const sourceDayIndex = planToUpdate.meal_plan.findIndex(d => d.day === sourceInfo.day);
+      const targetDayIndex = planToUpdate.meal_plan.findIndex(d => d.day === targetInfo.day);
 
       if (sourceDayIndex === -1 || targetDayIndex === -1) return currentPlan;
 
-      const sourceMeals = newPlan.meal_plan[sourceDayIndex].meals;
-      const targetMeals = newPlan.meal_plan[targetDayIndex].meals;
+      const sourceMeals = planToUpdate.meal_plan[sourceDayIndex].meals;
+      const targetMeals = planToUpdate.meal_plan[targetDayIndex].meals;
 
+      // Find by type, which is guaranteed to be stable (Breakfast, Lunch, Dinner)
       const sourceMealIndex = sourceMeals.findIndex(m => m.type === sourceType);
       const targetMealIndex = targetMeals.findIndex(m => m.type === targetType);
 
       if (sourceMealIndex === -1 || targetMealIndex === -1) return currentPlan;
 
-      // Swap the meals
+      // Simple swap of the meal objects in the array is sufficient
       const tempMeal = sourceMeals[sourceMealIndex];
       sourceMeals[sourceMealIndex] = targetMeals[targetMealIndex];
       targetMeals[targetMealIndex] = tempMeal;
 
-      return newPlan;
+      return planToUpdate;
     });
   };
 
