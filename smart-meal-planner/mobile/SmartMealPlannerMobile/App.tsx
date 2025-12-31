@@ -1,9 +1,10 @@
+// App.tsx
 import React from 'react';
 import {NavigationContainer} from '@react-navigation/native';
 import AppNavigator from './src/navigation/AppNavigator';
 import {AuthProvider} from './src/context/AuthContext';
 
-function App(): React.JSX.Element {
+const App = () => {
   return (
     <AuthProvider>
       <NavigationContainer>
@@ -11,6 +12,6 @@ function App(): React.JSX.Element {
       </NavigationContainer>
     </AuthProvider>
   );
-}
+};
 
 export default App;
