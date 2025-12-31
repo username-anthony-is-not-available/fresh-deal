@@ -1,5 +1,5 @@
 // src/screens/ShoppingListScreen.tsx
-import React, {useEffect, useState} from 'react';
+import React, {useEffect, useState, useCallback} from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
   StyleSheet,
   SafeAreaView,
+  RefreshControl,
 } from 'react-native';
 import {getShoppingList} from '../services/api';
 import StoreCard from '../components/StoreCard';
@@ -36,28 +37,37 @@ const ShoppingListScreen = () => {
   );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
   const {user} = useAuth();
 
-  useEffect(() => {
-    const fetchShoppingList = async () => {
-      if (!user) {
-        setError('You must be logged in to see your shopping list.');
-        setLoading(false);
-        return;
-      }
-      try {
-        const data = await getShoppingList(user.id);
-        setShoppingList(data.min_cost_stores || null);
-      } catch (e) {
-        setError('Failed to load shopping list. Please try again later.');
-        console.error(e);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchShoppingList();
+  const fetchShoppingList = useCallback(async () => {
+    if (!user) {
+      setError('You must be logged in to see your shopping list.');
+      setLoading(false);
+      return;
+    }
+    try {
+      setError(null);
+      const data = await getShoppingList(user.id);
+      setShoppingList(data.min_cost_stores || null);
+    } catch (e) {
+      setError('Failed to load shopping list. Please try again later.');
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
   }, [user]);
+
+  useEffect(() => {
+    setLoading(true);
+    fetchShoppingList();
+  }, [fetchShoppingList]);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await fetchShoppingList();
+    setRefreshing(false);
+  }, [fetchShoppingList]);
 
   if (loading) {
     return (
@@ -67,7 +77,7 @@ const ShoppingListScreen = () => {
     );
   }
 
-  if (error) {
+  if (error && !shoppingList) {
     return (
       <View style={styles.centered}>
         <Text style={styles.errorText}>{error}</Text>
@@ -85,7 +95,11 @@ const ShoppingListScreen = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView>
+      <ScrollView
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }>
+        <Text style={styles.header}>Your Shopping List</Text>
         {Object.entries(shoppingList).map(([storeName, storeData]) => (
           <StoreCard
             key={storeName}
@@ -110,6 +124,7 @@ const ShoppingListScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#f5f5f5',
   },
   centered: {
     flex: 1,
@@ -120,6 +135,12 @@ const styles = StyleSheet.create({
   errorText: {
     color: 'red',
     textAlign: 'center',
+  },
+  header: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    padding: 16,
+    backgroundColor: 'white',
   },
 });
 

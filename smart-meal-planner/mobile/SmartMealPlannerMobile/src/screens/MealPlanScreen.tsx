@@ -1,11 +1,13 @@
 // src/screens/MealPlanScreen.tsx
-import React, {useEffect, useState} from 'react';
+import React, {useEffect, useState, useCallback} from 'react';
 import {
   View,
   Text,
   FlatList,
   ActivityIndicator,
   StyleSheet,
+  RefreshControl,
+  SafeAreaView,
 } from 'react-native';
 import {getLatestMealPlan} from '../services/api';
 import MealCard from '../components/MealCard';
@@ -31,28 +33,37 @@ const MealPlanScreen = () => {
   const [mealPlan, setMealPlan] = useState<MealPlan | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
   const {user} = useAuth();
 
-  useEffect(() => {
-    const fetchMealPlan = async () => {
-      if (!user) {
-        setError('You must be logged in to see your meal plan.');
-        setLoading(false);
-        return;
-      }
-      try {
-        const data = await getLatestMealPlan(user.id);
-        setMealPlan(data?.meal_plan || null);
-      } catch (e) {
-        setError('Failed to load meal plan. Please try again later.');
-        console.error(e);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchMealPlan();
+  const fetchMealPlan = useCallback(async () => {
+    if (!user) {
+      setError('You must be logged in to see your meal plan.');
+      setLoading(false);
+      return;
+    }
+    try {
+      setError(null); // Clear previous errors
+      const data = await getLatestMealPlan(user.id);
+      setMealPlan(data?.meal_plan || null);
+    } catch (e) {
+      setError('Failed to load meal plan. Please try again later.');
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
   }, [user]);
+
+  useEffect(() => {
+    setLoading(true);
+    fetchMealPlan();
+  }, [fetchMealPlan]);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await fetchMealPlan();
+    setRefreshing(false);
+  }, [fetchMealPlan]);
 
   if (loading) {
     return (
@@ -62,7 +73,8 @@ const MealPlanScreen = () => {
     );
   }
 
-  if (error) {
+  if (error && !mealPlan) {
+    // Show error only if there's no data to display
     return (
       <View style={styles.centered}>
         <Text style={styles.errorText}>{error}</Text>
@@ -88,22 +100,34 @@ const MealPlanScreen = () => {
   );
 
   return (
-    <FlatList
-      data={structuredMealPlan}
-      keyExtractor={item => item.id}
-      renderItem={({item}) => (
-        <MealCard
-          day={item.day}
-          mealType={item.mealType as 'Breakfast' | 'Lunch' | 'Dinner'}
-          meal={item.meal}
-        />
-      )}
-      contentContainerStyle={styles.list}
-    />
+    <SafeAreaView style={styles.container}>
+      <FlatList
+        data={structuredMealPlan}
+        keyExtractor={item => item.id}
+        renderItem={({item}) => (
+          <MealCard
+            day={item.day}
+            mealType={item.mealType as 'Breakfast' | 'Lunch' | 'Dinner'}
+            meal={item.meal}
+          />
+        )}
+        contentContainerStyle={styles.list}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+        ListHeaderComponent={
+          <Text style={styles.header}>Your Weekly Meal Plan</Text>
+        }
+      />
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#f5f5f5',
+  },
   centered: {
     flex: 1,
     justifyContent: 'center',
@@ -115,7 +139,13 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   list: {
-    paddingVertical: 8,
+    paddingBottom: 16,
+  },
+  header: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    padding: 16,
+    backgroundColor: 'white',
   },
 });
 
