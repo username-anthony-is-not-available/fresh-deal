@@ -1,109 +1,107 @@
 
-from playwright.async_api import Page
-from typing import List, Dict, Any
-from .base_scraper import BaseScraper
-from bs4 import BeautifulSoup
+import asyncio
+import aiohttp
 import re
+from typing import List, Dict, Any, Optional
 import logging
 
 logger = logging.getLogger(__name__)
 
-class ProvigoScraper(BaseScraper):
+class ProvigoScraper:
     """
-    Scraper for Provigo.ca. This scraper is designed to handle the flyer page,
-    which is a client-side rendered application.
+    Scraper for Provigo.ca that uses the Flipp API.
     """
     STORE_NAME = "Provigo"
+    BASE_URL = "https://backflipp.wishabi.com/flipp"
+    MERCHANT_ID = 2338
 
-    async def _scrape_page(self, page: Page, limit: int = 50) -> List[Dict[str, Any]]:
-        """
-        Scrapes the Provigo flyer website for deals.
-        """
+    DEFAULT_SEARCH_TERMS = [
+        "chicken", "beef", "pork", "fish", "salmon",
+        "apple", "banana", "orange", "lettuce", "tomato",
+        "milk", "cheese", "yogurt", "eggs", "butter",
+        "bread", "rice", "pasta", "cereal",
+        "juice", "water", "coffee",
+        "chips", "cookies", "chocolate",
+        "frozen", "pizza", "ice cream"
+    ]
+
+    def __init__(self, headless: bool = True, postal_code: str = "H4T1V6", proxy_manager: Optional[Any] = None, storage_path: str = "/tmp"):
+        self.postal_code = postal_code
+
+    async def scrape(self, limit: int = 50) -> List[Dict[str, Any]]:
         deals = []
-        url = "https://www.provigo.ca/en/flyer"
+        seen_items = set()
 
-        try:
-            logger.info("Navigating to the Provigo flyer page.")
-            await page.goto(url, wait_until="networkidle", timeout=60000)
-
-            cookie_button_selector = 'button:has-text("Accept All")'
-            try:
-                await page.locator(cookie_button_selector).click(timeout=15000)
-                logger.info("Accepted cookie consent.")
-                await page.wait_for_load_state("networkidle", timeout=30000)
-            except Exception:
-                logger.warning("Cookie consent button not found or failed to click. Proceeding...")
-
-            # Scroll to load more products
-            last_height = await page.evaluate("document.body.scrollHeight")
-            while len(deals) < limit:
-                await page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
-                await page.wait_for_timeout(3000)
-                new_height = await page.evaluate("document.body.scrollHeight")
-                if new_height == last_height:
-                    break
-                last_height = new_height
-
-            content = await page.content()
-            soup = BeautifulSoup(content, 'html.parser')
-
-            product_tiles = soup.select('div.product-tile-group__list__item')
-            logger.info(f"Found {len(product_tiles)} product tiles on Provigo.")
-
-            if not product_tiles:
-                logger.warning("No product tiles found on the Provigo page. This could be due to anti-bot measures.")
-                await page.screenshot(path='provigo_debug.png')
-                with open('provigo_debug.html', 'w', encoding='utf-8') as f:
-                    f.write(await page.content())
-                return []
-
-            for tile in product_tiles:
+        async with aiohttp.ClientSession() as session:
+            for term in self.DEFAULT_SEARCH_TERMS:
                 if len(deals) >= limit:
                     break
-
                 try:
-                    name_element = tile.select_one('h3.product-tile__name')
-                    price_element = tile.select_one('span.price__value')
-                    image_element = tile.select_one('img.product-tile__image__image')
-
-                    if not name_element or not price_element:
-                        continue
-
-                    name = name_element.text.strip()
-                    price_text = price_element.text.strip()
-                    image_url = image_element['src'] if image_element and image_element.has_attr('src') else None
-
-                    price_match = re.search(r'(\d+\.\d{2})', price_text.replace(',', '.'))
-                    price = float(price_match.group(1)) if price_match else 0.0
-
-                    unit_element = tile.select_one('span.product-tile__package-size')
-                    unit_text = unit_element.text.strip().lower() if unit_element else ""
-
-                    unit = "each"
-                    if "kg" in unit_text:
-                        unit = "kg"
-                    elif "lb" in unit_text or "/lb" in name:
-                        unit = "lb"
-
-                    deal = {
-                        "name": name,
-                        "price": price,
-                        "original_price": price,
-                        "unit": unit,
-                        "store": self.STORE_NAME,
-                        "image_url": image_url,
-                        "category": "Grocery"
+                    url = f"{self.BASE_URL}/items/search"
+                    params = {
+                        "q": term,
+                        "postal_code": self.postal_code,
+                        "locale": "en-ca",
                     }
-                    deals.append(deal)
+                    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+
+                    async with session.get(url, params=params, headers=headers) as response:
+                        if response.status != 200:
+                            logger.error(f"Flipp API returned status {response.status} for term '{term}'")
+                            continue
+
+                        data = await response.json()
+                        flyer_items = data.get("items", [])
+
+                        for item in flyer_items:
+                            if int(item.get("merchant_id")) != self.MERCHANT_ID:
+                                continue
+
+                            if len(deals) >= limit:
+                                break
+
+                            parsed_deal = self._parse_flyer_item(item)
+                            if parsed_deal:
+                                item_key = f"{parsed_deal['name']}|{parsed_deal['price']}"
+                                if item_key not in seen_items:
+                                    deals.append(parsed_deal)
+                                    seen_items.add(item_key)
+
                 except Exception as e:
-                    logger.error(f"Error parsing a Provigo product tile: {e}")
+                    logger.error(f"Error scraping Provigo deals for term '{term}': {e}")
 
-        except Exception as e:
-            logger.critical(f"A critical error occurred while scraping Provigo: {e}")
-            await page.screenshot(path='provigo_critical_error.png')
-            with open('provigo_critical_error.html', 'w', encoding='utf-8') as f:
-                f.write(await page.content())
-
-
-        logger.info(f"Scraped {len(deals)} deals from Provigo.")
+        logger.info(f"Scraped {len(deals)} deals from Provigo via Flipp API.")
         return deals
+
+    def _parse_flyer_item(self, item: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """Parses a flyer item from the Flipp API response."""
+        try:
+            name = item.get("name")
+            price_text = item.get("current_price")
+
+            if not name or price_text is None:
+                return None
+
+            price = float(price_text)
+            original_price = float(item.get("original_price", price))
+
+            unit = "each"
+            if item.get("post_price_text"):
+                post_price_text = item.get("post_price_text")
+                if post_price_text is not None:
+                    if "/lb" in post_price_text.lower():
+                        unit = "lb"
+                    elif "/kg" in post_price_text.lower():
+                        unit = "kg"
+
+            return {
+                "name": name.strip(),
+                "price": price,
+                "original_price": original_price,
+                "unit": unit,
+                "store": self.STORE_NAME,
+                "image_url": item.get("clean_image_url"),
+                "category": "Flyer"
+            }
+        except (ValueError, TypeError):
+            return None

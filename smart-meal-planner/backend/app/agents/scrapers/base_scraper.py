@@ -3,7 +3,7 @@ import asyncio
 import random
 import os
 from playwright.async_api import async_playwright, Playwright, Page
-from playwright_stealth import stealth_async
+from playwright_stealth import Stealth
 from typing import List, Dict, Any, Optional
 from app.core.proxy_manager import ProxyManager
 from .user_agents import USER_AGENTS
@@ -95,7 +95,7 @@ class BaseScraper(ABC):
         Creates a new page and applies stealth measures to it.
         """
         page = await context.new_page()
-        await stealth_async(page)
+        await Stealth().apply_stealth_async(page)
         return page
 
     async def _random_delay(self, min_delay: float = 1.0, max_delay: float = 3.0):
