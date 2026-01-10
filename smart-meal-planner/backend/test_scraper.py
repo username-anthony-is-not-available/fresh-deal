@@ -1,7 +1,7 @@
 
 import asyncio
 import logging
-from app.agents.scrapers.metro_scraper import MetroScraper
+from app.agents.scrapers.provigo_scraper import ProvigoScraper
 import pprint
 
 # Configure logging to see output from the scrapers
@@ -12,7 +12,7 @@ async def main():
     Test script to run a specific scraper and print the results.
     """
     print("Starting scraper test...")
-    scraper = MetroScraper(headless=True)
+    scraper = ProvigoScraper(headless=True)
 
 
     deals = await scraper.scrape(limit=20)
