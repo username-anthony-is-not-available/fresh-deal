@@ -18,7 +18,7 @@ celery==5.4.0
 pytest-asyncio==0.23.7
 playwright==1.49.1
 beautifulsoup4==4.12.3
-aiohttp==3.12.14
+aiohttp==3.13.3
 python-json-logger
 prometheus-fastapi-instrumentator
 sentry-sdk[fastapi]
