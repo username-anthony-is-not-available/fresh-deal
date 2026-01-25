@@ -5,6 +5,8 @@ from app.core.db import init_db
 from contextlib import asynccontextmanager
 from app.api.endpoints import router as api_router
 from app.api import nutrition
+from app.api import deals_export
+from app.api import flyer_upload
 from app.core.logging_config import setup_logging
 import logging
 from prometheus_fastapi_instrumentator import Instrumentator
@@ -77,6 +79,7 @@ app = FastAPI(
 
 import re
 
+
 def _rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded):
     """
     Custom exception handler for rate limit exceeded errors.
@@ -129,6 +132,8 @@ app.add_middleware(
 app.include_router(api_router, prefix="/api", tags=["api"])
 app.include_router(auth_endpoints.router, prefix="/auth", tags=["auth"])
 app.include_router(nutrition.router, prefix="/api", tags=["nutrition"])
+app.include_router(deals_export.router, prefix="/api", tags=["deals-export"])
+app.include_router(flyer_upload.router, prefix="/api", tags=["flyer-upload"])
 
 
 @app.get("/health")
