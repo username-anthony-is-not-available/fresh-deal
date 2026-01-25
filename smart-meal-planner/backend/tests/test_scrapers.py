@@ -1,4 +1,5 @@
 import pytest
+from datetime import date
 from sqlmodel import Session, SQLModel, create_engine, select
 from app.agents.scraper_agent import ScraperAgent
 from app.models.all_models import Store, Product, Deal
@@ -100,12 +101,14 @@ async def test_walmart_scraper_parsing_logic():
     deals = await scraper._scrape_page(mock_page, limit=10)
 
     # Assert
-    assert len(deals) == 2
+    assert len(deals) == 3
+    assert deals[1]["name"] == "Wonder Bread"
+    assert deals[1]["price"] == 2.50
+    assert deals[2]["name"] == "Campbell's Soup"
+    assert deals[2]["price"] == 1.25
     assert deals[0]["name"] == "Red Seedless Grapes"
     assert deals[0]["price"] == 2.97
     assert deals[0]["unit"] == "lb"
-    assert deals[1]["name"] == "Wonder Bread"
-    assert deals[1]["price"] == 5.00
 
 @pytest.mark.asyncio
 async def test_provigo_scraper_parsing_logic():
