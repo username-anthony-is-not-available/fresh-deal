@@ -3,8 +3,10 @@ from typing import Optional, List
 from sqlmodel import SQLModel, Field, Relationship
 from datetime import datetime, date, timezone
 
+
 def utc_now():
     return datetime.now(timezone.utc)
+
 
 class User(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -23,6 +25,7 @@ class User(SQLModel, table=True):
     favorites: List["UserFavorite"] = Relationship(back_populates="user")
     nutrition_goal: Optional["UserNutritionGoal"] = Relationship(back_populates="user")
     daily_nutritions: List["DailyNutrition"] = Relationship(back_populates="user")
+    pantry_items: List["PantryItem"] = Relationship(back_populates="user")
 
     @property
     def allergies(self) -> List[str]:
@@ -47,6 +50,7 @@ class User(SQLModel, table=True):
 
 from datetime import timedelta
 
+
 class Store(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     name: str
@@ -61,13 +65,15 @@ class Store(SQLModel, table=True):
             return True
         return self.last_scraped_at < datetime.now(timezone.utc) - timedelta(days=7)
 
+
 class Product(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     name: str
     category: str  # Produce, Meat, Dairy, etc.
-    unit_type: str # kg, lb, each
+    unit_type: str  # kg, lb, each
 
     deals: List["Deal"] = Relationship(back_populates="product")
+
 
 class Deal(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -83,17 +89,18 @@ class Deal(SQLModel, table=True):
     loyalty_points: Optional[int] = None
 
     product: Product = Relationship(back_populates="deals")
-    store: Store = Relationship(link_model=None) # Simple relationship
+    store: Store = Relationship(link_model=None)  # Simple relationship
+
 
 class Recipe(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     name: str
     cuisine: Optional[str] = None
-    category: Optional[str] = None # e.g. "Main Dish"
-    meal_type: Optional[str] = None # Breakfast, Lunch, Dinner (inferred or explicit)
+    category: Optional[str] = None  # e.g. "Main Dish"
+    meal_type: Optional[str] = None  # Breakfast, Lunch, Dinner (inferred or explicit)
 
-    ingredients_json: str = Field(default="[]") # JSON list of strings (display)
-    instructions_json: str = Field(default="[]") # JSON list of strings (display)
+    ingredients_json: str = Field(default="[]")  # JSON list of strings (display)
+    instructions_json: str = Field(default="[]")  # JSON list of strings (display)
     allergens_json: str = Field(default="[]")
     dietary_tags_json: str = Field(default="[]")
     nutrition_json: str = Field(default="{}")
@@ -110,21 +117,24 @@ class Recipe(SQLModel, table=True):
     feedback: List["RecipeFeedback"] = Relationship(back_populates="recipe")
     favorited_by: List["UserFavorite"] = Relationship(back_populates="recipe")
 
+
 class RecipeIngredient(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     recipe_id: int = Field(foreign_key="recipe.id")
-    name: str = Field(index=True) # Normalized name for matching (e.g. "chicken")
-    original_text: Optional[str] = None # "2 lbs chicken breast"
+    name: str = Field(index=True)  # Normalized name for matching (e.g. "chicken")
+    original_text: Optional[str] = None  # "2 lbs chicken breast"
 
     recipe: Recipe = Relationship(back_populates="ingredients")
+
 
 class MealPlan(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     user_id: int = Field(foreign_key="user.id")
     start_date: date
     end_date: date
-    content_json: str # Stores the full JSON structure of meals
+    content_json: str  # Stores the full JSON structure of meals
     created_at: datetime = Field(default_factory=utc_now)
+
 
 class RecipeRating(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -187,3 +197,15 @@ class DailyNutrition(SQLModel, table=True):
     updated_at: datetime = Field(default_factory=utc_now)
 
     user: "User" = Relationship(back_populates="daily_nutritions")
+
+
+class PantryItem(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: int = Field(foreign_key="user.id", index=True)
+    name: str = Field(index=True)
+    quantity: float = Field(default=0)
+    unit: str = Field(default="each")
+    created_at: datetime = Field(default_factory=utc_now)
+    updated_at: datetime = Field(default_factory=utc_now)
+
+    user: "User" = Relationship(back_populates="pantry_items")

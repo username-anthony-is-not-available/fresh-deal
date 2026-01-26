@@ -1,0 +1,36 @@
+services:
+  db:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=mealplanner
+    volumes:
+      - postgres_data_migrate:/var/lib/postgresql/data
+
+  backend:
+    build: ./backend
+    environment:
+      - POSTGRES_SERVER=db
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=mealplanner
+      - USE_MOCK_AI=True
+    depends_on:
+      - db
+
+  backend_migrate:
+    build: ./backend
+    environment:
+      - POSTGRES_SERVER=db
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=mealplanner
+      - USE_MOCK_AI=True
+    volumes:
+      - ./backend:/app
+    depends_on:
+      - db
+
+volumes:
+  postgres_data_migrate:

@@ -18,7 +18,7 @@ ENV PATH="/opt/venv/bin:$PATH"
 # Install python dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt \
-    && playwright install --with-deps chromium
+    && playwright install chromium
 
 # Stage 2: Create the final, smaller production image
 FROM python:3.12-slim AS runtime

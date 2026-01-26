@@ -35,7 +35,12 @@ from app.schemas import (
     NutritionSummaryRead,
     RecipeFeedbackCreate,
     RecipeRatingCreate,
+    PantryAddRequest,
+    PantryItemRead,
 )
+
+from app.models.all_models import PantryItem
+from app.services.pantry_service import PantryService
 
 router = APIRouter()
 
@@ -592,3 +597,58 @@ async def optimize_shopping_list(
     result = await optimizer.generate_shopping_list_async(user, plan_data, strategy)
 
     return result
+
+
+@router.get("/pantry/{user_id}", response_model=List[PantryItemRead])
+async def get_pantry_items(
+    user_id: int,
+    session: AsyncSession = Depends(get_async_session),
+):
+    items = await PantryService.list_items(session, user_id)
+    return [PantryItemRead.model_validate(i) for i in items]
+
+
+@router.post("/pantry/{user_id}/add", response_model=List[PantryItemRead])
+async def add_pantry_items(
+    user_id: int,
+    request: PantryAddRequest,
+    session: AsyncSession = Depends(get_async_session),
+):
+    # Pantry starts empty; user-selected items populate it.
+    updated = await PantryService.add_items(
+        session,
+        user_id,
+        [i.model_dump() for i in request.items],
+    )
+    return [PantryItemRead.model_validate(i) for i in updated]
+
+
+@router.delete("/pantry/{user_id}/{item_id}")
+async def delete_pantry_item(
+    user_id: int,
+    item_id: int,
+    session: AsyncSession = Depends(get_async_session),
+):
+    item = await session.get(PantryItem, item_id)
+    if not item or item.user_id != user_id:
+        raise HTTPException(status_code=404, detail="Pantry item not found")
+    await session.delete(item)
+    await session.commit()
+    return {"message": "Pantry item deleted"}
+
+
+@router.post("/pantry/{user_id}/consume-latest-plan")
+async def consume_pantry_from_latest_plan(
+    user_id: int,
+    session: AsyncSession = Depends(get_async_session),
+):
+    user = await session.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # "Remove them as soon as they are in a meal": consume pantry based on the latest plan's ingredients.
+    return await PantryService.consume_from_latest_plan(
+        session,
+        user_id=user_id,
+        household_size=user.household_size,
+    )

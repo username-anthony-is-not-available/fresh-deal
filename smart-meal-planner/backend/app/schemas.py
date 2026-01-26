@@ -1,5 +1,26 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Optional, List, Dict
+
+
+class PantryItemUpsert(BaseModel):
+    name: str
+    quantity: float = 1
+    unit: str = "each"
+
+
+class PantryAddRequest(BaseModel):
+    items: List[PantryItemUpsert]
+
+
+class PantryItemRead(BaseModel):
+    id: int
+    user_id: int
+    name: str
+    quantity: float
+    unit: str
+
+    model_config = ConfigDict(from_attributes=True)
+
 
 class UserUpdate(BaseModel):
     postal_code: Optional[str] = None
@@ -12,9 +33,10 @@ class UserUpdate(BaseModel):
         schema_extra = {
             "example": {
                 "household_size": 2,
-                "dietary_preferences": ["vegetarian", "gluten-free"]
+                "dietary_preferences": ["vegetarian", "gluten-free"],
             }
         }
+
 
 class UserRead(BaseModel):
     id: int
@@ -27,9 +49,11 @@ class UserRead(BaseModel):
     class Config:
         orm_mode = True
 
+
 class NutritionSummaryRead(BaseModel):
     totals: dict
     daily_averages: dict
+
 
 class RecipeRead(BaseModel):
     id: int
@@ -54,9 +78,7 @@ class RecipeRead(BaseModel):
                 "prep_time_minutes": 60,
                 "difficulty": "Easy",
                 "ingredients": ["ground beef", "spaghetti", "tomato sauce"],
-                "substitutions": {
-                    "ground beef": ["ground turkey", "lentils"]
-                }
+                "substitutions": {"ground beef": ["ground turkey", "lentils"]},
             }
         }
 
@@ -69,7 +91,7 @@ class RecipeFeedbackCreate(BaseModel):
         schema_extra = {
             "example": {
                 "status": "made_it",
-                "notes": "The cooking time was a bit too long."
+                "notes": "The cooking time was a bit too long.",
             }
         }
 
@@ -78,11 +100,7 @@ class RecipeRatingCreate(BaseModel):
     rating: int
 
     class Config:
-        schema_extra = {
-            "example": {
-                "rating": 5
-            }
-        }
+        schema_extra = {"example": {"rating": 5}}
 
 
 class RecipeRatingRead(RecipeRatingCreate):
@@ -92,6 +110,7 @@ class RecipeRatingRead(RecipeRatingCreate):
 
     class Config:
         orm_mode = True
+
 
 class UserNutritionGoalCreate(BaseModel):
     goal_type: str = "maintenance"
@@ -106,9 +125,10 @@ class UserNutritionGoalCreate(BaseModel):
             "example": {
                 "goal_type": "weight_loss",
                 "target_calories": 2000,
-                "target_protein": 150
+                "target_protein": 150,
             }
         }
+
 
 class UserNutritionGoalRead(UserNutritionGoalCreate):
     id: int
@@ -124,9 +144,10 @@ class UserNutritionGoalRead(UserNutritionGoalCreate):
                 "target_calories": 2000,
                 "target_protein": 150,
                 "target_carbs": 200,
-                "target_fats": 60
+                "target_fats": 60,
             }
         }
+
 
 class DailyNutritionRead(BaseModel):
     id: int
@@ -150,7 +171,7 @@ class DailyNutritionRead(BaseModel):
                 "protein": 155.2,
                 "carbs": 205.0,
                 "fats": 65.8,
-                "micronutrients_json": "{\"vitamin_c\": 80, \"iron\": 15}"
+                "micronutrients_json": '{"vitamin_c": 80, "iron": 15}',
             }
         }
 

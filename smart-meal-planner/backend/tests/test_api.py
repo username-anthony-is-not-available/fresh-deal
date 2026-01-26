@@ -1,4 +1,3 @@
-
 import os
 import pytest
 import asyncio
@@ -11,6 +10,7 @@ from sqlmodel.pool import StaticPool
 from app.main import app
 from app.core.db import get_async_session, get_session
 from app.models.all_models import User, Recipe, RecipeFeedback
+from app.api.auth_endpoints import get_current_user
 from sqlmodel import select
 import pytest_asyncio
 
@@ -21,17 +21,16 @@ engine = create_async_engine(
     DATABASE_URL,
     echo=False,
     connect_args={"check_same_thread": False},
-    poolclass=StaticPool
+    poolclass=StaticPool,
 )
+
 
 @pytest_asyncio.fixture(name="session", scope="function")
 async def session_fixture():
     async with engine.begin() as conn:
         await conn.run_sync(SQLModel.metadata.create_all)
 
-    async_session = sessionmaker(
-        engine, class_=AsyncSession, expire_on_commit=False
-    )
+    async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
     async with async_session() as session:
         yield session
 
@@ -52,11 +51,13 @@ async def client_fixture(session: AsyncSession):
 
     app.dependency_overrides.clear()
 
+
 @pytest.mark.asyncio
 async def test_health_check(client: AsyncClient):
     response = await client.get("/health")
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
+
 
 @pytest.mark.asyncio
 async def test_register(client: AsyncClient):
@@ -75,18 +76,26 @@ async def test_register(client: AsyncClient):
     assert data["email"] == "test@example.com"
     assert "id" in data
 
+
 @pytest.mark.asyncio
 async def test_deals_empty(client: AsyncClient):
     response = await client.get("/api/deals")
     assert response.status_code == 200
     assert response.json() == []
 
+
 @pytest.mark.asyncio
 async def test_get_user(client: AsyncClient):
     # First, create a user to fetch
     onboard_response = await client.post(
         "/api/onboard",
-        json={"email": "test@test.com", "password": "password", "postal_code": "H1A 1A1", "household_size": 1, "dietary_preferences": ["vegetarian"]}
+        json={
+            "email": "test@test.com",
+            "password": "password",
+            "postal_code": "H1A 1A1",
+            "household_size": 1,
+            "dietary_preferences": ["vegetarian"],
+        },
     )
     user_id = onboard_response.json()["id"]
 
@@ -99,12 +108,19 @@ async def test_get_user(client: AsyncClient):
     assert data["household_size"] == 1
     assert data["dietary_preferences"] == ["vegetarian"]
 
+
 @pytest.mark.asyncio
 async def test_update_user(client: AsyncClient):
     # First, create a user to update
     onboard_response = await client.post(
         "/api/onboard",
-        json={"email": "test@test.com", "password": "password", "postal_code": "H2B 2B2", "household_size": 3, "dietary_preferences": []}
+        json={
+            "email": "test@test.com",
+            "password": "password",
+            "postal_code": "H2B 2B2",
+            "household_size": 3,
+            "dietary_preferences": [],
+        },
     )
     user_id = onboard_response.json()["id"]
 
@@ -117,7 +133,7 @@ async def test_update_user(client: AsyncClient):
     assert data["id"] == user_id
     assert data["postal_code"] == "J7Y 5K2"
     assert data["household_size"] == 4
-    assert data["dietary_preferences"] == [] # Should not be changed
+    assert data["dietary_preferences"] == []  # Should not be changed
 
     # Verify the changes by fetching the user again
     get_response = await client.get(f"/api/users/{user_id}")
@@ -130,7 +146,12 @@ async def test_update_user(client: AsyncClient):
 @pytest.mark.asyncio
 async def test_submit_recipe_feedback(client: AsyncClient, session: AsyncSession):
     # 1. Create a user and a recipe
-    user = User(email="feedback@test.com", hashed_password="password", postal_code="A1A 1A1", household_size=1)
+    user = User(
+        email="feedback@test.com",
+        hashed_password="password",
+        postal_code="A1A 1A1",
+        household_size=1,
+    )
     recipe = Recipe(name="Test Soup", ingredients_json="[]", instructions_json="[]")
     session.add(user)
     session.add(recipe)
@@ -138,18 +159,27 @@ async def test_submit_recipe_feedback(client: AsyncClient, session: AsyncSession
     await session.refresh(user)
     await session.refresh(recipe)
 
+    # Endpoint is protected; override auth for this test.
+    app.dependency_overrides[get_current_user] = lambda: user
+
     # 2. Submit feedback
     feedback_data = {"status": "made_it", "notes": "It was delicious!"}
-    response = await client.post(f"/api/recipes/{recipe.id}/feedback", json=feedback_data)
+    response = await client.post(
+        f"/api/recipes/{recipe.id}/feedback", json=feedback_data
+    )
 
     assert response.status_code == 200
     assert response.json() == {"message": "Feedback submitted successfully"}
 
     # 3. Verify the feedback was saved in the database
-    statement = select(RecipeFeedback).where(RecipeFeedback.recipe_id == recipe.id, RecipeFeedback.user_id == user.id)
+    statement = select(RecipeFeedback).where(
+        RecipeFeedback.recipe_id == recipe.id, RecipeFeedback.user_id == user.id
+    )
     result = await session.execute(statement)
     feedback_entry = result.scalars().first()
 
     assert feedback_entry is not None
     assert feedback_entry.status == "made_it"
     assert feedback_entry.notes == "It was delicious!"
+
+    app.dependency_overrides.pop(get_current_user, None)

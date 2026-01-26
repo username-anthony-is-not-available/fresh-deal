@@ -1,1 +1,8 @@
 Generic single-database configuration.
+
+Development note (2026-01): migrations were squashed into a single baseline revision.
+
+If your local Docker Postgres still has old schema history, reset it:
+
+- From `smart-meal-planner/`: `docker compose down -v`
+- Then recreate + migrate: `docker compose up -d db` and `docker compose run --rm backend alembic upgrade head`

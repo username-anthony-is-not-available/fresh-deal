@@ -1,2 +1,11 @@
 # Log files
 *.log
+
+# Python caches
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Alembic
+alembic/versions/__pycache__/

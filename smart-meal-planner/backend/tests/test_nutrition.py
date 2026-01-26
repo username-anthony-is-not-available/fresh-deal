@@ -1,14 +1,22 @@
 import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session, SQLModel, create_engine
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+from sqlalchemy.orm import sessionmaker
 from app.main import app
 from app.core.db import get_session
+from app.core.db import get_async_session
 from app.models.all_models import User, UserNutritionGoal, DailyNutrition
 from datetime import date
 
 # Use a separate in-memory SQLite database for testing
 DATABASE_URL = "sqlite:///./test.db"
 engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+async_engine = create_async_engine(
+    "sqlite+aiosqlite:///./test.db",
+    echo=False,
+    connect_args={"check_same_thread": False},
+)
 
 
 @pytest.fixture(name="session_client", scope="function")
@@ -21,6 +29,15 @@ def session_client_fixture():
 
     app.dependency_overrides[get_session] = override_get_session
 
+    async def override_get_async_session():
+        async_session = sessionmaker(
+            async_engine, class_=AsyncSession, expire_on_commit=False
+        )
+        async with async_session() as session:
+            yield session
+
+    app.dependency_overrides[get_async_session] = override_get_async_session
+
     client = TestClient(app)
 
     yield client
@@ -32,7 +49,12 @@ def session_client_fixture():
 @pytest.fixture(name="test_user", scope="function")
 def test_user_fixture():
     with Session(engine) as session:
-        user = User(email="test@example.com", hashed_password="hashed_password", postal_code="H4T1V6", household_size=2)
+        user = User(
+            email="test@example.com",
+            hashed_password="hashed_password",
+            postal_code="H4T1V6",
+            household_size=2,
+        )
         session.add(user)
         session.commit()
         session.refresh(user)
@@ -41,11 +63,12 @@ def test_user_fixture():
 
 def test_create_nutrition_goal(session_client, test_user):
     from app.core.security import get_current_active_user
+
     app.dependency_overrides[get_current_active_user] = lambda: test_user
 
     response = session_client.post(
         "/api/users/me/nutrition-goal",
-        json={"goal_type": "weight_loss", "target_calories": 2000}
+        json={"goal_type": "weight_loss", "target_calories": 2000},
     )
     assert response.status_code == 200
     data = response.json()
@@ -53,13 +76,17 @@ def test_create_nutrition_goal(session_client, test_user):
     assert data["target_calories"] == 2000
     assert data["user_id"] == test_user.id
 
+
 def test_get_nutrition_goal(session_client, test_user):
     with Session(engine) as session:
-        goal = UserNutritionGoal(user_id=test_user.id, goal_type="weight_loss", target_calories=2000)
+        goal = UserNutritionGoal(
+            user_id=test_user.id, goal_type="weight_loss", target_calories=2000
+        )
         session.add(goal)
         session.commit()
 
     from app.core.security import get_current_active_user
+
     app.dependency_overrides[get_current_active_user] = lambda: test_user
 
     response = session_client.get("/api/users/me/nutrition-goal")
@@ -67,26 +94,32 @@ def test_get_nutrition_goal(session_client, test_user):
     data = response.json()
     assert data["goal_type"] == "weight_loss"
 
+
 def test_update_nutrition_goal(session_client, test_user):
     with Session(engine) as session:
-        goal = UserNutritionGoal(user_id=test_user.id, goal_type="weight_loss", target_calories=2000)
+        goal = UserNutritionGoal(
+            user_id=test_user.id, goal_type="weight_loss", target_calories=2000
+        )
         session.add(goal)
         session.commit()
 
     from app.core.security import get_current_active_user
+
     app.dependency_overrides[get_current_active_user] = lambda: test_user
 
     response = session_client.post(
         "/api/users/me/nutrition-goal",
-        json={"goal_type": "muscle_gain", "target_protein": 150}
+        json={"goal_type": "muscle_gain", "target_protein": 150},
     )
     assert response.status_code == 200
     data = response.json()
     assert data["goal_type"] == "muscle_gain"
     assert data["target_protein"] == 150
 
+
 def test_get_nutrition_summary(session_client, test_user):
     from app.core.security import get_current_active_user
+
     app.dependency_overrides[get_current_active_user] = lambda: test_user
 
     response = session_client.get(f"/api/users/{test_user.id}/nutrition-summary")

@@ -3,10 +3,16 @@ import asyncio
 import random
 import os
 from playwright.async_api import async_playwright, Playwright, Page
-from playwright_stealth import Stealth
+
+try:
+    # playwright-stealth exposes helper functions, not a Stealth class.
+    from playwright_stealth import stealth_async
+except Exception:  # pragma: no cover
+    stealth_async = None
 from typing import List, Dict, Any, Optional
 from app.core.proxy_manager import ProxyManager
 from .user_agents import USER_AGENTS
+
 
 class BaseScraper(ABC):
     """
@@ -14,10 +20,17 @@ class BaseScraper(ABC):
     Provides a common interface and shared functionalities for browser automation.
     """
 
-    def __init__(self, headless: bool = True, proxy_manager: Optional[ProxyManager] = None, storage_path: str = "/tmp"):
+    def __init__(
+        self,
+        headless: bool = True,
+        proxy_manager: Optional[ProxyManager] = None,
+        storage_path: str = "/tmp",
+    ):
         self.headless = headless
         self.proxy_manager = proxy_manager or ProxyManager()
-        self.storage_state_path = os.path.join(storage_path, f"browser_storage_state_{self.__class__.__name__}.json")
+        self.storage_state_path = os.path.join(
+            storage_path, f"browser_storage_state_{self.__class__.__name__}.json"
+        )
         self.user_agents = USER_AGENTS
 
     @abstractmethod
@@ -62,12 +75,10 @@ class BaseScraper(ABC):
         browser_args = ["--disable-blink-features=AutomationControlled"]
         proxy_config = None
         if proxy:
-            proxy_config = { "server": proxy }
+            proxy_config = {"server": proxy}
 
         return await playwright.chromium.launch(
-            headless=self.headless,
-            args=browser_args,
-            proxy=proxy_config
+            headless=self.headless, args=browser_args, proxy=proxy_config
         )
 
     async def _get_context(self, browser):
@@ -82,7 +93,9 @@ class BaseScraper(ABC):
             {"width": 1440, "height": 900},
             {"width": 1280, "height": 720},
         ]
-        storage_state = self.storage_state_path if os.path.exists(self.storage_state_path) else None
+        storage_state = (
+            self.storage_state_path if os.path.exists(self.storage_state_path) else None
+        )
         return await browser.new_context(
             user_agent=user_agent,
             viewport=random.choice(viewports),
@@ -95,7 +108,8 @@ class BaseScraper(ABC):
         Creates a new page and applies stealth measures to it.
         """
         page = await context.new_page()
-        await Stealth().apply_stealth_async(page)
+        if stealth_async is not None:
+            await stealth_async(page)
         return page
 
     async def _random_delay(self, min_delay: float = 1.0, max_delay: float = 3.0):
@@ -110,16 +124,23 @@ class BaseScraper(ABC):
         """
         viewport_size = page.viewport_size
         if viewport_size:
-            width, height = viewport_size['width'], viewport_size['height']
+            width, height = viewport_size["width"], viewport_size["height"]
             for _ in range(10):
                 await page.mouse.move(
                     random.uniform(0, width),
                     random.uniform(0, height),
-                    steps=random.randint(1, 5)
+                    steps=random.randint(1, 5),
                 )
                 await self._random_delay(0.1, 0.5)
 
-    async def _type_with_random_delay(self, page: Page, selector: str, text: str, min_delay: float = 0.05, max_delay: float = 0.2):
+    async def _type_with_random_delay(
+        self,
+        page: Page,
+        selector: str,
+        text: str,
+        min_delay: float = 0.05,
+        max_delay: float = 0.2,
+    ):
         """
         Types text into an element with random delays between keystrokes.
         This is a utility method intended for subclasses that need to fill out forms.
