@@ -28,6 +28,7 @@ class BaseScraper(ABC):
     ):
         self.headless = headless
         self.proxy_manager = proxy_manager or ProxyManager()
+        self.storage_path = storage_path
         self.storage_state_path = os.path.join(
             storage_path, f"browser_storage_state_{self.__class__.__name__}.json"
         )
