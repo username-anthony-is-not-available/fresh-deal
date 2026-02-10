@@ -4,6 +4,7 @@ from sqlmodel import Session, SQLModel, create_engine, select
 from app.agents.scraper_agent import ScraperAgent
 from app.models.all_models import Store, Product, Deal
 import asyncio
+from playwright.async_api import Page
 from unittest.mock import AsyncMock, patch, MagicMock
 from app.agents.scrapers.walmart_scraper import WalmartScraper
 from app.agents.scrapers.provigo_scraper import ProvigoScraper
@@ -113,76 +114,85 @@ async def test_walmart_scraper_parsing_logic():
 @pytest.mark.asyncio
 async def test_provigo_scraper_parsing_logic():
     """
-    Tests the parsing logic of the ProvigoScraper using mock HTML content.
+    Tests the parsing logic of the ProvigoScraper using mock HTML content from file.
+    Tests the Flipp iframe handling logic.
     """
     # Arrange
     scraper = ProvigoScraper()
-    mock_page = AsyncMock()
-    mock_html = """
-    <html>
-        <body>
-            <div class="product-tile-group__list__item">
-                <h3 class="product-tile__name">PC Chicken Breasts</h3>
-                <span class="price__value">12.99</span>
-                <span class="product-tile__package-size">/kg</span>
-                <img class="product-tile__image__image" src="http://example.com/image1.jpg"/>
-            </div>
-            <div class="product-tile-group__list__item">
-                <h3 class="product-tile__name">Black Diamond Cheese</h3>
-                <span class="price__value">2.49</span>
-                <img class="product-tile__image__image" src="http://example.com/image2.jpg"/>
-            </div>
-        </body>
-    </html>
-    """
-    # Mock the navigation and interaction calls to simulate a successful run
+    mock_page = MagicMock(spec=Page)
+
+    # Construct an absolute path to the mock HTML file
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    mock_html_path = os.path.join(current_dir, "mock_provigo_flyer.html")
+
+    with open(mock_html_path, "r") as f:
+        mock_html = f.read()
+
+    # Mock the navigation and interaction calls
     mock_page.goto = AsyncMock()
-    # Configure the locator to return a mock that can be clicked
-    mock_locator = AsyncMock()
-    mock_locator.click = AsyncMock()
-    mock_page.locator.return_value = mock_locator
+    mock_page.is_visible = AsyncMock(return_value=False)
     mock_page.wait_for_load_state = AsyncMock()
-    mock_page.content = AsyncMock(return_value=mock_html)
-    mock_page.evaluate = AsyncMock(return_value=1000)
-    mock_page.wait_for_timeout = AsyncMock()
+    mock_page.content = AsyncMock(return_value="<html></html>")
+    mock_page.screenshot = AsyncMock()
+    mock_page.wait_for_selector = AsyncMock()
+
+    # Mock frame_locator for Flipp iframe
+    mock_frame_locator = MagicMock()
+    mock_page.frame_locator.return_value = mock_frame_locator
+
+    mock_tile_locator = MagicMock()
+    mock_tile_locator.first = MagicMock()
+    mock_tile_locator.first.wait_for = AsyncMock()
+
+    mock_html_locator = MagicMock()
+    mock_html_locator.inner_html = AsyncMock(return_value=mock_html)
+
+    def locator_side_effect(selector):
+        if selector == 'html':
+            return mock_html_locator
+        return mock_tile_locator
+
+    mock_frame_locator.locator.side_effect = locator_side_effect
 
     # Act
     deals = await scraper._scrape_page(mock_page, limit=10)
 
     # Assert
     assert len(deals) == 2
-    assert deals[0]["name"] == "PC Chicken Breasts"
+    assert "Chicken Breasts" in deals[0]["name"]
     assert deals[0]["price"] == 12.99
     assert deals[0]["unit"] == "kg"
-    assert deals[0]["image_url"] == "http://example.com/image1.jpg"
-    assert deals[1]["name"] == "Black Diamond Cheese"
+    assert deals[1]["name"] == "Black Diamond Cheese Slices"
     assert deals[1]["price"] == 2.49
     assert deals[1]["unit"] == "each"
-    assert deals[1]["image_url"] == "http://example.com/image2.jpg"
 
 @pytest.mark.asyncio
 async def test_iga_scraper_parsing_logic():
     """
-    Tests the parsing logic of the IgaScraper using mock HTML content.
+    Tests the parsing logic of the IgaScraper using mock HTML content from file.
     """
     # Arrange
     scraper = IgaScraper()
-    mock_page = AsyncMock()
+    mock_page = MagicMock(spec=Page)
+
     # Construct an absolute path to the mock HTML file
     current_dir = os.path.dirname(os.path.abspath(__file__))
     mock_html_path = os.path.join(current_dir, "mock_iga_flyer.html")
     with open(mock_html_path, "r") as f:
         mock_html = f.read()
-    # Mock the navigation and interaction calls to simulate a successful run
+
+    # Mock the navigation and interaction calls
     mock_page.goto = AsyncMock()
-    # Configure the locator to return a mock that can be clicked
-    mock_locator = AsyncMock()
-    mock_locator.click = AsyncMock()
-    mock_page.locator.return_value = mock_locator
+    mock_page.is_visible = AsyncMock(return_value=False)
     mock_page.wait_for_load_state = AsyncMock()
+    mock_page.wait_for_selector = AsyncMock()
     mock_page.content = AsyncMock(return_value=mock_html)
+    mock_page.evaluate = AsyncMock(return_value=1000)
+    mock_page.screenshot = AsyncMock()
+
     # Act
     deals = await scraper._scrape_page(mock_page, limit=10)
+
     # Assert
     assert len(deals) == 2
     assert deals[0]["name"] == "Organic Bananas"
