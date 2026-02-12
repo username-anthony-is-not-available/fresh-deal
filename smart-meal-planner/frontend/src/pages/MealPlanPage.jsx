@@ -5,7 +5,7 @@ import { HTML5Backend } from 'react-dnd-html5-backend';
 import DraggableMealCard from '../components/DraggableMealCard';
 import MealSlot from '../components/MealSlot';
 import DietaryFilters from '../components/DietaryFilters';
-import { RefreshCw, Calendar as CalendarIcon, Lightbulb, Save } from 'lucide-react';
+import { RefreshCw, Calendar as CalendarIcon, Lightbulb, PiggyBank } from 'lucide-react';
 import api from '../services/api';
 import SkeletonLoader from '../components/SkeletonLoader';
 import { showSuccessToast, showErrorToast } from '../utils/toast';
@@ -180,7 +180,7 @@ const MealPlanPage = () => {
         </p>
 
         <div className="max-w-md mx-auto mb-8">
-          <DietaryFilters selected={dietaryPreferences} onChange={handleDietaryChange} />
+          <DietaryFilters selected={dietaryPreferences} onChange={handleDietaryChange} initialOpen={true} />
         </div>
 
         <button
@@ -278,23 +278,36 @@ const MealPlanPage = () => {
   return (
     <DndProvider backend={HTML5Backend}>
       <div>
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 gap-4">
           <div>
-          <h1 className="text-3xl font-bold text-gray-900">Weekly Meal Plan</h1>
-          <p className="text-gray-500">{dateRange}</p>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Weekly Meal Plan</h1>
+            <p className="text-gray-500 text-sm sm:text-base">{dateRange}</p>
+          </div>
+          <button
+            onClick={generatePlan}
+            disabled={generating}
+            className="flex items-center justify-center gap-2 text-primary-700 bg-primary-50 px-4 py-2.5 rounded-lg hover:bg-primary-100 font-semibold disabled:opacity-50 w-full sm:w-auto shadow-sm sm:shadow-none"
+          >
+            <RefreshCw className={`w-4 h-4 ${generating ? 'animate-spin' : ''}`} />
+            <span>{generating ? 'Generating...' : 'Regenerate Plan'}</span>
+          </button>
         </div>
-        <button
-          onClick={generatePlan}
-          disabled={generating}
-          className="flex items-center gap-2 text-primary-700 bg-primary-50 px-4 py-2 rounded-lg hover:bg-primary-100 font-medium disabled:opacity-50"
-        >
-          <RefreshCw className={`w-4 h-4 ${generating ? 'animate-spin' : ''}`} />
-          {generating ? 'Generating...' : 'Regenerate'}
-        </button>
-      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
         <div className="lg:col-span-3 space-y-8">
+          <div className="lg:hidden">
+            <div className="bg-green-600 rounded-xl p-6 text-white shadow-lg mb-6">
+              <div className="flex justify-between items-center">
+                <div>
+                  <p className="text-green-100 text-xs uppercase font-bold tracking-wider mb-1">Estimated Savings</p>
+                  <p className="text-4xl font-black">${plan.shopping_summary?.estimated_savings || "0.00"}</p>
+                </div>
+                <div className="bg-green-500 p-3 rounded-full shadow-inner">
+                  <PiggyBank className="w-8 h-8 text-white" />
+                </div>
+              </div>
+            </div>
+          </div>
           <DietaryFilters selected={dietaryPreferences} onChange={handleDietaryChange} />
           {planDays.map((day) => {
             let meals = [];
@@ -353,12 +366,14 @@ const MealPlanPage = () => {
               </div>
             )}
 
-            <h3 className="font-semibold text-gray-900 mb-4">Estimated Savings</h3>
-            <div className="bg-green-50 p-4 rounded-lg border border-green-100 mb-6">
-              <div className="text-3xl font-bold text-green-700">
-                ${plan.shopping_summary?.estimated_savings || "0.00"}
+            <div className="hidden lg:block">
+              <h3 className="font-semibold text-gray-900 mb-4">Estimated Savings</h3>
+              <div className="bg-green-50 p-4 rounded-lg border border-green-100 mb-6">
+                <div className="text-3xl font-bold text-green-700">
+                  ${plan.shopping_summary?.estimated_savings || "0.00"}
+                </div>
+                <p className="text-xs text-green-600 mt-1">Saved compared to regular prices</p>
               </div>
-              <p className="text-xs text-green-600 mt-1">Saved compared to regular prices</p>
             </div>
 
             <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
