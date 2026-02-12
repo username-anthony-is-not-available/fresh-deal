@@ -26,6 +26,7 @@ class ProvigoScraper(BaseScraper):
         try:
             logger.info("Navigating to the Provigo flyer page.")
             await page.goto(url, wait_until="networkidle", timeout=60000)
+            await self._random_delay(2, 5)
 
             # Handle cookie consent if it appears
             try:
@@ -33,15 +34,19 @@ class ProvigoScraper(BaseScraper):
                 if await page.is_visible(cookie_button_selector, timeout=5000):
                     await page.locator(cookie_button_selector).click()
                     logger.info("Accepted cookie consent on Provigo.")
+                    await self._random_delay(1, 3)
                     await page.wait_for_load_state("networkidle", timeout=20000)
             except Exception as e:
                 logger.debug(f"Could not find or click the cookie button on Provigo: {e}")
 
             # Try to find the Flipp iframe
-            flyer_frame = page.frame_locator('iframe[title="Main Panel"]')
+            flyer_frame_selector = 'iframe[title="Main Panel"]'
+            flyer_frame = page.frame_locator(flyer_frame_selector)
 
             # Check if we can find product tiles within the frame
             try:
+                # Wait for the iframe to be present
+                await page.wait_for_selector(flyer_frame_selector, timeout=30000)
                 # Wait for the tiles to appear in the frame
                 tile_locator = flyer_frame.locator('div[data-testid="product-tile"]')
                 await tile_locator.first.wait_for(timeout=20000)
@@ -114,14 +119,20 @@ class ProvigoScraper(BaseScraper):
             return None
         price_text = price_element.text.strip()
 
-        # Prices can be in formats like "2/5.00" or "5.99"
-        if "/" in price_text:
-            parts = price_text.split("/")
-            try:
-                price = float(parts[1]) / int(parts[0])
-            except (ValueError, ZeroDivisionError):
-                price = 0.0
-        else:
+        # Prices can be in formats like "2/5.00", "2 for $5.00" or "5.99"
+        price = 0.0
+        if "for" in price_text.lower() or "/" in price_text:
+            # Handle "2 for $5.00" or "2/$5.00"
+            multi_buy_match = re.search(r'(\d+)\s*(?:for|/)\s*[\$]?\s*(\d+[\.,]\d{2})', price_text.lower())
+            if multi_buy_match:
+                try:
+                    quantity = int(multi_buy_match.group(1))
+                    total_price = float(multi_buy_match.group(2).replace(',', '.'))
+                    price = total_price / quantity
+                except (ValueError, ZeroDivisionError):
+                    price = 0.0
+
+        if price == 0.0:
             price_match = re.search(r'(\d+[\.,]\d{2})', price_text)
             if price_match:
                 price = float(price_match.group(1).replace(',', '.'))

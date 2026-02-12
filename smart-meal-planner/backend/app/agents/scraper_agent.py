@@ -31,7 +31,7 @@ class ScraperAgent:
             "metro": MetroScraper(),
             "walmart": WalmartScraper(),
             "maxi": MaxiScraper(),
-            "provigo": FlippScraper(stores=["provigo"], postal_code=self.postal_code),
+            "provigo": ProvigoScraper(),
             "iga": IgaScraper(),
             "adonis": AdonisScraper(postal_code=self.postal_code),
             "costco": CostcoScraper(),

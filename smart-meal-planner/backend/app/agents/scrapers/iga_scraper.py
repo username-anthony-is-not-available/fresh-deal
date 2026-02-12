@@ -26,6 +26,13 @@ class IgaScraper(BaseScraper):
         try:
             logger.info("Navigating to the IGA flyer page.")
             await page.goto(url, wait_until="networkidle", timeout=60000)
+            await self._random_delay(2, 5)
+
+            # Detect Incapsula block
+            content = await page.content()
+            if "Incapsula incident ID" in content:
+                logger.critical("IGA access denied by Incapsula.")
+                return []
 
             # Handle the cookie consent button
             try:
@@ -33,16 +40,25 @@ class IgaScraper(BaseScraper):
                 if await page.is_visible(cookie_button_selector, timeout=10000):
                     await page.locator(cookie_button_selector).click()
                     logger.info("Successfully clicked the 'Accept All' cookie button.")
+                    await self._random_delay(1, 3)
                     await page.wait_for_load_state("networkidle", timeout=20000)
             except Exception as e:
                 logger.debug(f"Could not find or click the cookie button on IGA: {e}")
 
             # Wait for flyer content to load
             try:
-                await page.wait_for_selector('div[class*="product-tile-wrapper"]', timeout=30000)
-            except Exception as e:
-                logger.warning(f"Timed out waiting for product tiles on IGA: {e}")
-                # We'll continue anyway and try to parse what's there
+                # First try direct tiles
+                await page.wait_for_selector('div[class*="product-tile-wrapper"]', timeout=15000)
+            except Exception:
+                try:
+                    # Fallback to Flipp iframe if direct tiles not found
+                    logger.info("Direct tiles not found on IGA, looking for Flipp iframe.")
+                    flyer_frame = page.frame_locator('iframe[title="Main Panel"]')
+                    await flyer_frame.locator('div[data-testid="product-tile"]').first.wait_for(timeout=15000)
+                    logger.info("Found Flipp flyer frame on IGA.")
+                except Exception as e:
+                    logger.warning(f"Timed out waiting for product tiles on IGA (direct or iframe): {e}")
+                    # We'll continue anyway and try to parse what's there
 
             # Scroll to the bottom of the page to load all items
             last_height = await page.evaluate("document.body.scrollHeight")
@@ -55,11 +71,25 @@ class IgaScraper(BaseScraper):
                 last_height = new_height
 
             logger.info("Parsing the page content for deals.")
-            content = await page.content()
-            soup = BeautifulSoup(content, 'html.parser')
 
-            # Using a more specific selector to target flyer items
-            product_tiles = soup.select('div[class*="product-tile-wrapper"]')
+            # Check for Flipp iframe content first
+            flyer_frame = page.frame_locator('iframe[title="Main Panel"]')
+            try:
+                frame_content = await flyer_frame.locator('html').inner_html()
+                soup = BeautifulSoup(frame_content, 'html.parser')
+                product_tiles = soup.select('div[data-testid="product-tile"]')
+                if product_tiles:
+                    logger.info(f"Found {len(product_tiles)} product tiles in IGA Flipp iframe.")
+            except Exception:
+                product_tiles = []
+
+            if not product_tiles:
+                # Fallback to main page content
+                content = await page.content()
+                soup = BeautifulSoup(content, 'html.parser')
+                product_tiles = soup.select('div[class*="product-tile-wrapper"]')
+                if product_tiles:
+                    logger.info(f"Found {len(product_tiles)} product tiles on IGA main page.")
 
             if not product_tiles:
                 logger.warning("No product tiles found on the IGA page.")
@@ -95,23 +125,49 @@ class IgaScraper(BaseScraper):
 
     def _parse_tile(self, tile: BeautifulSoup) -> Optional[Dict[str, Any]]:
         """
-        Parses a single product tile for IGA.
+        Parses a single product tile for IGA, supporting both native and Flipp selectors.
         """
-        name_element = tile.select_one('h3[class*="product-tile-name"]')
-        price_element = tile.select_one('div[class*="product-tile-price"]')
+        # 1. Extract Name
+        name_element = tile.select_one('h3[class*="product-tile-name"]') # Native
+        if not name_element:
+            name_element = tile.select_one('[data-testid="product-title"]') # Flipp
 
-        if not name_element or not price_element:
+        if not name_element:
             return None
 
         name = name_element.text.strip()
+
+        # 2. Extract Price
+        price_element = tile.select_one('div[class*="product-tile-price"]') # Native
+        if not price_element:
+            price_element = tile.select_one('.price__value') # Flipp
+
+        if not price_element:
+            return None
+
         price_text = price_element.text.strip()
 
-        # Handle price extraction
-        price_match = re.search(r'(\d+[\.,]\d{2})', price_text)
-        price = float(price_match.group(1).replace(',', '.')) if price_match else 0.0
+        # Handle price extraction (including multi-buy)
+        price = 0.0
+        if "for" in price_text.lower() or "/" in price_text:
+            # Handle "2 for $5.00" or "2/$5.00"
+            multi_buy_match = re.search(r'(\d+)\s*(?:for|/)\s*[\$]?\s*(\d+[\.,]\d{2})', price_text.lower())
+            if multi_buy_match:
+                try:
+                    quantity = int(multi_buy_match.group(1))
+                    total_price = float(multi_buy_match.group(2).replace(',', '.'))
+                    price = total_price / quantity
+                except (ValueError, ZeroDivisionError):
+                    price = 0.0
 
-        # Handle package size/unit
-        unit_element = tile.select_one('div[class*="product-tile-package-size"]')
+        if price == 0.0:
+            price_match = re.search(r'(\d+[\.,]\d{2})', price_text)
+            price = float(price_match.group(1).replace(',', '.')) if price_match else 0.0
+
+        # 3. Handle package size/unit
+        unit_element = tile.select_one('div[class*="product-tile-package-size"]') # Native
+        if not unit_element:
+            unit_element = tile.select_one('.product-tile__package-size') # Flipp
         unit_text = unit_element.text.strip().lower() if unit_element else ""
 
         unit = "each"
