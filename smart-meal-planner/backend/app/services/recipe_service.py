@@ -42,3 +42,20 @@ class RecipeService:
             recipe_list.append(recipe_dict)
 
         return recipe_list
+
+    @staticmethod
+    def scale_ingredients(ingredients: List[Dict[str, Any]], base_servings: int, target_servings: int) -> List[Dict[str, Any]]:
+        """
+        Scales ingredient quantities based on target servings.
+        """
+        if not base_servings or not target_servings or base_servings == target_servings:
+            return ingredients
+
+        ratio = target_servings / base_servings
+        scaled = []
+        for ing in ingredients:
+            new_ing = dict(ing)
+            if "quantity" in new_ing and isinstance(new_ing["quantity"], (int, float)):
+                new_ing["quantity"] = round(new_ing["quantity"] * ratio, 2)
+            scaled.append(new_ing)
+        return scaled

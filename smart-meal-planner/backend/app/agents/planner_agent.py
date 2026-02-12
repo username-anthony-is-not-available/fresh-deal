@@ -9,6 +9,7 @@ from sqlalchemy import func
 from app.models.all_models import Product, Deal, Store, User, Recipe, RecipeRating, UserFavorite
 from app.core.config import settings
 from app.services.llm_service import LLMService
+from app.services.recipe_service import RecipeService
 
 logger = logging.getLogger(__name__)
 
@@ -61,6 +62,7 @@ class MealPlannerAgent:
                 "meal_type": recipe.meal_type,
                 "prep_time_minutes": recipe.prep_time_minutes,
                 "difficulty": recipe.difficulty,
+                "servings": recipe.servings,
                 "image_url": recipe.image_url,
                 "average_rating": float(avg_rating) if avg_rating is not None else None,
                 "ingredients": ingredients,
@@ -154,7 +156,15 @@ class MealPlannerAgent:
 
                 if recipe_details:
                     # Enrich with data from our DB-loaded recipe list
-                    meal_info["ingredients"] = recipe_details.get("ingredients", [])
+                    base_ingredients = recipe_details.get("ingredients", [])
+                    base_servings = recipe_details.get("servings", 4)
+                    target_servings = meal_info.get("servings", plan.get("shopping_summary", {}).get("household_size", 4))
+
+                    scaled_ingredients = RecipeService.scale_ingredients(
+                        base_ingredients, base_servings, target_servings
+                    )
+
+                    meal_info["ingredients"] = scaled_ingredients
                     meal_info["nutrition"] = recipe_details.get("nutrition", {})
                     meal_info["instructions"] = recipe_details.get("instructions", [])
                     meal_info["tags"] = recipe_details.get("tags", [])
@@ -200,12 +210,18 @@ class MealPlannerAgent:
         }
 
     def _format_meal(self, recipe: Dict, household_size: int) -> Dict:
+        base_ingredients = recipe.get("ingredients", [])
+        base_servings = recipe.get("servings", 4)
+        scaled_ingredients = RecipeService.scale_ingredients(
+            base_ingredients, base_servings, household_size
+        )
+
         return {
             "recipe_id": recipe["id"],
             "recipe_name": recipe["name"],
             "reason": "Heuristic selection",
             "servings": household_size,
-            "ingredients": recipe.get("ingredients", []),
+            "ingredients": scaled_ingredients,
             "nutrition": recipe.get("nutrition", {}),
             "instructions": recipe.get("instructions", [])
         }

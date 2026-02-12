@@ -1,5 +1,5 @@
 from pydantic import BaseModel, ConfigDict
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, Any
 
 
 class PantryItemUpsert(BaseModel):
@@ -62,7 +62,8 @@ class RecipeRead(BaseModel):
     meal_type: Optional[str] = None
     prep_time_minutes: Optional[int] = None
     difficulty: Optional[str] = None
-    ingredients: List[str] = []
+    servings: int = 4
+    ingredients: List[Any] = []
     substitutions: Dict[str, List[str]] = {}
     allergens: list[str] = []
     average_rating: float = 0
