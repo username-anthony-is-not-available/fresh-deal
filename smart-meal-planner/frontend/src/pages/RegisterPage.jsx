@@ -21,12 +21,13 @@ const RegisterPage = () => {
         setError('');
 
         try {
+            const dietary_prefs = formData.dietary_preferences === 'None' ? [] : [formData.dietary_preferences.toLowerCase()];
             await register(
                 formData.email,
                 formData.password,
                 formData.postal_code,
                 formData.household_size,
-                formData.dietary_preferences
+                dietary_prefs
             );
             navigate('/login');
         } catch (error) {

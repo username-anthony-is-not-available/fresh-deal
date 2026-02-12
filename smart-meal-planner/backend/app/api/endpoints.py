@@ -3,7 +3,7 @@ from sqlmodel import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.db import get_async_session, get_session
 from sqlmodel import Session
-from app.api.auth_endpoints import get_current_user
+from app.api.auth_endpoints import get_current_user, get_current_user_optional
 from app.models.all_models import (
     User,
     MealPlan,
@@ -106,7 +106,10 @@ from app.services.substitution_service import substitution_service
 
 @router.get("/recipes/{recipe_id}", response_model=RecipeRead)
 async def get_recipe(
-    recipe_id: int, session: AsyncSession = Depends(get_async_session)
+    recipe_id: int,
+    servings: Optional[int] = None,
+    session: AsyncSession = Depends(get_async_session),
+    current_user: Optional[User] = Depends(get_current_user_optional),
 ):
     statement = (
         select(
@@ -125,17 +128,39 @@ async def get_recipe(
 
     recipe, average_rating = result_tuple
 
-    ingredients_result = await session.execute(
-        select(RecipeIngredient).where(RecipeIngredient.recipe_id == recipe_id)
+    # Determine target servings
+    target_servings = servings
+    if not target_servings and current_user:
+        target_servings = current_user.household_size
+    if not target_servings:
+        target_servings = recipe.servings
+
+    # Get structured ingredients
+    try:
+        structured_ingredients = json.loads(recipe.ingredients_json)
+    except (json.JSONDecodeError, TypeError):
+        structured_ingredients = []
+
+    # Scale ingredients
+    from app.services.recipe_service import RecipeService
+
+    scaled_ingredients = RecipeService.scale_ingredients(
+        structured_ingredients, recipe.servings, target_servings
     )
-    ingredients = ingredients_result.scalars().all()
-    ingredient_names = [ing.name for ing in ingredients]
+
+    # Get substitutions
+    ingredient_names = [ing.get("item", ing.get("name", "")) for ing in structured_ingredients if isinstance(ing, dict)]
+    if not ingredient_names:
+        # Fallback to names only if not dicts
+        ingredient_names = [str(ing) for ing in structured_ingredients]
+
     substitutions = substitution_service.get_substitutions(ingredient_names)
 
     recipe_data = recipe.dict()
-    recipe_data["ingredients"] = ingredient_names
+    recipe_data["ingredients"] = scaled_ingredients
     recipe_data["substitutions"] = substitutions
     recipe_data["average_rating"] = average_rating
+    recipe_data["servings"] = target_servings
 
     return RecipeRead(**recipe_data)
 

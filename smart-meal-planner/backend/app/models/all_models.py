@@ -107,6 +107,7 @@ class Recipe(SQLModel, table=True):
 
     prep_time_minutes: Optional[int] = None
     difficulty: Optional[str] = None
+    servings: int = Field(default=4)
     image_url: Optional[str] = None
     source_url: Optional[str] = None
 

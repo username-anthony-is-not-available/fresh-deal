@@ -9,15 +9,8 @@ const MealCard = ({ type, meal, onRegenerate, isRegenerating }) => {
   const [isFavorited, setIsFavorited] = useState(meal.is_favorited || false);
   const [feedbackStatus, setFeedbackStatus] = useState(null); // 'made_it' or 'skipped'
 
-  const handleRate = async (newRating) => {
+  const handleRate = (newRating) => {
     setRating(newRating);
-    try {
-      await api.post(`/recipes/${meal.recipe_id}/rate`, { rating: newRating });
-    } catch (error) {
-      console.error("Failed to rate recipe:", error);
-      // Revert rating on error
-      setRating(rating);
-    }
   };
 
   const handleToggleFavorite = async () => {
@@ -90,7 +83,9 @@ const MealCard = ({ type, meal, onRegenerate, isRegenerating }) => {
         <ul className="list-disc list-inside">
           {meal.ingredients.slice(0, 3).map((ing, idx) => (
             <li key={idx} className="truncate">
-              {typeof ing === "string" ? ing : ing.item}
+              {typeof ing === "string"
+                ? ing
+                : `${ing.quantity || ""} ${ing.unit || ""} ${ing.item}`.trim()}
             </li>
           ))}
           {meal.ingredients.length > 3 && (
@@ -103,7 +98,11 @@ const MealCard = ({ type, meal, onRegenerate, isRegenerating }) => {
 
       <div className="mt-auto pt-2 border-t border-gray-100">
         <div className="flex justify-between items-center">
-          <StarRating rating={rating} onRate={handleRate} />
+          <StarRating
+            recipeId={meal.recipe_id}
+            initialRating={rating}
+            onRatingSubmit={handleRate}
+          />
           {feedbackStatus ? (
             <div className="text-sm text-gray-600 font-medium">
               Thanks for the feedback!

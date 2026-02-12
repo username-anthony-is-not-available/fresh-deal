@@ -40,6 +40,22 @@ async def get_current_user(
         raise credentials_exception
     return user
 
+async def get_current_user_optional(
+    token: Optional[str] = Depends(oauth2_scheme),
+    session: AsyncSession = Depends(get_async_session)
+) -> Optional[User]:
+    if not token:
+        return None
+    try:
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        user_id = payload.get("sub")
+        if user_id is None:
+            return None
+        user = await session.get(User, int(user_id))
+        return user
+    except JWTError:
+        return None
+
 
 import json
 from typing import List

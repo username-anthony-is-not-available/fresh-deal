@@ -9,6 +9,8 @@ const RecipeDetailPage = () => {
   const [recipe, setRecipe] = useState(null);
   const [loading, setLoading] = useState(true);
   const [userRating, setUserRating] = useState(0);
+  const [servings, setServings] = useState(4);
+  const [baseRecipe, setBaseRecipe] = useState(null);
 
   useEffect(() => {
     const fetchRecipeAndRating = async () => {
@@ -16,6 +18,8 @@ const RecipeDetailPage = () => {
         setLoading(true);
         const recipeData = await api.get(`/recipes/${id}`);
         setRecipe(recipeData);
+        setBaseRecipe(recipeData);
+        setServings(recipeData.servings);
 
         // Fetch the user's rating
         try {
@@ -52,12 +56,30 @@ const RecipeDetailPage = () => {
     return <div>Loading...</div>;
   }
 
+  const handleServingsChange = (newServings) => {
+    if (newServings < 1) return;
+    const ratio = newServings / baseRecipe.servings;
+    const scaledIngredients = baseRecipe.ingredients.map(ing => {
+      if (typeof ing === 'object' && ing !== null && 'quantity' in ing) {
+        return { ...ing, quantity: Math.round(ing.quantity * ratio * 100) / 100 };
+      }
+      return ing;
+    });
+    setServings(newServings);
+    setRecipe(prev => ({ ...prev, ingredients: scaledIngredients, servings: newServings }));
+  };
+
   if (!recipe) {
     return <div>Recipe not found</div>;
   }
 
+  const formatIngredient = (ing) => {
+    if (typeof ing === 'string') return ing;
+    return `${ing.quantity} ${ing.unit} ${ing.item}`;
+  };
+
   return (
-    <div className="container mx-auto p-4">
+    <div className="container mx-auto p-4 max-w-4xl">
       <h1 className="text-3xl font-bold">{recipe.name}</h1>
       <p className="text-gray-500">{recipe.cuisine}</p>
 
@@ -73,14 +95,32 @@ const RecipeDetailPage = () => {
       </div>
 
       <div className="mt-8">
-        <h2 className="text-2xl font-bold">Ingredients</h2>
-        <ul className="list-disc list-inside mt-2">
-          {recipe.ingredients.map((ingredient) => (
-            <li key={ingredient}>
-              {ingredient}
-              {recipe.substitutions[ingredient] && (
-                <span className="text-gray-500 ml-2">
-                  (Substitutes: {recipe.substitutions[ingredient].join(', ')})
+        <div className="flex justify-between items-center">
+          <h2 className="text-2xl font-bold">Ingredients</h2>
+          <div className="flex items-center space-x-2 bg-gray-100 p-2 rounded-lg">
+            <span className="text-sm font-medium">Servings:</span>
+            <button
+              onClick={() => handleServingsChange(servings - 1)}
+              className="w-8 h-8 flex items-center justify-center bg-white rounded border border-gray-300 hover:bg-gray-50"
+            >
+              -
+            </button>
+            <span className="w-8 text-center font-bold">{servings}</span>
+            <button
+              onClick={() => handleServingsChange(servings + 1)}
+              className="w-8 h-8 flex items-center justify-center bg-white rounded border border-gray-300 hover:bg-gray-50"
+            >
+              +
+            </button>
+          </div>
+        </div>
+        <ul className="list-disc list-inside mt-4 space-y-2">
+          {recipe.ingredients.map((ingredient, idx) => (
+            <li key={idx}>
+              <span className="font-medium">{formatIngredient(ingredient)}</span>
+              {recipe.substitutions[ingredient.item || ingredient] && (
+                <span className="text-gray-500 ml-2 text-sm italic">
+                  (Try: {recipe.substitutions[ingredient.item || ingredient].join(', ')})
                 </span>
               )}
             </li>
