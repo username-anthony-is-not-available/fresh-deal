@@ -6,6 +6,7 @@ import logging
 from typing import List, Dict, Any
 from sqlmodel import Session, select
 from sqlalchemy import func
+from sqlalchemy.orm import selectinload
 from app.models.all_models import Product, Deal, Store, User, Recipe, RecipeRating, UserFavorite
 from app.core.config import settings
 from app.services.llm_service import LLMService
@@ -35,9 +36,10 @@ class MealPlannerAgent:
             .outerjoin(
                 avg_rating_subquery, Recipe.id == avg_rating_subquery.c.recipe_id
             )
+            .options(selectinload(Recipe.ingredients))
         )
 
-        results = self.session.exec(statement).all()
+        results = self.session.exec(statement).unique().all()
 
         recipes_data = []
         for recipe, avg_rating in results:
@@ -54,8 +56,11 @@ class MealPlannerAgent:
                 allergens = []
                 nutrition = {}
 
+            normalized_ingredients = [ing.name.lower() for ing in recipe.ingredients]
+
             recipe_dict = {
                 "id": recipe.id,
+                "normalized_ingredients": normalized_ingredients,
                 "name": recipe.name,
                 "cuisine": recipe.cuisine,
                 "category": recipe.category,
@@ -118,8 +123,11 @@ class MealPlannerAgent:
                 )
             ]
 
-        # Sort by rating, putting highly-rated recipes first
-        filtered_recipes.sort(key=lambda r: r.get("average_rating") or 2.5, reverse=True)
+        # Calculate deal scores to prioritize cheaper recipes
+        filtered_recipes = self._calculate_deal_scores(filtered_recipes, deals)
+
+        # Sort by deal_score (primary) and rating (secondary), putting highly-scored/rated recipes first
+        filtered_recipes.sort(key=lambda r: (r.get("deal_score", 0), r.get("average_rating") or 2.5), reverse=True)
 
         try:
             plan = self.llm_service.generate_meal_plan(user_prefs, deals, filtered_recipes, favorite_recipe_ids)
@@ -225,3 +233,31 @@ class MealPlannerAgent:
             "nutrition": recipe.get("nutrition", {}),
             "instructions": recipe.get("instructions", [])
         }
+
+    def _calculate_deal_scores(self, recipes: List[Dict], deals: List[Dict]) -> List[Dict]:
+        """
+        Calculates a deal score for each recipe based on active deals.
+        The score is the number of recipe ingredients that are currently on sale.
+        """
+        on_sale_products = {d["product"].lower() for d in deals}
+
+        for recipe in recipes:
+            matching_ingredients = []
+            # We use normalized_ingredients for matching
+            recipe_ingredients = recipe.get("normalized_ingredients", [])
+
+            for ing_name in recipe_ingredients:
+                if not ing_name:
+                    continue
+
+                # Simple matching: check if any on-sale product name is in the ingredient name
+                # or if the ingredient name is in any on-sale product name.
+                for sale_prod in on_sale_products:
+                    if sale_prod in ing_name or ing_name in sale_prod:
+                        matching_ingredients.append(ing_name)
+                        break
+
+            recipe["deal_score"] = len(matching_ingredients)
+            recipe["on_sale_ingredients"] = list(set(matching_ingredients))
+
+        return recipes

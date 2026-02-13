@@ -333,8 +333,8 @@ class LLMService:
         1. You MUST select 21 meals from the provided recipe list.
         2. PRIORITY RULES:
            - HIGHEST PRIORITY: Strongly prefer recipes from the user's favorites list.
-           - HIGH PRIORITY: Prioritize recipes with a high average rating (4 stars or higher).
-           - MEDIUM PRIORITY: Prioritize recipes that use ingredients currently on sale.
+           - HIGH PRIORITY: Prioritize recipes with a HIGH `deal_score` (more ingredients on sale). Use the provided `on_sale_ingredients` for context.
+           - MEDIUM PRIORITY: Prioritize recipes with a high average rating (4 stars or higher).
         3. GENERAL RULES:
            - Never repeat the same meal or protein source on consecutive days.
            - Space repeated meals at least 3 days apart.
@@ -428,7 +428,9 @@ class LLMService:
                     'fiber': nutrition.get('fiber')
                 },
                 'allergens': allergens,
-                'dietary_tags': dietary_tags
+                'dietary_tags': dietary_tags,
+                'deal_score': r.get('deal_score', 0),
+                'on_sale_ingredients': r.get('on_sale_ingredients', [])
             })
         return formatted
 
