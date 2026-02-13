@@ -1,6 +1,7 @@
 import asyncio
 from typing import List, Dict, Any, Optional
-from sqlmodel import Session, select
+from sqlmodel import select
+from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.all_models import Store, Product, Deal
 from app.agents.flipp_scraper import FlippScraper
 from datetime import date, timedelta
@@ -22,7 +23,7 @@ class ScraperAgent:
     if direct browser-based scraping fails.
     """
 
-    def __init__(self, session: Session, postal_code: str = "H4T1V6"):
+    def __init__(self, session: AsyncSession, postal_code: str = "H4T1V6"):
         self.session = session
         self.postal_code = postal_code
         self.scrapers = {
@@ -51,14 +52,18 @@ class ScraperAgent:
         self, stores: List[str], limit_per_store: int = 50
     ) -> Dict[str, List[Dict[str, Any]]]:
         """
-        Scrapes a list of stores for grocery deals.
+        Scrapes a list of stores for grocery deals concurrently.
         For each store, it first attempts to use a direct scraper and falls back to Flipp API on failure.
         """
-        all_deals = {}
-        for store_name in stores:
-            store_deals = await self._scrape_store(store_name, limit_per_store)
-            all_deals[store_name] = store_deals
-        return all_deals
+        semaphore = asyncio.Semaphore(3)  # Max 3 concurrent browsers
+
+        async def protected_scrape(store_name: str):
+            async with semaphore:
+                return store_name, await self._scrape_store(store_name, limit_per_store)
+
+        tasks = [protected_scrape(store_name) for store_name in stores]
+        results = await asyncio.gather(*tasks)
+        return dict(results)
 
     async def _scrape_store(self, store_name: str, limit: int) -> List[Dict[str, Any]]:
         """
@@ -126,33 +131,41 @@ class ScraperAgent:
 
     async def persist_deals(self, deals: List[Dict[str, Any]]):
         """
-        Saves a list of scraped deals to the database.
-        This method handles the creation of stores and products if they don't already exist.
+        Saves a list of scraped deals to the database efficiently.
+        Uses a local cache to minimize database lookups and grouping commits.
         """
-        store_cache = {}
+        if not deals:
+            return
+
+        # Prefetch stores
+        store_names = list(set(d.get("store", "Unknown Store") for d in deals))
+        result = await self.session.execute(
+            select(Store).where(Store.name.in_(store_names))
+        )
+        store_cache = {s.name: s for s in result.scalars().all()}
+
+        # Prefetch products
+        product_names = list(set(d.get("name", "Unknown Product") for d in deals))
+        result = await self.session.execute(
+            select(Product).where(Product.name.in_(product_names))
+        )
+        product_cache = {p.name: p for p in result.scalars().all()}
+
         today = date.today()
         for deal_data in deals:
             store_name = deal_data.get("store", "Unknown Store")
             store = store_cache.get(store_name)
             if not store:
-                result = await self.session.execute(
-                    select(Store).where(Store.name == store_name)
+                store = Store(
+                    name=store_name, chain=store_name, postal_code=self.postal_code
                 )
-                store = result.scalars().first()
-                if not store:
-                    store = Store(
-                        name=store_name, chain=store_name, postal_code=self.postal_code
-                    )
-                    self.session.add(store)
-                    await self.session.commit()
-                    await self.session.refresh(store)
+                self.session.add(store)
+                await self.session.flush()
+                await self.session.refresh(store)
                 store_cache[store_name] = store
 
             product_name = deal_data.get("name", "Unknown Product")
-            result = await self.session.execute(
-                select(Product).where(Product.name == product_name)
-            )
-            product = result.scalars().first()
+            product = product_cache.get(product_name)
             if not product:
                 product = Product(
                     name=product_name,
@@ -160,21 +173,20 @@ class ScraperAgent:
                     unit_type=deal_data.get("unit", "each"),
                 )
                 self.session.add(product)
-                await self.session.commit()
+                await self.session.flush()
                 await self.session.refresh(product)
+                product_cache[product_name] = product
 
-            original_price = deal_data.get("original_price", deal_data.get("price"))
+            price = deal_data.get("price", 0)
+            original_price = deal_data.get("original_price", price)
             discount_pct = 0
-            if original_price and original_price > deal_data.get("price", 0):
-                discount_pct = round(
-                    ((original_price - deal_data.get("price", 0)) / original_price)
-                    * 100
-                )
+            if original_price and original_price > price:
+                discount_pct = round(((original_price - price) / original_price) * 100)
 
             deal = Deal(
                 product_id=product.id,
                 store_id=store.id,
-                price=deal_data.get("price"),
+                price=price,
                 original_price=original_price,
                 discount_pct=discount_pct,
                 valid_from=deal_data.get("valid_from", today),

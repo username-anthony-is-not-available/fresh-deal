@@ -3,8 +3,6 @@ from playwright.async_api import Page
 from typing import List, Dict, Any, Optional
 from .base_scraper import BaseScraper
 from bs4 import BeautifulSoup
-import re
-import os
 import logging
 
 logger = logging.getLogger(__name__)
@@ -35,15 +33,7 @@ class IgaScraper(BaseScraper):
                 return []
 
             # Handle the cookie consent button
-            try:
-                cookie_button_selector = 'button:has-text("Accept All")'
-                if await page.is_visible(cookie_button_selector, timeout=10000):
-                    await page.locator(cookie_button_selector).click()
-                    logger.info("Successfully clicked the 'Accept All' cookie button.")
-                    await self._random_delay(1, 3)
-                    await page.wait_for_load_state("networkidle", timeout=20000)
-            except Exception as e:
-                logger.debug(f"Could not find or click the cookie button on IGA: {e}")
+            await self._handle_cookie_consent(page, 'button:has-text("Accept All")')
 
             # Wait for flyer content to load
             try:
@@ -58,17 +48,9 @@ class IgaScraper(BaseScraper):
                     logger.info("Found Flipp flyer frame on IGA.")
                 except Exception as e:
                     logger.warning(f"Timed out waiting for product tiles on IGA (direct or iframe): {e}")
-                    # We'll continue anyway and try to parse what's there
 
             # Scroll to the bottom of the page to load all items
-            last_height = await page.evaluate("document.body.scrollHeight")
-            for _ in range(5): # Limit scrolling to avoid infinite loops
-                await page.evaluate("window.scrollTo(0, document.body.scrollHeight);")
-                await self._random_delay(2, 4)
-                new_height = await page.evaluate("document.body.scrollHeight")
-                if new_height == last_height:
-                    break
-                last_height = new_height
+            await self._scroll_to_bottom(page, max_scrolls=5)
 
             logger.info("Parsing the page content for deals.")
 
@@ -92,12 +74,8 @@ class IgaScraper(BaseScraper):
                     logger.info(f"Found {len(product_tiles)} product tiles on IGA main page.")
 
             if not product_tiles:
-                logger.warning("No product tiles found on the IGA page.")
-                debug_img = os.path.join(self.storage_path, 'iga_debug.png')
-                debug_html = os.path.join(self.storage_path, 'iga_debug.html')
-                await page.screenshot(path=debug_img)
-                with open(debug_html, 'w', encoding='utf-8') as f:
-                    f.write(await page.content())
+                logger.warning("No product tiles found on the IGA page. Saving debug info.")
+                await self._save_debug_artifacts(page, "iga_debug")
                 return []
 
             for tile in product_tiles:
@@ -113,12 +91,7 @@ class IgaScraper(BaseScraper):
 
         except Exception as e:
             logger.critical(f"A critical error occurred while scraping IGA: {e}")
-            # Save a screenshot and HTML for debugging
-            error_img = os.path.join(self.storage_path, 'iga_critical_error.png')
-            error_html = os.path.join(self.storage_path, 'iga_critical_error.html')
-            await page.screenshot(path=error_img)
-            with open(error_html, 'w', encoding='utf-8') as f:
-                f.write(await page.content())
+            await self._save_debug_artifacts(page, "iga_critical_error")
 
         logger.info(f"Successfully scraped {len(deals)} deals from IGA.")
         return deals

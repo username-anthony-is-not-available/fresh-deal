@@ -4,6 +4,7 @@ import random
 import os
 import re
 from playwright.async_api import async_playwright, Playwright, Page
+from datetime import date, datetime
 
 try:
     # playwright-stealth exposes helper functions, not a Stealth class.
@@ -150,6 +151,140 @@ class BaseScraper(ABC):
         for char in text:
             await page.type(selector, char)
             await self._random_delay(min_delay, max_delay)
+
+    async def _handle_cookie_consent(
+        self, page: Page, selector: str, timeout: int = 5000
+    ) -> bool:
+        """
+        Handles the cookie consent modal if it appears.
+        """
+        try:
+            if await page.is_visible(selector, timeout=timeout):
+                await page.locator(selector).click()
+                await page.wait_for_load_state("networkidle", timeout=timeout)
+                return True
+        except Exception:
+            pass
+        return False
+
+    async def _scroll_to_bottom(self, page: Page, max_scrolls: int = 5):
+        """
+        Scrolls to the bottom of the page to trigger lazy loading.
+        """
+        last_height = await page.evaluate("document.body.scrollHeight")
+        for _ in range(max_scrolls):
+            await page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+            await self._random_delay(2, 4)
+            new_height = await page.evaluate("document.body.scrollHeight")
+            if new_height == last_height:
+                break
+            last_height = new_height
+
+    async def _save_debug_artifacts(self, page: Page, name: str):
+        """
+        Saves a screenshot and HTML content for debugging.
+        """
+        try:
+            timestamp = date.today().isoformat()
+            screenshot_path = os.path.join(
+                self.storage_path, f"{name}_{timestamp}.png"
+            )
+            html_path = os.path.join(self.storage_path, f"{name}_{timestamp}.html")
+
+            await page.screenshot(path=screenshot_path)
+            with open(html_path, "w", encoding="utf-8") as f:
+                f.write(await page.content())
+            print(f"Debug artifacts saved: {screenshot_path}, {html_path}")
+        except Exception as e:
+            print(f"Failed to save debug artifacts: {e}")
+
+    def _parse_flyer_dates(
+        self, date_text: str
+    ) -> tuple[Optional[date], Optional[date]]:
+        """
+        Parses flyer validity dates from text using common patterns.
+        Supports both English and French month names common in Quebec flyers.
+        """
+        if not date_text:
+            return None, None
+
+        # Clean text
+        date_text = date_text.strip().lower()
+
+        # Translate French months to English for strptime
+        french_to_english = {
+            "janv.": "jan", "févr.": "feb", "mars": "mar", "avr.": "apr", "mai": "may", "juin": "jun",
+            "juil.": "jul", "août": "aug", "sept.": "sep", "oct.": "oct", "nov.": "nov", "déc.": "dec",
+            "janvier": "january", "février": "february", "avril": "april", "juillet": "july",
+            "août": "august", "septembre": "september", "octobre": "october", "novembre": "november", "décembre": "december"
+        }
+        for fr, en in french_to_english.items():
+            date_text = date_text.replace(fr, en)
+
+        try:
+            # Pattern 1: Month Day format (e.g., "from Jan 30 to Feb 5, 2024")
+            match = re.search(
+                r"(?:from|du)\s+(?P<sm>\w+)\.?\s+(?P<sd>\d+)\s+(?:to|au)\s+(?P<em>\w+)\.?\s+(?P<ed>\d+),?\s+(?P<y>\d{4})",
+                date_text,
+                re.IGNORECASE,
+            )
+            if match:
+                for fmt in ["%d %b %Y", "%d %B %Y"]:
+                    try:
+                        start = datetime.strptime(f"{match.group('sd')} {match.group('sm')} {match.group('y')}", fmt).date()
+                        end = datetime.strptime(f"{match.group('ed')} {match.group('em')} {match.group('y')}", fmt).date()
+                        return start, end
+                    except ValueError:
+                        continue
+
+            # Pattern 2: Day Month format (e.g., "du 30 janv. au 5 févr. 2024")
+            match = re.search(
+                r"(?:du|from)\s+(?P<sd>\d+)\s+(?P<sm>\w+)\.?\s+(?:au|to)\s+(?P<ed>\d+)\s+(?P<em>\w+)\.?\s+(?P<y>\d{4})",
+                date_text,
+                re.IGNORECASE,
+            )
+            if match:
+                for fmt in ["%d %b %Y", "%d %B %Y"]:
+                    try:
+                        start = datetime.strptime(f"{match.group('sd')} {match.group('sm')} {match.group('y')}", fmt).date()
+                        end = datetime.strptime(f"{match.group('ed')} {match.group('em')} {match.group('y')}", fmt).date()
+                        return start, end
+                    except ValueError:
+                        continue
+
+            # Pattern 3: Single month, Month Day to Day (e.g., "from July 25 to 31, 2024")
+            match = re.search(
+                r"(?:from|du)\s+(?P<m>\w+)\.?\s+(?P<sd>\d+)\s+(?:to|au)\s+(?P<ed>\d+),?\s+(?P<y>\d{4})",
+                date_text,
+                re.IGNORECASE,
+            )
+            if match:
+                for fmt in ["%d %b %Y", "%d %B %Y"]:
+                    try:
+                        start = datetime.strptime(f"{match.group('sd')} {match.group('m')} {match.group('y')}", fmt).date()
+                        end = datetime.strptime(f"{match.group('ed')} {match.group('m')} {match.group('y')}", fmt).date()
+                        return start, end
+                    except ValueError:
+                        continue
+
+            # Pattern 4: Single month, Day to Day Month (e.g., "du 25 au 31 juillet 2024")
+            match = re.search(
+                r"(?:du|from)\s+(?P<sd>\d+)\s+(?:au|to)\s+(?P<ed>\d+)\s+(?P<m>\w+)\.?\s+(?P<y>\d{4})",
+                date_text,
+                re.IGNORECASE,
+            )
+            if match:
+                for fmt in ["%d %b %Y", "%d %B %Y"]:
+                    try:
+                        start = datetime.strptime(f"{match.group('sd')} {match.group('m')} {match.group('y')}", fmt).date()
+                        end = datetime.strptime(f"{match.group('ed')} {match.group('m')} {match.group('y')}", fmt).date()
+                        return start, end
+                    except ValueError:
+                        continue
+        except Exception:
+            pass
+
+        return None, None
 
     def _parse_price(self, price_text: str) -> Optional[float]:
         """Parse price from various formats (e.g., '2,99$', '$2.99', '2 pour 5$')."""
@@ -359,8 +494,48 @@ class BaseScraper(ABC):
                 "flour",
                 "sucre",
                 "sugar",
+                "épice",
+                "spice",
+                "sel",
+                "salt",
+                "poivre",
+                "pepper",
             ],
-            "Frozen": ["surgelé", "frozen", "glace", "ice cream", "pizza"],
+            "Frozen": [
+                "surgelé",
+                "frozen",
+                "glace",
+                "ice cream",
+                "pizza",
+                "poche",
+                "pocket",
+            ],
+            "Household": [
+                "papier",
+                "paper",
+                "savon",
+                "soap",
+                "détergent",
+                "detergent",
+                "nettoyeur",
+                "cleaner",
+                "mouchoir",
+                "tissue",
+                "sac",
+                "bag",
+            ],
+            "Personal Care": [
+                "shampoing",
+                "shampoo",
+                "dentifrice",
+                "toothpaste",
+                "brosse à dents",
+                "toothbrush",
+                "déodorant",
+                "deodorant",
+                "soin",
+                "care",
+            ],
         }
 
         for category, keywords in categories.items():
