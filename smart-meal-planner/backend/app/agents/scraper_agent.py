@@ -12,8 +12,6 @@ from .scrapers.iga_scraper import IgaScraper
 from .scrapers.adonis_scraper import AdonisScraper
 from .scrapers.costco_scraper import CostcoScraper
 from .scrapers.circulaire_en_ligne_scraper import CirculaireEnLigneScraper
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from apscheduler.triggers.cron import CronTrigger
 import logging
 
 
@@ -36,14 +34,6 @@ class ScraperAgent:
             "adonis": AdonisScraper(postal_code=self.postal_code),
             "costco": CostcoScraper(),
         }
-        self.scheduler = AsyncIOScheduler()
-        self.scheduler.add_job(
-            self.run_daily_scrape,
-            trigger=CronTrigger(hour=3, minute=0),  # Runs every day at 3:00 AM
-            id="daily_scrape_job",
-            replace_existing=True,
-        )
-        self.scheduler.start()
 
     async def run_daily_scrape(self):
         """
@@ -54,7 +44,7 @@ class ScraperAgent:
         scraped_data = await self.scrape(stores=all_stores)
         for store_name, deals in scraped_data.items():
             if deals:
-                self.persist_deals(deals)
+                await self.persist_deals(deals)
         logging.info("Daily scrape finished.")
 
     async def scrape(
@@ -78,15 +68,15 @@ class ScraperAgent:
         scraper = self.scrapers.get(store_name.lower())
         if scraper:
             try:
-                print(f"Attempting direct scrape for {store_name}...")
+                logging.info(f"Attempting direct scrape for {store_name}...")
                 deals = await scraper.scrape(limit=limit)
                 if deals:
-                    print(
+                    logging.info(
                         f"Direct scrape for {store_name} successful, found {len(deals)} deals."
                     )
                     return deals
             except Exception as e:
-                print(
+                logging.error(
                     f"Direct scrape for {store_name} failed: {e}. Falling back to Flipp API."
                 )
 
@@ -104,12 +94,12 @@ class ScraperAgent:
         """
         Uses the FlippScraper to get deals for a specific store.
         """
-        print(f"Using Flipp API for {store_name}...")
+        logging.info(f"Using Flipp API for {store_name}...")
         flipp_scraper = FlippScraper(
             postal_code=self.postal_code, stores=[store_name.lower()]
         )
         deals = await flipp_scraper.scrape(limit=limit)
-        print(f"Flipp API scrape for {store_name} found {len(deals)} deals.")
+        logging.info(f"Flipp API scrape for {store_name} found {len(deals)} deals.")
         return deals
 
     async def _scrape_with_circulaire_en_ligne(
@@ -121,20 +111,20 @@ class ScraperAgent:
         This site is mentioned in the Reddit r/QuebecTI thread as one of the few
         that provides deals in text format. We use it respectfully as a backup.
         """
-        print(f"Using circulaire-en-ligne.ca fallback for {store_name}...")
+        logging.info(f"Using circulaire-en-ligne.ca fallback for {store_name}...")
         try:
             cel_scraper = CirculaireEnLigneScraper()
             deals = await cel_scraper.scrape_store(store_name.lower(), limit=limit)
             await cel_scraper.close()
-            print(
+            logging.info(
                 f"Circulaire-en-ligne scrape for {store_name} found {len(deals)} deals."
             )
             return deals
         except Exception as e:
-            print(f"Circulaire-en-ligne fallback failed for {store_name}: {e}")
+            logging.error(f"Circulaire-en-ligne fallback failed for {store_name}: {e}")
             return []
 
-    def persist_deals(self, deals: List[Dict[str, Any]]):
+    async def persist_deals(self, deals: List[Dict[str, Any]]):
         """
         Saves a list of scraped deals to the database.
         This method handles the creation of stores and products if they don't already exist.
@@ -145,22 +135,24 @@ class ScraperAgent:
             store_name = deal_data.get("store", "Unknown Store")
             store = store_cache.get(store_name)
             if not store:
-                store = self.session.exec(
+                result = await self.session.execute(
                     select(Store).where(Store.name == store_name)
-                ).first()
+                )
+                store = result.scalars().first()
                 if not store:
                     store = Store(
                         name=store_name, chain=store_name, postal_code=self.postal_code
                     )
                     self.session.add(store)
-                    self.session.commit()
-                    self.session.refresh(store)
+                    await self.session.commit()
+                    await self.session.refresh(store)
                 store_cache[store_name] = store
 
             product_name = deal_data.get("name", "Unknown Product")
-            product = self.session.exec(
+            result = await self.session.execute(
                 select(Product).where(Product.name == product_name)
-            ).first()
+            )
+            product = result.scalars().first()
             if not product:
                 product = Product(
                     name=product_name,
@@ -168,8 +160,8 @@ class ScraperAgent:
                     unit_type=deal_data.get("unit", "each"),
                 )
                 self.session.add(product)
-                self.session.commit()
-                self.session.refresh(product)
+                await self.session.commit()
+                await self.session.refresh(product)
 
             original_price = deal_data.get("original_price", deal_data.get("price"))
             discount_pct = 0
@@ -190,5 +182,5 @@ class ScraperAgent:
             )
             self.session.add(deal)
 
-        self.session.commit()
-        print(f"Persisted {len(deals)} deals to the database.")
+        await self.session.commit()
+        logging.info(f"Persisted {len(deals)} deals to the database.")
