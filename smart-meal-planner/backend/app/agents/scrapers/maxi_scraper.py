@@ -53,7 +53,7 @@ class MaxiScraper(BaseScraper):
                 # Try to wait for tiles
                 try:
                     await page.wait_for_selector(f'{flyer_frame_selector}, {native_tile_selector}', timeout=20000)
-                except:
+                except Exception:
                     # If tiles not found, maybe scroll to trigger load
                     await page.evaluate("window.scrollTo(0, 500);")
                     await asyncio.sleep(2)
@@ -69,7 +69,7 @@ class MaxiScraper(BaseScraper):
                         frame_content = await flyer_frame.locator('html').inner_html()
                         soup = BeautifulSoup(frame_content, 'html.parser')
                         product_tiles = soup.select('div[data-testid="product-tile"]')
-                except:
+                except Exception:
                     product_tiles = []
 
                 if not product_tiles:
@@ -99,7 +99,7 @@ class MaxiScraper(BaseScraper):
                 continue
 
         if not success:
-            logger.warning(f"No deals found on flyer pages. Trying 'Deals Centre' as fallback.")
+            logger.warning("No deals found on flyer pages. Trying 'Deals Centre' as fallback.")
             try:
                 await page.goto("https://www.maxi.ca/en/collection/deals-centre", wait_until="domcontentloaded", timeout=30000)
                 await asyncio.sleep(5)
@@ -127,7 +127,7 @@ class MaxiScraper(BaseScraper):
             if await page.is_visible(selector, timeout=5000):
                 await page.click(selector)
                 await asyncio.sleep(1)
-        except:
+        except Exception:
             pass
 
     async def _handle_location(self, page: Page):
@@ -165,7 +165,7 @@ class MaxiScraper(BaseScraper):
                 if await page.is_visible(set_store_sel, timeout=5000):
                     await page.click(set_store_sel)
                     await asyncio.sleep(2)
-        except:
+        except Exception:
             pass
 
     def _parse_tile(self, tile: BeautifulSoup) -> Optional[Dict[str, Any]]:
@@ -189,7 +189,7 @@ class MaxiScraper(BaseScraper):
                     quantity = int(multi_buy_match.group(1))
                     total_price = float(multi_buy_match.group(2).replace(',', '.'))
                     price = total_price / quantity
-                except:
+                except Exception:
                     price = 0.0
 
         if price == 0.0:
@@ -237,5 +237,5 @@ class MaxiScraper(BaseScraper):
             await page.screenshot(path=os.path.join(self.storage_path, f'{prefix}.png'))
             with open(os.path.join(self.storage_path, f'{prefix}.html'), 'w') as f:
                 f.write(await page.content())
-        except:
+        except Exception:
             pass

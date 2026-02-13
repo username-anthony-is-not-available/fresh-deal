@@ -1,6 +1,6 @@
 
 import pytest
-from unittest.mock import MagicMock, AsyncMock, patch
+from unittest.mock import MagicMock, AsyncMock
 from bs4 import BeautifulSoup
 from app.agents.scrapers.maxi_scraper import MaxiScraper
 
