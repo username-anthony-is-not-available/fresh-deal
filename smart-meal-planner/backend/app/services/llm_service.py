@@ -3,10 +3,6 @@ import json
 import logging
 import redis
 import hashlib
-import json
-import logging
-import redis
-import hashlib
 from typing import List, Dict, Any, Optional
 from datetime import datetime, timedelta
 from openai import OpenAI, APIError, RateLimitError, APITimeoutError, APIConnectionError, InternalServerError
@@ -126,8 +122,6 @@ class LLMService:
         """
         # This is a simplified version. A full implementation would need
         # access to the full recipe DB and deals, similar to the main planner.
-        from app.services.recipe_service import RecipeService
-        from app.services.deal_service import DealService
 
         recipe_service = RecipeService(session)
         deal_service = DealService(session)
@@ -306,7 +300,7 @@ class LLMService:
             return self._make_api_request(self.fallback_model, prompt)
         except Exception as e2:
             logger.error(f"Fallback LLM model '{self.fallback_model}' also failed after retries: {e2}")
-            raise APIError(f"Both primary and fallback LLM models failed.", request=None, body=None)
+            raise APIError("Both primary and fallback LLM models failed.", request=None, body=None)
 
     def _construct_meal_plan_prompt(self, user_prefs: Dict, deals: List[Dict], recipes: List[Dict], week_dates: List[Dict], user_favorites: List[int]) -> str:
         formatted_deals = self.format_deals_for_llm(deals)
@@ -393,7 +387,7 @@ class LLMService:
             if isinstance(ingredients, str):
                 try:
                     ingredients = json.loads(ingredients)
-                except:
+                except Exception:
                     ingredients = []
             # Legacy format check
             elif isinstance(ingredients, list) and len(ingredients) > 0 and isinstance(ingredients[0], dict):
@@ -404,14 +398,14 @@ class LLMService:
             if isinstance(allergens, str):
                 try:
                     allergens = json.loads(allergens)
-                except:
+                except Exception:
                     allergens = []
 
             dietary_tags = r.get('dietary_tags', [])
             if isinstance(dietary_tags, str):
                 try:
                     dietary_tags = json.loads(dietary_tags)
-                except:
+                except Exception:
                     dietary_tags = []
 
             formatted.append({

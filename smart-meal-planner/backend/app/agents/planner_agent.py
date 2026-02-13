@@ -1,6 +1,5 @@
 
 import json
-import os
 import random
 import logging
 from typing import List, Dict, Any
@@ -8,7 +7,6 @@ from sqlmodel import Session, select
 from sqlalchemy import func
 from sqlalchemy.orm import selectinload
 from app.models.all_models import Product, Deal, Store, User, Recipe, RecipeRating, UserFavorite
-from app.core.config import settings
 from app.services.llm_service import LLMService
 from app.services.recipe_service import RecipeService
 
@@ -190,9 +188,12 @@ class MealPlannerAgent:
         lunches = [r for r in suitable_recipes if r.get("meal_type") == "Lunch"]
         dinners = [r for r in suitable_recipes if r.get("meal_type") == "Dinner"]
 
-        if not breakfasts: breakfasts = suitable_recipes
-        if not lunches: lunches = suitable_recipes
-        if not dinners: dinners = suitable_recipes
+        if not breakfasts:
+            breakfasts = suitable_recipes
+        if not lunches:
+            lunches = suitable_recipes
+        if not dinners:
+            dinners = suitable_recipes
 
         days = []
         used_dinner_ids = set()
