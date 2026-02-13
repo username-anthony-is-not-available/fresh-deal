@@ -395,6 +395,36 @@ async def trigger_scrape(request: ScrapeRequest):
     }
 
 
+@router.post("/admin/scrape/flipp")
+async def trigger_flipp_scrape(request: ScrapeRequest):
+    """
+    Dedicated endpoint for Flipp API scraping, as expected by the frontend.
+    """
+    return await trigger_scrape(request)
+
+
+@router.post("/admin/scrape/{store_name}")
+async def trigger_specific_scrape(
+    store_name: str,
+    postal_code: str = "H4T1V6",
+    limit: int = 50
+):
+    """
+    Triggers a scrape for a specific store. Matches 'Legacy' buttons in the frontend.
+    """
+    task = scrape_task.delay(
+        stores=[store_name],
+        postal_code=postal_code,
+        limit_per_store=limit,
+    )
+    return {
+        "task_id": task.id,
+        "status": "Processing",
+        "stores": [store_name],
+        "postal_code": postal_code,
+    }
+
+
 @router.get("/admin/scrapers")
 async def list_scrapers():
     """

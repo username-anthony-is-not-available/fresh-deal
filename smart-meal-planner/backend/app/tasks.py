@@ -2,7 +2,8 @@ import json
 from celery import shared_task
 from app.celery_app import celery_app
 from sqlmodel import Session, select
-from app.core.db import engine
+from app.core.db import engine, async_engine
+from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.all_models import User, MealPlan, Store, Product, Deal
 from app.agents.planner_agent import MealPlannerAgent
 from app.agents.scraper_agent import ScraperAgent
@@ -32,30 +33,33 @@ def scrape_task(
     It uses the ScraperAgent to orchestrate the scraping process, including
     falling back to the Flipp API if direct scraping fails.
     """
-    with Session(engine) as session:
-        try:
-            scraper_agent = ScraperAgent(session, postal_code)
+    loop = _get_or_create_event_loop()
 
-            loop = _get_or_create_event_loop()
-            deals = loop.run_until_complete(
-                scraper_agent.scrape(stores, limit_per_store)
-            )
+    async def run_scrape():
+        async with AsyncSession(async_engine) as session:
+            try:
+                scraper_agent = ScraperAgent(session, postal_code)
+                deals_by_store = await scraper_agent.scrape(stores, limit_per_store)
 
-            if not deals:
-                return {"status": "No deals found", "count": 0}
+                total_deals = 0
+                for store_name, store_deals in deals_by_store.items():
+                    if store_deals:
+                        await scraper_agent.persist_deals(store_deals)
+                        total_deals += len(store_deals)
 
-            scraper_agent.persist_deals(deals)
+                if total_deals == 0:
+                    return {"status": "No deals found", "count": 0}
 
-            return {
-                "status": "Success",
-                "scraped_items": len(deals),
-            }
+                return {
+                    "status": "Success",
+                    "scraped_items": total_deals,
+                }
+            except Exception as e:
+                import traceback
+                traceback.print_exc()
+                return {"error": str(e)}
 
-        except Exception as e:
-            import traceback
-
-            traceback.print_exc()
-            return {"error": str(e)}
+    return loop.run_until_complete(run_scrape())
 
 
 @shared_task

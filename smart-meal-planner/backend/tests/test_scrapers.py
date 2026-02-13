@@ -1,6 +1,8 @@
 import pytest
+import pytest_asyncio
 from datetime import date
 from sqlmodel import Session, SQLModel, create_engine, select
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from app.agents.scraper_agent import ScraperAgent
 from app.models.all_models import Store, Product, Deal
 import asyncio
@@ -16,12 +18,21 @@ import os
 
 # In-memory SQLite database for testing
 engine = create_engine("sqlite:///:memory:")
+async_engine = create_async_engine("sqlite+aiosqlite:///:memory:")
 
 def setup_database():
     SQLModel.metadata.create_all(engine)
 
+async def setup_async_database():
+    async with async_engine.begin() as conn:
+        await conn.run_sync(SQLModel.metadata.create_all)
+
 def teardown_database():
     SQLModel.metadata.drop_all(engine)
+
+async def teardown_async_database():
+    async with async_engine.begin() as conn:
+        await conn.run_sync(SQLModel.metadata.drop_all)
 
 @pytest.fixture(name="session")
 def session_fixture():
@@ -30,10 +41,17 @@ def session_fixture():
         yield session
     teardown_database()
 
+@pytest_asyncio.fixture
+async def async_session():
+    await setup_async_database()
+    async with AsyncSession(async_engine, expire_on_commit=False) as session:
+        yield session
+    await teardown_async_database()
+
 @pytest.mark.asyncio
-async def test_scraper_agent_orchestration_with_mocked_scrapers(session: Session):
+async def test_scraper_agent_orchestration_with_mocked_scrapers(async_session: AsyncSession):
     # Arrange
-    agent = ScraperAgent(session)
+    agent = ScraperAgent(async_session)
     stores = ["metro", "walmart"]
 
     # Mock the scrape methods of the individual scrapers
@@ -56,22 +74,25 @@ async def test_scraper_agent_orchestration_with_mocked_scrapers(session: Session
         mock_walmart_scrape.assert_called_once()
 
 
-def test_persist_deals(session: Session):
+@pytest.mark.asyncio
+async def test_persist_deals(async_session: AsyncSession):
     # Arrange
-    with patch('app.agents.scraper_agent.AsyncIOScheduler'):
-        agent = ScraperAgent(session)
-        deals_to_persist = [
-            {"name": "Test Product 1", "price": 1.99, "original_price": 2.99, "store": "Test Store", "category": "Test Category", "unit": "each"},
-            {"name": "Test Product 2", "price": 0.99, "store": "Test Store", "category": "Test Category", "unit": "kg"},
-        ]
+    agent = ScraperAgent(async_session)
+    deals_to_persist = [
+        {"name": "Test Product 1", "price": 1.99, "original_price": 2.99, "store": "Test Store", "category": "Test Category", "unit": "each"},
+        {"name": "Test Product 2", "price": 0.99, "store": "Test Store", "category": "Test Category", "unit": "kg"},
+    ]
 
-        # Act
-        agent.persist_deals(deals_to_persist)
+    # Act
+    await agent.persist_deals(deals_to_persist)
 
     # Assert
-    deals = session.exec(select(Deal)).all()
-    products = session.exec(select(Product)).all()
-    stores = session.exec(select(Store)).all()
+    result = await async_session.execute(select(Deal))
+    deals = result.scalars().all()
+    result = await async_session.execute(select(Product))
+    products = result.scalars().all()
+    result = await async_session.execute(select(Store))
+    stores = result.scalars().all()
 
     assert len(deals) == 2
     assert len(products) == 2
