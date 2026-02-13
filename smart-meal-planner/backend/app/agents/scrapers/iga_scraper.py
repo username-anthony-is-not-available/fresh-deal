@@ -142,39 +142,21 @@ class IgaScraper(BaseScraper):
         if not price_element:
             price_element = tile.select_one('.price__value') # Flipp
 
-        if not price_element:
-            return None
-
-        price_text = price_element.text.strip()
-
-        # Handle price extraction (including multi-buy)
         price = 0.0
-        if "for" in price_text.lower() or "/" in price_text:
-            # Handle "2 for $5.00" or "2/$5.00"
-            multi_buy_match = re.search(r'(\d+)\s*(?:for|/)\s*[\$]?\s*(\d+[\.,]\d{2})', price_text.lower())
-            if multi_buy_match:
-                try:
-                    quantity = int(multi_buy_match.group(1))
-                    total_price = float(multi_buy_match.group(2).replace(',', '.'))
-                    price = total_price / quantity
-                except (ValueError, ZeroDivisionError):
-                    price = 0.0
+        if price_element:
+            price_text = price_element.text.strip()
+            price = self._parse_price(price_text) or 0.0
 
         if price == 0.0:
-            price_match = re.search(r'(\d+[\.,]\d{2})', price_text)
-            price = float(price_match.group(1).replace(',', '.')) if price_match else 0.0
+            return None
 
         # 3. Handle package size/unit
         unit_element = tile.select_one('div[class*="product-tile-package-size"]') # Native
         if not unit_element:
             unit_element = tile.select_one('.product-tile__package-size') # Flipp
-        unit_text = unit_element.text.strip().lower() if unit_element else ""
 
-        unit = "each"
-        if "kg" in unit_text:
-            unit = "kg"
-        elif "lb" in unit_text or "/lb" in name.lower():
-            unit = "lb"
+        unit_text = unit_element.text.strip().lower() if unit_element else ""
+        unit = self._extract_unit(name + " " + unit_text)
 
         # Handle image
         image_element = tile.select_one('img[class*="product-tile-image"]')
@@ -187,10 +169,10 @@ class IgaScraper(BaseScraper):
 
         return {
             "name": name,
-            "price": price,
-            "original_price": price,
+            "price": round(price, 2),
+            "original_price": round(price, 2),
             "unit": unit,
             "store": self.STORE_NAME,
             "image_url": image_url,
-            "category": "Grocery"
+            "category": self._categorize_product(name)
         }

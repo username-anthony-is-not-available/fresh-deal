@@ -55,6 +55,8 @@ class WalmartScraper(BaseScraper):
 
                 deal = self._parse_deal_element(element, valid_from, valid_until)
                 if deal:
+                    # Apply categorization
+                    deal["category"] = self._categorize_product(deal["name"])
                     deals.append(deal)
 
         except Exception as e:
@@ -154,41 +156,31 @@ class WalmartScraper(BaseScraper):
         """
         try:
             name = element.select_one('div[data-testid="product-name"]').text.strip()
-            price_text = element.select_one('div[data-testid="price-deal"]').text.strip()
+            price_element = element.select_one('div[data-testid="price-deal"]')
+
+            price = 0.0
+            unit = "each"
+
+            if price_element:
+                price_text = price_element.text.strip()
+                price = self._parse_price(price_text) or 0.0
+                unit = self._extract_unit(name + " " + price_text)
+
+            if price == 0.0:
+                return None
 
             # Find the image, being flexible with the selector
             image_element = element.select_one('img')
             image_url = image_element['src'] if image_element and image_element.has_attr('src') else None
 
-            # Enhanced price and unit extraction
-            price_text = price_text.lower()
-            unit = "each"
-            price = 0.0
-
-            multi_buy_match = re.search(r'(\d+)\s*for\s*\$?([\d,\.]+)', price_text)
-
-            if multi_buy_match:
-                quantity = int(multi_buy_match.group(1))
-                total_price = float(multi_buy_match.group(2).replace(',', ''))
-                price = round(total_price / quantity, 2)
-            else:
-                price_match = re.search(r'([\d,\.]+)', price_text)
-                if price_match:
-                    price = float(price_match.group(1).replace(',', ''))
-
-            if "/lb" in price_text:
-                unit = "lb"
-            elif "/kg" in price_text:
-                unit = "kg"
-
             return {
                 "name": name,
-                "price": price,
-                "original_price": price, # Placeholder, not always available
+                "price": round(price, 2),
+                "original_price": round(price, 2), # Placeholder, not always available
                 "unit": unit,
                 "store": self.STORE_NAME,
                 "image_url": image_url,
-                "category": "Flyer",
+                "category": "Flyer", # Will be overridden in _scrape_page
                 "valid_from": valid_from,
                 "valid_until": valid_until
             }
