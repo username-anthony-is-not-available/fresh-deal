@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 import asyncio
 import random
 import os
+import re
 from playwright.async_api import async_playwright, Playwright, Page
 
 try:
@@ -149,3 +150,221 @@ class BaseScraper(ABC):
         for char in text:
             await page.type(selector, char)
             await self._random_delay(min_delay, max_delay)
+
+    def _parse_price(self, price_text: str) -> Optional[float]:
+        """Parse price from various formats (e.g., '2,99$', '$2.99', '2 pour 5$')."""
+        if not price_text:
+            return None
+
+        # Clean up the text
+        price_text = price_text.strip().lower()
+
+        # Handle "X pour Y$" or "X for Y$" format
+        multi_match = re.search(
+            r"(\d+)\s*(?:pour|for|/)\s*[\$]?\s*(\d+[,.]?\d*)\s*\$?", price_text
+        )
+        if multi_match:
+            try:
+                quantity = int(multi_match.group(1))
+                total = float(multi_match.group(2).replace(",", "."))
+                return round(total / quantity, 2)
+            except (ValueError, ZeroDivisionError):
+                pass
+
+        # Handle standard price formats
+        price_match = re.search(r"(\d+[,.]?\d*)\s*\$?", price_text)
+        if price_match:
+            try:
+                return float(price_match.group(1).replace(",", "."))
+            except ValueError:
+                pass
+
+        return None
+
+    def _extract_unit(self, text: str) -> str:
+        """Extract unit from product description."""
+        text_lower = text.lower()
+
+        if re.search(r"(/|per |par |la |each )?kg\b|\bkilo", text_lower):
+            return "kg"
+        elif re.search(r"(/|per |par |la |each )?lb\b|\bpound", text_lower):
+            return "lb"
+        elif re.search(r"100\s*g\b", text_lower):
+            return "100g"
+        elif re.search(r"\bml\b", text_lower):
+            return "ml"
+        elif re.search(r"\d+\s*g\b|\bgramme", text_lower):
+            return "g"
+        elif re.search(r"\d+\s*l\b|\blitre", text_lower):
+            return "L"
+        else:
+            return "each"
+
+    def _parse_discount(self, text: str) -> Optional[float]:
+        """Parse discount percentage from text."""
+        if not text:
+            return None
+
+        # Look for percentage patterns
+        pct_match = re.search(r"(\d+)\s*%", text)
+        if pct_match:
+            return float(pct_match.group(1))
+
+        return None
+
+    def _calculate_original_price(
+        self, price: Optional[float], discount_pct: Optional[float]
+    ) -> float:
+        """Calculate original price from discounted price and percentage."""
+        if price is None:
+            return 0.0
+        if discount_pct is None or discount_pct <= 0:
+            return price
+
+        return round(price / (1 - discount_pct / 100), 2)
+
+    def _categorize_product(self, name: str) -> str:
+        """Categorize product based on name."""
+        name_lower = name.lower()
+
+        categories = {
+            "Beverages": [
+                "jus",
+                "juice",
+                "eau",
+                "water",
+                "café",
+                "coffee",
+                "thé",
+                "tea",
+                "boisson",
+                "drink",
+                "soda",
+                "liqueur",
+            ],
+            "Snacks": [
+                "chips",
+                "biscuit",
+                "cookie",
+                "chocolat",
+                "chocolate",
+                "bonbon",
+                "candy",
+                "noix",
+                "nuts",
+            ],
+            "Meat & Poultry": [
+                "poulet",
+                "chicken",
+                "boeuf",
+                "beef",
+                "porc",
+                "pork",
+                "viande",
+                "meat",
+                "saucisse",
+                "sausage",
+                "bacon",
+                "jambon",
+                "ham",
+                "turkey",
+                "dinde",
+            ],
+            "Seafood": [
+                "poisson",
+                "fish",
+                "saumon",
+                "salmon",
+                "crevette",
+                "shrimp",
+                "thon",
+                "tuna",
+                "fruits de mer",
+                "seafood",
+                "cod",
+                "morue",
+            ],
+            "Fruits": [
+                "pomme",
+                "apple",
+                "banane",
+                "banana",
+                "orange",
+                "fraise",
+                "strawberry",
+                "raisin",
+                "grape",
+                "fruit",
+                "melon",
+                "berry",
+                "bleuet",
+            ],
+            "Vegetables": [
+                "légume",
+                "vegetable",
+                "carotte",
+                "carrot",
+                "tomate",
+                "tomato",
+                "laitue",
+                "lettuce",
+                "brocoli",
+                "broccoli",
+                "oignon",
+                "onion",
+                "pomme de terre",
+                "potato",
+                "poivron",
+                "pepper",
+            ],
+            "Dairy & Eggs": [
+                "lait",
+                "milk",
+                "fromage",
+                "cheese",
+                "yogourt",
+                "yogurt",
+                "oeuf",
+                "egg",
+                "beurre",
+                "butter",
+                "crème",
+                "cream",
+            ],
+            "Bakery": [
+                "pain",
+                "bread",
+                "baguette",
+                "croissant",
+                "muffin",
+                "gâteau",
+                "cake",
+                "bagel",
+            ],
+            "Pantry": [
+                "riz",
+                "rice",
+                "pâtes",
+                "pasta",
+                "céréale",
+                "cereal",
+                "sauce",
+                "soupe",
+                "soup",
+                "conserve",
+                "canned",
+                "huile",
+                "oil",
+                "farine",
+                "flour",
+                "sucre",
+                "sugar",
+            ],
+            "Frozen": ["surgelé", "frozen", "glace", "ice cream", "pizza"],
+        }
+
+        for category, keywords in categories.items():
+            if any(kw in name_lower for kw in keywords):
+                return category
+
+        return "Grocery"

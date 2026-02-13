@@ -32,23 +32,22 @@ class CostcoScraper(BaseScraper):
                 name = name_element.text.strip() if name_element else 'Unknown Product'
 
                 price_element = tile.select_one('.price')
-                price_text = price_element.text.strip() if price_element else '0'
 
-                # Remove all non-digit characters except for the decimal point
-                cleaned_price_text = re.sub(r'[^\d.]', '', price_text)
+                price = 0.0
+                if price_element:
+                    price_text = price_element.text.strip()
+                    price = self._parse_price(price_text) or 0.0
 
-                try:
-                    price = float(cleaned_price_text) if cleaned_price_text else 0.0
-                except ValueError:
-                    price = 0.0
+                if price == 0.0:
+                    continue
 
                 deal = {
                     "name": name,
-                    "price": price,
-                    "original_price": price,
-                    "unit": "each",
+                    "price": round(price, 2),
+                    "original_price": round(price, 2),
+                    "unit": self._extract_unit(name),
                     "store": self.STORE_NAME,
-                    "category": "grocery-household"
+                    "category": self._categorize_product(name)
                 }
                 deals.append(deal)
 

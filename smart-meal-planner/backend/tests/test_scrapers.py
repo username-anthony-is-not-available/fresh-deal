@@ -10,6 +10,8 @@ from app.agents.scrapers.walmart_scraper import WalmartScraper
 from app.agents.scrapers.provigo_scraper import ProvigoScraper
 from app.agents.scrapers.iga_scraper import IgaScraper
 from app.agents.scrapers.metro_scraper import MetroScraper
+from app.agents.scrapers.maxi_scraper import MaxiScraper
+from app.agents.scrapers.base_scraper import BaseScraper
 import os
 
 # In-memory SQLite database for testing
@@ -210,7 +212,7 @@ async def test_metro_scraper_parsing_logic():
     """
     # Arrange
     scraper = MetroScraper()
-    mock_page = AsyncMock()
+    mock_page = MagicMock(spec=Page)
     mock_html = """
     <html>
         <body>
@@ -230,12 +232,15 @@ async def test_metro_scraper_parsing_logic():
     """
     # Mock the navigation and interaction calls to simulate a successful run
     mock_page.goto = AsyncMock()
+    mock_page.is_visible = AsyncMock(return_value=False)
     # Configure the locator to return a mock that can be clicked
-    mock_locator = AsyncMock()
+    mock_locator = MagicMock()
     mock_locator.click = AsyncMock()
     mock_page.locator.return_value = mock_locator
     mock_page.wait_for_load_state = AsyncMock()
     mock_page.content = AsyncMock(return_value=mock_html)
+    mock_page.evaluate = AsyncMock(side_effect=[1000, 1000, 1000]) # For scroll logic
+
     # Act
     deals = await scraper._scrape_page(mock_page, limit=10)
     # Assert
@@ -248,3 +253,94 @@ async def test_metro_scraper_parsing_logic():
     assert deals[1]["price"] == 8.88
     assert deals[1]["unit"] == "lb"
     assert deals[1]["image_url"] == "http://example.com/image2.jpg"
+
+@pytest.mark.asyncio
+async def test_maxi_scraper_parsing_logic():
+    """
+    Tests the parsing logic of the MaxiScraper using mock HTML content.
+    """
+    # Arrange
+    scraper = MaxiScraper()
+    mock_page = MagicMock(spec=Page)
+
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    mock_html_path = os.path.join(current_dir, "mock_maxi_flyer.html")
+    with open(mock_html_path, "r") as f:
+        mock_html = f.read()
+
+    mock_page.goto = AsyncMock()
+    mock_page.is_visible = AsyncMock(return_value=True) # for cookie/location
+    mock_page.click = AsyncMock()
+    mock_page.fill = AsyncMock()
+    mock_page.keyboard = MagicMock()
+    mock_page.keyboard.press = AsyncMock()
+    mock_page.content = AsyncMock(return_value=mock_html)
+    mock_page.evaluate = AsyncMock(return_value=1000)
+
+    # Mock Flipp frame
+    mock_frame_locator = MagicMock()
+    mock_page.frame_locator.return_value = mock_frame_locator
+    mock_frame_locator.locator.return_value.count = AsyncMock(return_value=0)
+
+    # Act
+    deals = await scraper._scrape_page(mock_page, limit=10)
+
+    # Assert
+    assert len(deals) == 3
+    assert deals[0]["name"] == "PC Blue Menu Chicken Breast"
+    assert deals[0]["price"] == 12.99
+    assert deals[0]["unit"] == "kg"
+    assert deals[0]["category"] == "Meat & Poultry"
+
+    assert deals[1]["name"] == "Grapes"
+    assert deals[1]["price"] == 2.50
+    assert deals[1]["category"] == "Fruits"
+
+    assert deals[2]["name"] == "Apples"
+    assert deals[2]["price"] == 3.99
+    assert deals[2]["original_price"] == 4.99
+    assert deals[2]["unit"] == "lb"
+    assert deals[2]["category"] == "Fruits"
+
+def test_base_scraper_utilities():
+    """
+    Tests the utility methods in BaseScraper.
+    """
+    class TestScraper(BaseScraper):
+        async def _scrape_page(self, page, limit): return []
+
+    scraper = TestScraper()
+
+    # Test _parse_price
+    assert scraper._parse_price("$3.99") == 3.99
+    assert scraper._parse_price("2 for $5.00") == 2.50
+    assert scraper._parse_price("2/$6.00") == 3.00
+    assert scraper._parse_price("2 pour 7,00$") == 3.50
+    assert scraper._parse_price("4.50") == 4.50
+
+    # Test _extract_unit
+    assert scraper._extract_unit("Chicken Breast 1kg") == "kg"
+    assert scraper._extract_unit("Apples per lb") == "lb"
+    assert scraper._extract_unit("Milk 2L") == "L"
+    assert scraper._extract_unit("Eggs 12pk") == "each"
+
+    # Test _categorize_product
+    assert scraper._categorize_product("Chicken Thighs") == "Meat & Poultry"
+    assert scraper._categorize_product("Salmon Fillet") == "Seafood"
+    assert scraper._categorize_product("Bananas") == "Fruits"
+    assert scraper._categorize_product("Broccoli") == "Vegetables"
+    assert scraper._categorize_product("Cheddar Cheese") == "Dairy & Eggs"
+    assert scraper._categorize_product("Whole Wheat Bread") == "Bakery"
+    assert scraper._categorize_product("Orange Juice") == "Beverages"
+    assert scraper._categorize_product("Basmati Rice") == "Pantry"
+    assert scraper._categorize_product("Frozen Pizza") == "Frozen"
+    assert scraper._categorize_product("Potato Chips") == "Snacks"
+    assert scraper._categorize_product("Unknown Item 123") == "Grocery"
+
+    # Test _parse_discount
+    assert scraper._parse_discount("Save 20%") == 20.0
+    assert scraper._parse_discount("30% off") == 30.0
+
+    # Test _calculate_original_price
+    assert scraper._calculate_original_price(8.0, 20.0) == 10.0
+    assert scraper._calculate_original_price(5.0, None) == 5.0

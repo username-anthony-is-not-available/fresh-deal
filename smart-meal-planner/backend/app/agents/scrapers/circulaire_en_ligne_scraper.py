@@ -18,11 +18,12 @@ import logging
 from typing import List, Dict, Any, Optional
 from bs4 import BeautifulSoup
 from datetime import datetime, date
+from .base_scraper import BaseScraper
 
 logger = logging.getLogger(__name__)
 
 
-class CirculaireEnLigneScraper:
+class CirculaireEnLigneScraper(BaseScraper):
     """
     Scraper for circulaire-en-ligne.ca - Quebec's text-based flyer aggregator.
 
@@ -47,11 +48,8 @@ class CirculaireEnLigneScraper:
     REQUEST_DELAY = 2.0  # seconds between requests
 
     def __init__(self, user_agent: Optional[str] = None):
-        self.user_agent = user_agent or (
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-            "AppleWebKit/537.36 (KHTML, like Gecko) "
-            "Chrome/120.0.0.0 Safari/537.36"
-        )
+        super().__init__()
+        self.user_agent = user_agent or self.user_agents[0]
         self.session: Optional[aiohttp.ClientSession] = None
 
     async def _get_session(self) -> aiohttp.ClientSession:
@@ -81,42 +79,9 @@ class CirculaireEnLigneScraper:
             logger.error(f"Error fetching {url}: {e}")
             return None
 
-    def _parse_price(self, price_text: str) -> Optional[float]:
-        """Parse price from various formats (e.g., '2,99$', '$2.99', '2 pour 5$')."""
-        if not price_text:
-            return None
-
-        # Clean up the text
-        price_text = price_text.strip().lower()
-
-        # Handle "X pour Y$" format
-        multi_match = re.search(r"(\d+)\s*pour\s*(\d+[,.]?\d*)\s*\$?", price_text)
-        if multi_match:
-            quantity = int(multi_match.group(1))
-            total = float(multi_match.group(2).replace(",", "."))
-            return round(total / quantity, 2)
-
-        # Handle standard price formats
-        price_match = re.search(r"(\d+[,.]?\d*)\s*\$?", price_text)
-        if price_match:
-            return float(price_match.group(1).replace(",", "."))
-
-        return None
-
-    def _extract_unit(self, text: str) -> str:
-        """Extract unit from product description."""
-        text_lower = text.lower()
-
-        if "/kg" in text_lower or "par kg" in text_lower:
-            return "kg"
-        elif "/lb" in text_lower or "par lb" in text_lower or "la lb" in text_lower:
-            return "lb"
-        elif "/100g" in text_lower or "100 g" in text_lower:
-            return "100g"
-        elif "/l" in text_lower or "litre" in text_lower:
-            return "L"
-        else:
-            return "each"
+    async def _scrape_page(self, page, limit: int) -> List[Dict[str, Any]]:
+        """Not used for this scraper as it uses aiohttp."""
+        return await self.scrape_best_deals(limit)
 
     async def scrape_best_deals(self, limit: int = 50) -> List[Dict[str, Any]]:
         """
@@ -246,29 +211,6 @@ class CirculaireEnLigneScraper:
 
         return deals
 
-    def _parse_discount(self, text: str) -> Optional[float]:
-        """Parse discount percentage from text."""
-        if not text:
-            return None
-
-        # Look for percentage patterns
-        pct_match = re.search(r"(\d+)\s*%", text)
-        if pct_match:
-            return float(pct_match.group(1))
-
-        return None
-
-    def _calculate_original_price(
-        self, price: Optional[float], discount_pct: Optional[float]
-    ) -> float:
-        """Calculate original price from discounted price and percentage."""
-        if price is None:
-            return 0.0
-        if discount_pct is None or discount_pct <= 0:
-            return price
-
-        return round(price / (1 - discount_pct / 100), 2)
-
     def _normalize_store_name(self, store: str) -> str:
         """Normalize store name to match our standard naming."""
         store_lower = store.lower()
@@ -291,131 +233,6 @@ class CirculaireEnLigneScraper:
                 return value
 
         return store.title()
-
-    def _categorize_product(self, name: str) -> str:
-        """Categorize product based on name."""
-        name_lower = name.lower()
-
-        categories = {
-            "Meat & Poultry": [
-                "poulet",
-                "chicken",
-                "boeuf",
-                "beef",
-                "porc",
-                "pork",
-                "viande",
-                "meat",
-                "saucisse",
-                "sausage",
-                "bacon",
-                "jambon",
-                "ham",
-            ],
-            "Seafood": [
-                "poisson",
-                "fish",
-                "saumon",
-                "salmon",
-                "crevette",
-                "shrimp",
-                "thon",
-                "tuna",
-                "fruits de mer",
-                "seafood",
-            ],
-            "Fruits": [
-                "pomme",
-                "apple",
-                "banane",
-                "banana",
-                "orange",
-                "fraise",
-                "strawberry",
-                "raisin",
-                "grape",
-                "fruit",
-            ],
-            "Vegetables": [
-                "légume",
-                "vegetable",
-                "carotte",
-                "carrot",
-                "tomate",
-                "tomato",
-                "laitue",
-                "lettuce",
-                "brocoli",
-                "broccoli",
-                "oignon",
-                "onion",
-            ],
-            "Dairy & Eggs": [
-                "lait",
-                "milk",
-                "fromage",
-                "cheese",
-                "yogourt",
-                "yogurt",
-                "oeuf",
-                "egg",
-                "beurre",
-                "butter",
-                "crème",
-                "cream",
-            ],
-            "Bakery": [
-                "pain",
-                "bread",
-                "baguette",
-                "croissant",
-                "muffin",
-                "gâteau",
-                "cake",
-            ],
-            "Beverages": [
-                "jus",
-                "juice",
-                "eau",
-                "water",
-                "café",
-                "coffee",
-                "thé",
-                "tea",
-                "boisson",
-                "drink",
-                "soda",
-            ],
-            "Pantry": [
-                "riz",
-                "rice",
-                "pâtes",
-                "pasta",
-                "céréale",
-                "cereal",
-                "sauce",
-                "soupe",
-                "soup",
-                "conserve",
-                "canned",
-            ],
-            "Frozen": ["surgelé", "frozen", "glace", "ice cream", "pizza"],
-            "Snacks": [
-                "chips",
-                "biscuit",
-                "cookie",
-                "chocolat",
-                "chocolate",
-                "bonbon",
-                "candy",
-            ],
-        }
-
-        for category, keywords in categories.items():
-            if any(kw in name_lower for kw in keywords):
-                return category
-
-        return "Grocery"
 
     async def scrape_store(
         self, store_key: str, limit: int = 50

@@ -28,11 +28,12 @@ class MetroScraper(BaseScraper):
             # Handle cookie consent
             try:
                 cookie_button_selector = '#onetrust-accept-btn-handler'
-                await page.locator(cookie_button_selector).click(timeout=10000)
-                logger.info("Accepted cookie consent on Metro.")
-                await page.wait_for_load_state("networkidle", timeout=20000)
+                if await page.is_visible(cookie_button_selector, timeout=5000):
+                    await page.locator(cookie_button_selector).click()
+                    logger.info("Accepted cookie consent on Metro.")
+                    await page.wait_for_load_state("networkidle", timeout=10000)
             except Exception as e:
-                logger.warning(f"Could not find or click the cookie button on Metro: {e}")
+                logger.debug(f"Could not find or click the cookie button on Metro: {e}")
 
             # Scroll to load more products
             last_height = await page.evaluate("document.body.scrollHeight")
@@ -66,33 +67,33 @@ class MetroScraper(BaseScraper):
                     price_element = tile.select_one('span[class*="price__value"]')
                     image_element = tile.select_one('img[class*="product-tile__image__image"]')
 
-                    if not name_element or not price_element:
+                    if not name_element:
                         continue
 
                     name = name_element.text.strip()
-                    price_text = price_element.text.strip()
-                    image_url = image_element['src'] if image_element and image_element.has_attr('src') else None
 
-                    price_match = re.search(r'(\d+\.\d{2})', price_text.replace(',', '.'))
-                    price = float(price_match.group(1)) if price_match else 0.0
+                    price = 0.0
+                    if price_element:
+                        price_text = price_element.text.strip()
+                        price = self._parse_price(price_text) or 0.0
+
+                    if price == 0.0:
+                        continue
+
+                    image_url = image_element['src'] if image_element and image_element.has_attr('src') else None
 
                     unit_element = tile.select_one('span[class*="product-tile__package-size"]')
                     unit_text = unit_element.text.strip().lower() if unit_element else ""
-
-                    unit = "each"
-                    if "kg" in unit_text:
-                        unit = "kg"
-                    elif "lb" in unit_text:
-                        unit = "lb"
+                    unit = self._extract_unit(name + " " + unit_text)
 
                     deal = {
                         "name": name,
-                        "price": price,
-                        "original_price": price,
+                        "price": round(price, 2),
+                        "original_price": round(price, 2),
                         "unit": unit,
                         "store": self.STORE_NAME,
                         "image_url": image_url,
-                        "category": "Grocery"
+                        "category": self._categorize_product(name)
                     }
                     deals.append(deal)
                 except Exception as e:

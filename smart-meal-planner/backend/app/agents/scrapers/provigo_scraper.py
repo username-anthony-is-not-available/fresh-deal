@@ -115,31 +115,13 @@ class ProvigoScraper(BaseScraper):
         if not price_element:
             price_element = tile.select_one('span[class*="price__value"]')
 
-        if not price_element:
-            return None
-        price_text = price_element.text.strip()
-
-        # Prices can be in formats like "2/5.00", "2 for $5.00" or "5.99"
         price = 0.0
-        if "for" in price_text.lower() or "/" in price_text:
-            # Handle "2 for $5.00" or "2/$5.00"
-            multi_buy_match = re.search(r'(\d+)\s*(?:for|/)\s*[\$]?\s*(\d+[\.,]\d{2})', price_text.lower())
-            if multi_buy_match:
-                try:
-                    quantity = int(multi_buy_match.group(1))
-                    total_price = float(multi_buy_match.group(2).replace(',', '.'))
-                    price = total_price / quantity
-                except (ValueError, ZeroDivisionError):
-                    price = 0.0
+        if price_element:
+            price_text = price_element.text.strip()
+            price = self._parse_price(price_text) or 0.0
 
         if price == 0.0:
-            price_match = re.search(r'(\d+[\.,]\d{2})', price_text)
-            if price_match:
-                price = float(price_match.group(1).replace(',', '.'))
-            else:
-                # Try a simpler regex if the above fails
-                price_match = re.search(r'(\d+)', price_text)
-                price = float(price_match.group(1)) if price_match else 0.0
+            return None
 
         # 3. Extract Unit/Package Size
         unit_element = tile.select_one('.product-tile__package-size') # Flipp
@@ -149,11 +131,7 @@ class ProvigoScraper(BaseScraper):
             unit_element = tile.select_one('span[class*="product-tile__package-size"]') # Native
 
         unit_text = unit_element.text.strip().lower() if unit_element else ""
-        unit = "each"
-        if "kg" in unit_text:
-            unit = "kg"
-        elif "lb" in unit_text:
-            unit = "lb"
+        unit = self._extract_unit(name + " " + unit_text)
 
         # 4. Extract Image
         image_element = tile.select_one('img')
@@ -171,5 +149,5 @@ class ProvigoScraper(BaseScraper):
             "unit": unit,
             "store": self.STORE_NAME,
             "image_url": image_url,
-            "category": "Grocery"
+            "category": self._categorize_product(name)
         }

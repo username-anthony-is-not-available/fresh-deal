@@ -205,32 +205,14 @@ class MaxiScraper(BaseScraper):
             tile.select_one('[data-testid="price-product-tile"]') or
             tile.select_one('.price__value')
         )
-        if not price_element:
-            return None
-
-        # Use get_text with separator to avoid merging joined lines
-        price_text = price_element.get_text(separator=" ", strip=True)
-        # Clean price text
-        price_text = re.sub(r'(?i)sale|member price|limit \d+.*', '', price_text).strip()
 
         price = 0.0
-        if "for" in price_text.lower() or "/" in price_text:
-            multi_buy_match = re.search(r'(\d+)\s*(?:for|/)\s*[\$]?\s*(\d+[\.,]\d{2})', price_text.lower())
-            if multi_buy_match:
-                try:
-                    quantity = int(multi_buy_match.group(1))
-                    total_price = float(multi_buy_match.group(2).replace(',', '.'))
-                    price = total_price / quantity
-                except Exception:
-                    price = 0.0
-
-        if price == 0.0:
-            price_match = re.search(r'(\d+[\.,]\d{2})', price_text)
-            if price_match:
-                price = float(price_match.group(1).replace(',', '.'))
-            else:
-                price_match = re.search(r'(\d+)', price_text)
-                price = float(price_match.group(1)) if price_match else 0.0
+        if price_element:
+            # Use get_text with separator to avoid merging joined lines
+            price_text = price_element.get_text(separator=" ", strip=True)
+            # Clean price text
+            price_text = re.sub(r'(?i)sale|member price|limit \d+.*', '', price_text).strip()
+            price = self._parse_price(price_text) or 0.0
 
         if price == 0.0:
             return None
@@ -240,20 +222,15 @@ class MaxiScraper(BaseScraper):
         was_price_element = tile.select_one('[data-testid="was-price"]') or tile.select_one('.was-price')
         if was_price_element:
             was_price_text = was_price_element.get_text(strip=True)
-            original_price_match = re.search(r'(\d+[\.,]\d{2})', was_price_text)
-            if original_price_match:
-                original_price = float(original_price_match.group(1).replace(',', '.'))
+            original_price = self._parse_price(was_price_text) or price
 
         # Unit/Size
         unit_element = tile.select_one('[data-testid="product-package-size"]') or tile.select_one('.product-tile__package-size')
         unit_text = unit_element.get_text(strip=True).lower() if unit_element else ""
-        unit = "each"
-        if "kg" in unit_text:
-            unit = "kg"
-        elif "lb" in unit_text:
-            unit = "lb"
-        elif "g" in unit_text and "100g" not in unit_text:
-            unit = "g"
+
+        # Also check price element for unit info (e.g. "/lb")
+        price_text_for_unit = price_element.get_text(strip=True).lower() if price_element else ""
+        unit = self._extract_unit(name + " " + unit_text + " " + price_text_for_unit)
 
         # Image URL
         image_element = tile.select_one('[data-testid="product-image"] img') or tile.select_one('img')
@@ -270,7 +247,7 @@ class MaxiScraper(BaseScraper):
             "unit": unit,
             "store": self.STORE_NAME,
             "image_url": image_url,
-            "category": "Grocery"
+            "category": self._categorize_product(name)
         }
 
     async def _save_debug_info(self, page: Page, prefix: str):
