@@ -1,5 +1,17 @@
 # Changelog
 
+## [Unreleased]
+
+### Enhanced
+- **Scraping Performance**: Refactored `ScraperAgent` to support concurrent store scraping using `asyncio.gather` with a configurable semaphore, significantly reducing total scraping time.
+- **Database Optimization**: Optimized deal persistence by pre-fetching stores and products, reducing database round-trips.
+- **Base Scraper Utilities**: Added robust shared utilities to `BaseScraper` for cookie consent handling, automated scrolling, and standardized debug artifact collection.
+- **Bilingual Date Parsing**: Improved flyer date parsing to support both English and French month names common in Quebec grocery flyers.
+- **Product Categorization**: Expanded keyword mapping for automatic product categorization with improved accuracy.
+
+### Fixed
+- Corrected `AsyncSession` type hinting and usage in `ScraperAgent` to ensure full asynchronous compatibility.
+
 ## [0.1.0] - 2024-12-05
 
 ### Added

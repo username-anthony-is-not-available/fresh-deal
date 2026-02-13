@@ -3,7 +3,6 @@ from typing import List, Dict, Any, Optional
 from .base_scraper import BaseScraper
 from bs4 import BeautifulSoup
 import re
-import os
 import logging
 import asyncio
 
@@ -39,7 +38,6 @@ class MaxiScraper(BaseScraper):
 
             try:
                 logger.info(f"Navigating to {self.STORE_NAME} URL: {url}")
-                # Using domcontentloaded is safer for sites with lots of background tracking
                 await page.goto(url, wait_until="domcontentloaded", timeout=60000)
 
                 # Check for bot detection
@@ -51,16 +49,14 @@ class MaxiScraper(BaseScraper):
                 await asyncio.sleep(5)
 
                 # Handle cookie consent
-                await self._handle_cookie_consent(page)
+                await self._handle_cookie_consent(page, '#onetrust-accept-btn-handler')
 
                 # Handle location setting
                 await self._handle_location(page)
 
                 # Scroll to load lazy content
                 logger.info("Scrolling to load items...")
-                for _ in range(3):
-                    await page.keyboard.press("PageDown")
-                    await asyncio.sleep(1)
+                await self._scroll_to_bottom(page, max_scrolls=3)
 
                 # Check for Flipp iframe
                 flyer_frame_selector = 'iframe[title="Main Panel"]'
@@ -95,7 +91,7 @@ class MaxiScraper(BaseScraper):
                     if len(deals) >= limit:
                         break
 
-                    # Find the closest container: 'chakra-linkbox' or parent with price
+                    # Find the closest container
                     container = title_elem.find_parent('div', class_=lambda x: x and 'chakra-linkbox' in x)
                     if not container:
                         curr = title_elem
@@ -121,19 +117,10 @@ class MaxiScraper(BaseScraper):
                 continue
 
         if not deals:
-            await self._save_debug_info(page, "maxi_failed_all")
+            await self._save_debug_artifacts(page, "maxi_failed_all")
 
         logger.info(f"Scraped total of {len(deals)} unique deals from {self.STORE_NAME}.")
         return deals
-
-    async def _handle_cookie_consent(self, page: Page):
-        try:
-            selector = '#onetrust-accept-btn-handler'
-            if await page.is_visible(selector, timeout=3000):
-                await page.click(selector)
-                await asyncio.sleep(1)
-        except Exception:
-            pass
 
     async def _handle_location(self, page: Page):
         """
@@ -208,9 +195,7 @@ class MaxiScraper(BaseScraper):
 
         price = 0.0
         if price_element:
-            # Use get_text with separator to avoid merging joined lines
             price_text = price_element.get_text(separator=" ", strip=True)
-            # Clean price text
             price_text = re.sub(r'(?i)sale|member price|limit \d+.*', '', price_text).strip()
             price = self._parse_price(price_text) or 0.0
 
@@ -228,7 +213,6 @@ class MaxiScraper(BaseScraper):
         unit_element = tile.select_one('[data-testid="product-package-size"]') or tile.select_one('.product-tile__package-size')
         unit_text = unit_element.get_text(strip=True).lower() if unit_element else ""
 
-        # Also check price element for unit info (e.g. "/lb")
         price_text_for_unit = price_element.get_text(strip=True).lower() if price_element else ""
         unit = self._extract_unit(name + " " + unit_text + " " + price_text_for_unit)
 
@@ -249,11 +233,3 @@ class MaxiScraper(BaseScraper):
             "image_url": image_url,
             "category": self._categorize_product(name)
         }
-
-    async def _save_debug_info(self, page: Page, prefix: str):
-        try:
-            await page.screenshot(path=os.path.join(self.storage_path, f'{prefix}.png'))
-            with open(os.path.join(self.storage_path, f'{prefix}.html'), 'w') as f:
-                f.write(await page.content())
-        except Exception:
-            pass

@@ -3,7 +3,6 @@ from playwright.async_api import Page
 from typing import List, Dict, Any
 from .base_scraper import BaseScraper
 from bs4 import BeautifulSoup
-import re
 import logging
 
 logger = logging.getLogger(__name__)
@@ -26,24 +25,10 @@ class MetroScraper(BaseScraper):
             await page.goto(url, wait_until="networkidle", timeout=60000)
 
             # Handle cookie consent
-            try:
-                cookie_button_selector = '#onetrust-accept-btn-handler'
-                if await page.is_visible(cookie_button_selector, timeout=5000):
-                    await page.locator(cookie_button_selector).click()
-                    logger.info("Accepted cookie consent on Metro.")
-                    await page.wait_for_load_state("networkidle", timeout=10000)
-            except Exception as e:
-                logger.debug(f"Could not find or click the cookie button on Metro: {e}")
+            await self._handle_cookie_consent(page, '#onetrust-accept-btn-handler')
 
             # Scroll to load more products
-            last_height = await page.evaluate("document.body.scrollHeight")
-            while True:
-                await page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
-                await self._random_delay(2, 4)
-                new_height = await page.evaluate("document.body.scrollHeight")
-                if new_height == last_height:
-                    break
-                last_height = new_height
+            await self._scroll_to_bottom(page, max_scrolls=5)
 
             content = await page.content()
             soup = BeautifulSoup(content, 'html.parser')
@@ -52,10 +37,8 @@ class MetroScraper(BaseScraper):
             logger.info(f"Found {len(product_tiles)} product tiles on Metro.")
 
             if not product_tiles:
-                logger.warning("No product tiles found on the Metro page. This could be due to anti-bot measures.")
-                await page.screenshot(path='metro_debug.png')
-                with open('metro_debug.html', 'w', encoding='utf-8') as f:
-                    f.write(await page.content())
+                logger.warning("No product tiles found on the Metro page. Saving debug info.")
+                await self._save_debug_artifacts(page, "metro_debug")
                 return []
 
             for tile in product_tiles:
@@ -101,9 +84,7 @@ class MetroScraper(BaseScraper):
 
         except Exception as e:
             logger.critical(f"A critical error occurred while scraping Metro: {e}")
-            await page.screenshot(path='metro_critical_error.png')
-            with open('metro_critical_error.html', 'w', encoding='utf-8') as f:
-                f.write(await page.content())
+            await self._save_debug_artifacts(page, "metro_critical_error")
 
         logger.info(f"Scraped {len(deals)} deals from Metro.")
         return deals

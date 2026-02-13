@@ -75,6 +75,39 @@ async def test_scraper_agent_orchestration_with_mocked_scrapers(async_session: A
 
 
 @pytest.mark.asyncio
+async def test_scraper_agent_concurrency(async_session: AsyncSession):
+    """
+    Tests that the ScraperAgent scrapes multiple stores concurrently.
+    """
+    # Arrange
+    agent = ScraperAgent(async_session)
+    stores = ["metro", "walmart", "maxi"]
+
+    # Mock _scrape_store to measure timing
+    async def mock_scrape_store(store_name, limit):
+        await asyncio.sleep(0.5)  # Simulate some work
+        return [{"name": f"{store_name} Product", "price": 1.0, "store": store_name}]
+
+    with patch.object(
+        agent, "_scrape_store", side_effect=mock_scrape_store
+    ) as mock_scrape:
+        start_time = asyncio.get_event_loop().time()
+
+        # Act
+        deals = await agent.scrape(stores)
+
+        end_time = asyncio.get_event_loop().time()
+        duration = end_time - start_time
+
+        # Assert
+        assert len(deals) == 3
+        # If sequential, duration would be >= 1.5s
+        # If concurrent, duration should be around 0.5s - 0.8s
+        assert duration < 1.2
+        assert mock_scrape.call_count == 3
+
+
+@pytest.mark.asyncio
 async def test_persist_deals(async_session: AsyncSession):
     # Arrange
     agent = ScraperAgent(async_session)
@@ -365,3 +398,18 @@ def test_base_scraper_utilities():
     # Test _calculate_original_price
     assert scraper._calculate_original_price(8.0, 20.0) == 10.0
     assert scraper._calculate_original_price(5.0, None) == 5.0
+
+    # Test _parse_flyer_dates (English)
+    s, e = scraper._parse_flyer_dates("from Jan 30 to Feb 5, 2024")
+    assert s == date(2024, 1, 30)
+    assert e == date(2024, 2, 5)
+
+    # Test _parse_flyer_dates (French)
+    s, e = scraper._parse_flyer_dates("du 30 janv. au 5 févr. 2024")
+    assert s == date(2024, 1, 30)
+    assert e == date(2024, 2, 5)
+
+    # Test _parse_flyer_dates (Single month French)
+    s, e = scraper._parse_flyer_dates("du 25 au 31 juillet 2024")
+    assert s == date(2024, 7, 25)
+    assert e == date(2024, 7, 31)

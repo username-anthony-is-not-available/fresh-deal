@@ -3,8 +3,6 @@ from playwright.async_api import Page
 from typing import List, Dict, Any, Optional
 from .base_scraper import BaseScraper
 from bs4 import BeautifulSoup
-import re
-import os
 import logging
 
 logger = logging.getLogger(__name__)
@@ -28,16 +26,8 @@ class ProvigoScraper(BaseScraper):
             await page.goto(url, wait_until="networkidle", timeout=60000)
             await self._random_delay(2, 5)
 
-            # Handle cookie consent if it appears
-            try:
-                cookie_button_selector = '#onetrust-accept-btn-handler'
-                if await page.is_visible(cookie_button_selector, timeout=5000):
-                    await page.locator(cookie_button_selector).click()
-                    logger.info("Accepted cookie consent on Provigo.")
-                    await self._random_delay(1, 3)
-                    await page.wait_for_load_state("networkidle", timeout=20000)
-            except Exception as e:
-                logger.debug(f"Could not find or click the cookie button on Provigo: {e}")
+            # Handle cookie consent
+            await self._handle_cookie_consent(page, '#onetrust-accept-btn-handler')
 
             # Try to find the Flipp iframe
             flyer_frame_selector = 'iframe[title="Main Panel"]'
@@ -67,12 +57,8 @@ class ProvigoScraper(BaseScraper):
             logger.info(f"Found {len(product_tiles)} product tiles on Provigo.")
 
             if not product_tiles:
-                logger.warning("No product tiles found on the Provigo page. This could be due to anti-bot measures.")
-                debug_img = os.path.join(self.storage_path, 'provigo_debug.png')
-                debug_html = os.path.join(self.storage_path, 'provigo_debug.html')
-                await page.screenshot(path=debug_img)
-                with open(debug_html, 'w', encoding='utf-8') as f:
-                    f.write(await page.content())
+                logger.warning("No product tiles found on the Provigo page. Saving debug info.")
+                await self._save_debug_artifacts(page, "provigo_debug")
                 return []
 
             for tile in product_tiles:
@@ -88,11 +74,7 @@ class ProvigoScraper(BaseScraper):
 
         except Exception as e:
             logger.critical(f"A critical error occurred while scraping Provigo: {e}")
-            error_img = os.path.join(self.storage_path, 'provigo_critical_error.png')
-            error_html = os.path.join(self.storage_path, 'provigo_critical_error.html')
-            await page.screenshot(path=error_img)
-            with open(error_html, 'w', encoding='utf-8') as f:
-                f.write(await page.content())
+            await self._save_debug_artifacts(page, "provigo_critical_error")
 
         logger.info(f"Scraped {len(deals)} deals from Provigo.")
         return deals
