@@ -136,3 +136,32 @@ def test_generate_plan_filters_by_dietary_preferences(session: Session, mock_llm
     assert len(filtered_recipes) == 2
     assert filtered_recipes[0]["name"] == "Scrambled Eggs"
     assert filtered_recipes[1]["name"] == "Tofu Scramble"
+
+def test_generate_plan_filters_by_allergies(session: Session, mock_llm_service):
+    # Arrange
+    recipes_data = [
+        {"id": 1, "name": "Safe Salad", "ingredients_json": "[]", "instructions_json": "[]", "allergens_json": "[]"},
+        {"id": 2, "name": "Peanut Satay", "ingredients_json": "[]", "instructions_json": "[]", "allergens_json": "[\"peanuts\"]"},
+        {"id": 3, "name": "Pasta with Gluten", "ingredients_json": "[]", "instructions_json": "[]", "allergens_json": "[\"gluten\"]"},
+    ]
+    for data in recipes_data:
+        session.add(Recipe(**data))
+    session.commit()
+
+    user = User(id=1, household_size=1, dietary_preferences_json='[]', allergies_json='["peanuts"]', postal_code="H1A1A1")
+
+    agent = MealPlannerAgent(session)
+    agent.llm_service = mock_llm_service
+
+    # Act
+    agent.generate_plan(user)
+
+    # Assert
+    mock_llm_service.generate_meal_plan.assert_called_once()
+    call_args, _ = mock_llm_service.generate_meal_plan.call_args
+    filtered_recipes = call_args[2]
+
+    assert len(filtered_recipes) == 2
+    assert any(r["name"] == "Safe Salad" for r in filtered_recipes)
+    assert any(r["name"] == "Pasta with Gluten" for r in filtered_recipes)
+    assert not any(r["name"] == "Peanut Satay" for r in filtered_recipes)

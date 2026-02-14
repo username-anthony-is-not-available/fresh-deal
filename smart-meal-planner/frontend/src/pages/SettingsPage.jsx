@@ -6,7 +6,7 @@ import SettingsService from '../services/SettingsService';
 import { useAuth } from '../context/AuthContext.jsx';
 import NutritionGoalSettings from '../components/NutritionGoalSettings';
 
-const dietaryOptions = ["vegetarian", "vegan", "gluten-free", "keto", "paleo"];
+const dietaryOptions = ["vegetarian", "vegan", "gluten_free", "keto", "paleo"];
 
 const SettingsPage = () => {
   const { t, i18n } = useTranslation();
@@ -15,7 +15,7 @@ const SettingsPage = () => {
     household_size: 4,
     dietary_preferences: [],
     budget_limit: 200,
-    excluded_ingredients: ''
+    allergies: []
   });
 
   const { currentUser } = useAuth();
@@ -46,7 +46,7 @@ const SettingsPage = () => {
           household_size: response.data.household_size,
           dietary_preferences: response.data.dietary_preferences || [],
           budget_limit: 200, // Not in model, keeping in state for now
-          excluded_ingredients: '' // Not in model
+          allergies: response.data.allergies || []
         });
       } catch (error) {
         toast.error(t('failed_to_load_settings'));
@@ -61,7 +61,8 @@ const SettingsPage = () => {
     const settingsToUpdate = {
       postal_code: formData.postal_code,
       household_size: parseInt(formData.household_size, 10),
-      dietary_preferences: formData.dietary_preferences
+      dietary_preferences: formData.dietary_preferences,
+      allergies: formData.allergies
     };
 
     const toastId = toast.loading(t('saving_settings'));
@@ -132,13 +133,19 @@ const SettingsPage = () => {
           </div>
 
           <div>
-             <label htmlFor="excluded_ingredients" className="block text-sm font-medium text-gray-700 mb-1">{t('excluded_ingredients')}</label>
+             <label htmlFor="allergies" className="block text-sm font-medium text-gray-700 mb-1">{t('excluded_ingredients')}</label>
              <input
-                id="excluded_ingredients"
+                id="allergies"
                 type="text"
-                name="excluded_ingredients"
-                value={formData.excluded_ingredients}
-                onChange={handleChange}
+                name="allergies"
+                value={Array.isArray(formData.allergies) ? formData.allergies.join(', ') : formData.allergies}
+                onChange={(e) => {
+                    const value = e.target.value;
+                    setFormData(prev => ({
+                        ...prev,
+                        allergies: value.split(',').map(s => s.trim()).filter(s => s !== '')
+                    }));
+                }}
                 placeholder="e.g. peanuts, cilantro, shellfish"
                 className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm p-2.5 border"
              />
