@@ -67,6 +67,19 @@ def generate_meal_plan_task(user_id: int):
     # Tasks run in a separate process, so they need their own sync session
     with Session(engine) as session:
         try:
+            # Automated "fresh-deal" Enhancement: Check for stale stores
+            # and trigger a background refresh if needed.
+            stale_stores = session.exec(select(Store)).all()
+            stale_chains = [s.chain for s in stale_stores if s.is_stale]
+
+            if stale_chains:
+                from celery.utils.log import get_task_logger
+                logger = get_task_logger(__name__)
+                logger.info(
+                    f"Stale deals detected for {len(stale_chains)} stores: {stale_chains}. Triggering background refresh."
+                )
+                scrape_task.delay(stores=stale_chains)
+
             user = session.get(User, user_id)
             if not user:
                 return {"error": "User not found"}
