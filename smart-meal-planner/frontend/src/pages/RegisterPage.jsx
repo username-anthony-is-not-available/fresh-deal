@@ -97,7 +97,7 @@ const RegisterPage = () => {
                         <option value="None">No Restrictions</option>
                         <option value="Vegetarian">Vegetarian</option>
                         <option value="Vegan">Vegan</option>
-                        <option value="Gluten-Free">Gluten-Free</option>
+                        <option value="gluten_free">Gluten-Free</option>
                         <option value="Keto">Keto</option>
                     </select>
                 </div>

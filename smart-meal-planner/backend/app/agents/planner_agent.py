@@ -109,17 +109,8 @@ class MealPlannerAgent:
         fav_statement = select(UserFavorite.recipe_id).where(UserFavorite.user_id == user.id)
         favorite_recipe_ids = self.session.exec(fav_statement).all()
 
-        # Filter recipes based on dietary preferences
-        filtered_recipes = self.recipes
-        if user.dietary_preferences:
-            filtered_recipes = [
-                r
-                for r in self.recipes
-                if all(
-                    pref in r.get("dietary_tags", [])
-                    for pref in user.dietary_preferences
-                )
-            ]
+        # Filter recipes based on dietary preferences and allergies
+        filtered_recipes = RecipeService.filter_recipes(self.recipes, user.dietary_preferences, user.allergies)
 
         # Calculate deal scores to prioritize cheaper recipes
         filtered_recipes = self._calculate_deal_scores(filtered_recipes, deals)
@@ -182,7 +173,14 @@ class MealPlannerAgent:
         week_dates = self.llm_service.get_next_week_dates()
 
         # Simple filtering for fallback
-        suitable_recipes = self.recipes
+        suitable_recipes = RecipeService.filter_recipes(self.recipes, user.dietary_preferences, user.allergies)
+
+        if not suitable_recipes:
+             return {
+                "meal_plan": [],
+                "shopping_summary": { "household_size": user.household_size, "weekly_overview": "No safe recipes found matching your restrictions." },
+                "weekly_overview": "Could not generate plan: No recipes match your dietary restrictions and allergies."
+            }
 
         breakfasts = [r for r in suitable_recipes if r.get("meal_type") == "Breakfast"]
         lunches = [r for r in suitable_recipes if r.get("meal_type") == "Lunch"]

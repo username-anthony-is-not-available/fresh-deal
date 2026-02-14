@@ -59,6 +59,7 @@ class UserCreate(BaseModel):
     postal_code: str
     household_size: int
     dietary_preferences: List[str]
+    allergies: List[str] = []
 
 
 @router.get("/recipes", response_model=List[RecipeRead])
@@ -318,6 +319,7 @@ async def onboard_user(
         postal_code=user_in.postal_code,
         household_size=user_in.household_size,
         dietary_preferences_json=json.dumps(user_in.dietary_preferences),
+        allergies_json=json.dumps(user_in.allergies),
     )
     session.add(user)
     await session.commit()

@@ -44,6 +44,35 @@ class RecipeService:
         return recipe_list
 
     @staticmethod
+    def filter_recipes(recipes: List[Dict[str, Any]], dietary_preferences: List[str], allergies: List[str]) -> List[Dict[str, Any]]:
+        """
+        Filters recipes based on dietary preferences (must have all) and allergies (must not have any).
+        """
+        if not dietary_preferences and not allergies:
+            return recipes
+
+        filtered = []
+        # Normalize for case-insensitive matching
+        dietary_prefs_lower = [p.lower() for p in dietary_preferences]
+        allergies_lower = [a.lower() for a in allergies]
+
+        for r in recipes:
+            # Check dietary preferences
+            if dietary_prefs_lower:
+                recipe_tags_lower = [t.lower() for t in r.get("dietary_tags", [])]
+                if not all(pref in recipe_tags_lower for pref in dietary_prefs_lower):
+                    continue
+
+            # Check allergies
+            if allergies_lower:
+                recipe_allergens_lower = [a.lower() for a in r.get("allergens", [])]
+                if any(allergy in recipe_allergens_lower for allergy in allergies_lower):
+                    continue
+
+            filtered.append(r)
+        return filtered
+
+    @staticmethod
     def scale_ingredients(ingredients: List[Dict[str, Any]], base_servings: int, target_servings: int) -> List[Dict[str, Any]]:
         """
         Scales ingredient quantities based on target servings.

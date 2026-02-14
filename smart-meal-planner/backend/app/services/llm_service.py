@@ -130,8 +130,18 @@ class LLMService:
         all_recipes = await recipe_service.get_all_recipes_as_dicts()
         active_deals = await deal_service.get_active_deals_as_dicts()
 
+        # Pre-filter recipes based on dietary preferences and allergies
+        user_allergies = getattr(user, 'allergies', [])
+        filtered_recipes = RecipeService.filter_recipes(all_recipes, dietary_preferences, user_allergies)
+
+        if not filtered_recipes:
+            # If no recipes match, we cannot generate a safe meal.
+            # Returning None will trigger the fallback which should also be safe.
+            logger.warning(f"No safe recipes found for user {user.id} during single meal regeneration.")
+            return None
+
         prompt = self._construct_regenerate_meal_prompt(
-            user, day, meal_type, dietary_preferences, existing_meals, all_recipes, active_deals
+            user, day, meal_type, dietary_preferences, existing_meals, filtered_recipes, active_deals
         )
 
         try:
@@ -140,7 +150,7 @@ class LLMService:
             return new_meal.get(meal_type.lower())
         except Exception as e:
             logger.error(f"LLM single meal generation failed: {e}. Falling back to mock.")
-            return self._generate_mock_single_meal(meal_type, all_recipes)
+            return self._generate_mock_single_meal(meal_type, filtered_recipes)
 
     def _construct_regenerate_meal_prompt(
         self,
@@ -333,7 +343,7 @@ class LLMService:
            - Never repeat the same meal or protein source on consecutive days.
            - Space repeated meals at least 3 days apart.
            - Ensure variety in cuisines.
-           - Respect dietary restrictions.
+           - Respect dietary restrictions and allergies. MANDATORY: ONLY use the provided recipes as they have been pre-filtered for safety.
 
         AVAILABLE RECIPES (includes average ratings):
         {json.dumps(self._format_recipes_for_prompt(recipes))}
@@ -432,14 +442,27 @@ class LLMService:
         """Fallback mock plan generation."""
         import random
 
+        # Filter recipes by dietary preferences and allergies
+        dietary_preferences = user_prefs.get('dietary_preferences', [])
+        user_allergies = user_prefs.get('allergies', [])
+
+        suitable_recipes = RecipeService.filter_recipes(recipes, dietary_preferences, user_allergies)
+
+        if not suitable_recipes:
+            return {
+                "meal_plan": [],
+                "shopping_summary": { "household_size": user_prefs.get('household_size', 1), "weekly_overview": "No safe recipes found matching your restrictions." },
+                "weekly_overview": "Could not generate plan: No recipes match your dietary restrictions and allergies."
+            }
+
         days = []
         for i, date_info in enumerate(week_dates):
             day_meals = {}
             for m_type in ["Breakfast", "Lunch", "Dinner"]:
                 # Filter by meal type if available in recipe
-                candidates = [r for r in recipes if str(r.get("meal_type")).lower() == m_type.lower() or r.get("meal_type") == 'Any']
+                candidates = [r for r in suitable_recipes if str(r.get("meal_type")).lower() == m_type.lower() or r.get("meal_type") == 'Any']
                 if not candidates:
-                    candidates = recipes
+                    candidates = suitable_recipes
 
                 if candidates:
                     recipe = random.choice(candidates)
