@@ -12,6 +12,42 @@ const ShoppingListPage = () => {
   const [strategy, setStrategy] = useState("min_cost");
   const [showDetailed, setShowDetailed] = useState(false);
   const userId = localStorage.getItem('user_id') || 1;
+  const [checkedItems, setCheckedItems] = useState({});
+  const storageKey = `checked_items_${userId}`;
+
+  useEffect(() => {
+    const saved = localStorage.getItem(storageKey);
+    if (saved) {
+      try {
+        setCheckedItems(JSON.parse(saved));
+      } catch (e) {
+        console.error("Failed to parse checked items", e);
+      }
+    }
+  }, [storageKey]);
+
+  const toggleItem = (storeName, itemName) => {
+    const key = `${storeName}-${itemName}`;
+    setCheckedItems(prev => {
+      const newChecked = {
+        ...prev,
+        [key]: !prev[key]
+      };
+      localStorage.setItem(storageKey, JSON.stringify(newChecked));
+      return newChecked;
+    });
+  };
+
+  const groupByCategory = (items) => {
+    return items.reduce((groups, item) => {
+      const category = item.category || 'Grocery';
+      if (!groups[category]) {
+        groups[category] = [];
+      }
+      groups[category].push(item);
+      return groups;
+    }, {});
+  };
 
   useEffect(() => {
     const fetchList = async () => {
@@ -106,23 +142,42 @@ const ShoppingListPage = () => {
                  </div>
 
                  {/* Items List */}
-                 <div className="divide-y divide-gray-100">
-                    {storeData.items.map((item, i) => (
-                       <div key={i} className="flex items-center p-4 hover:bg-gray-50 transition-colors">
-                           <input type="checkbox" className="w-5 h-5 text-accent-600 rounded border-gray-300 focus:ring-accent-500 mr-4" />
-                           <div className="flex-1">
-                               <p className="font-medium text-gray-900">{item.name}</p>
-                               <p className="text-xs text-gray-500">{item.qty} {item.unit}</p>
-                           </div>
-                           <div className="text-right">
-                               <div className="font-medium text-gray-900">${item.cost.toFixed(2)}</div>
-                               {item.discount_pct > 0 && (
-                                   <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">
-                                       -{item.discount_pct}%
-                                   </span>
-                               )}
-                           </div>
-                       </div>
+                 <div className="flex flex-col">
+                    {Object.entries(groupByCategory(storeData.items)).map(([category, items]) => (
+                        <div key={category} className="border-b last:border-b-0 border-gray-100">
+                            <div className="bg-gray-50/50 px-4 py-1.5 flex items-center justify-between border-b border-gray-100">
+                                <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                                    {category}
+                                </h4>
+                                <span className="text-[10px] font-medium text-gray-400">{items.length} {items.length === 1 ? 'item' : 'items'}</span>
+                            </div>
+                            <div className="divide-y divide-gray-100">
+                                {items.map((item, i) => {
+                                   const isChecked = !!checkedItems[`${storeData.store}-${item.name}`];
+                                   return (
+                                   <div key={i} className={`flex items-center p-4 hover:bg-gray-50 transition-colors ${isChecked ? 'bg-gray-50/50 opacity-60' : ''}`}>
+                                       <input
+                                            type="checkbox"
+                                            checked={isChecked}
+                                            onChange={() => toggleItem(storeData.store, item.name)}
+                                            className="w-5 h-5 text-accent-600 rounded border-gray-300 focus:ring-accent-500 mr-4 cursor-pointer"
+                                       />
+                                       <div className="flex-1">
+                                           <p className={`font-medium text-gray-900 ${isChecked ? 'line-through text-gray-500' : ''}`}>{item.name}</p>
+                                           <p className="text-xs text-gray-500">{item.qty} {item.unit}</p>
+                                       </div>
+                                       <div className="text-right">
+                                           <div className={`font-medium ${isChecked ? 'text-gray-400' : 'text-gray-900'}`}>${item.cost.toFixed(2)}</div>
+                                           {item.discount_pct > 0 && !isChecked && (
+                                               <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">
+                                                   -{item.discount_pct}%
+                                               </span>
+                                           )}
+                                       </div>
+                                   </div>
+                                )})}
+                            </div>
+                        </div>
                     ))}
                  </div>
               </div>
