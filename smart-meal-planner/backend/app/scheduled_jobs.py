@@ -28,17 +28,14 @@ async def run_scheduled_scrape():
     logger.info("Starting scheduled scrape job.")
     try:
         async with get_async_session() as session:
-            statement = select(Store).where(Store.chain.in_(settings.SUPPORTED_STORES))
+            # We scrape all supported stores regardless of whether they are already in the DB
+            store_chains = settings.SUPPORTED_STORES
+
+            # Fetch existing stores for later updating last_scraped_at
+            statement = select(Store).where(Store.chain.in_(store_chains))
             result = await session.execute(statement)
-            stores_to_scrape = result.scalars().all()
-
-            if not stores_to_scrape:
-                logger.warning("No supported stores found in the database to scrape.")
-                await send_webhook_notification("Scrape job finished: No supported stores found.")
-                return
-
-            store_map = {store.chain: store for store in stores_to_scrape}
-            store_chains = list(store_map.keys())
+            existing_stores = result.scalars().all()
+            store_map = {store.chain: store for store in existing_stores}
 
             scraper_agent = ScraperAgent(session, settings.DEFAULT_POSTAL_CODE)
             deals_by_store = await scraper_agent.scrape(store_chains)
@@ -46,8 +43,14 @@ async def run_scheduled_scrape():
             total_deals = 0
             for store_chain, deals in deals_by_store.items():
                 if deals:
+                    # Persist deals will also create the store in DB if it doesn't exist
                     await scraper_agent.persist_deals(deals)
-                    store = store_map.get(store_chain)
+
+                    # Refresh store map to get newly created stores
+                    statement = select(Store).where(Store.chain == store_chain)
+                    result = await session.execute(statement)
+                    store = result.scalar_one_or_none()
+
                     if store:
                         store.last_scraped_at = datetime.now(timezone.utc)
                         session.add(store)

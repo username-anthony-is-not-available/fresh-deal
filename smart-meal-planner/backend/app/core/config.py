@@ -46,7 +46,16 @@ class Settings(BaseSettings):
 
     # Scraping
     DEFAULT_POSTAL_CODE: str = "H4T1V6"
-    SUPPORTED_STORES: list[str] = ["metro", "walmart", "maxi", "provigo", "iga"]
+    SUPPORTED_STORES: list[str] = [
+        "metro",
+        "walmart",
+        "maxi",
+        "provigo",
+        "iga",
+        "super_c",
+        "adonis",
+        "costco",
+    ]
     WEBHOOK_URL: str | None = None
 
     model_config = SettingsConfigDict(env_file=".env", case_sensitive=True)
