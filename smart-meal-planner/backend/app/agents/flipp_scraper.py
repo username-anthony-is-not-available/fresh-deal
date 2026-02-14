@@ -349,8 +349,15 @@ class FlippScraper:
                 flyer_items = data.get("items", [])
                 for item in flyer_items:
                     merchant_id = item.get("merchant_id")
-                    if store_filter and merchant_id not in store_filter:
-                        continue
+                    merchant_name = item.get("merchant_name", "").lower()
+
+                    # Filter by merchant ID if in our list, or fallback to name matching
+                    if store_filter:
+                        if merchant_id not in store_filter:
+                            # Fallback: check if the merchant name matches any of our requested stores
+                            if not self.stores or not any(s.lower() in merchant_name for s in self.stores):
+                                continue
+
                     parsed = self._parse_flyer_item(item)
                     if parsed:
                         results.append(parsed)
@@ -359,8 +366,13 @@ class FlippScraper:
                 ecom_items = data.get("ecom_items", [])
                 for item in ecom_items:
                     merchant_id = item.get("merchant_id")
-                    if store_filter and merchant_id not in store_filter:
-                        continue
+                    merchant_name = item.get("merchant", "").lower()
+
+                    if store_filter:
+                        if merchant_id not in store_filter:
+                            if not self.stores or not any(s.lower() in merchant_name for s in self.stores):
+                                continue
+
                     parsed = self._parse_ecom_item(item)
                     if parsed:
                         results.append(parsed)

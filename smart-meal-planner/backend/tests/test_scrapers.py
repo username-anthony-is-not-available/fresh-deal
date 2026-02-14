@@ -1,6 +1,6 @@
 import pytest
 import pytest_asyncio
-from datetime import date
+from datetime import date, timedelta
 from sqlmodel import Session, SQLModel, create_engine, select
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from app.agents.scraper_agent import ScraperAgent
@@ -74,6 +74,27 @@ async def test_scraper_agent_orchestration_with_mocked_scrapers(async_session: A
         assert deals["walmart"][0]["store"] == "Walmart"
         mock_metro_scrape.assert_called_once()
         mock_walmart_scrape.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_persist_deals_duplicate_prevention(async_session: AsyncSession):
+    # Arrange
+    agent = ScraperAgent(async_session)
+    valid_until = date.today() + timedelta(days=7)
+    deals_to_persist = [
+        {"name": "Unique Product", "price": 5.0, "store": "Store A", "category": "Cat", "unit": "each", "valid_until": valid_until},
+    ]
+
+    # Act - Persist once
+    await agent.persist_deals(deals_to_persist)
+
+    # Act - Persist again (should be skipped)
+    await agent.persist_deals(deals_to_persist)
+
+    # Assert
+    result = await async_session.execute(select(Deal))
+    deals = result.scalars().all()
+    assert len(deals) == 1
 
 
 @pytest.mark.asyncio

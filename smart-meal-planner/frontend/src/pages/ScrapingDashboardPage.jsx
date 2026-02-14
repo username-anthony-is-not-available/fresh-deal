@@ -15,6 +15,8 @@ const FLIPP_STORES = [
   { key: 'iga', name: 'IGA' },
   { key: 'no_frills', name: 'No Frills' },
   { key: 'real_canadian_superstore', name: 'Real Canadian Superstore' },
+  { key: 'adonis', name: 'Adonis' },
+  { key: 'costco', name: 'Costco' },
 ];
 
 const ScrapingDashboardPage = () => {
@@ -35,6 +37,8 @@ const ScrapingDashboardPage = () => {
     { id: 'provigo', name: 'Provigo (Playwright)', endpoint: '/admin/scrape/provigo', color: 'orange', legacy: true },
     { id: 'iga', name: 'IGA (Playwright)', endpoint: '/admin/scrape/iga', color: 'red', legacy: true },
     { id: 'walmart', name: 'Walmart (Playwright)', endpoint: '/admin/scrape/walmart', color: 'blue', legacy: true },
+    { id: 'adonis', name: 'Adonis (Flipp API)', endpoint: '/admin/scrape/adonis', color: 'purple', legacy: true },
+    { id: 'costco', name: 'Costco (Playwright)', endpoint: '/admin/scrape/costco', color: 'blue', legacy: true },
   ];
 
   // Fetch deal count on mount

@@ -153,7 +153,19 @@ class ScraperAgent:
         )
         product_cache = {p.name: p for p in result.scalars().all()}
 
+        # Prefetch existing deals for these stores to avoid duplicates
+        store_ids = [s.id for s in store_cache.values() if s.id]
+        existing_deals_cache = {}
+        if store_ids:
+            result = await self.session.execute(
+                select(Deal).where(Deal.store_id.in_(store_ids))
+            )
+            for d in result.scalars().all():
+                key = (d.product_id, d.store_id, d.price, d.valid_until)
+                existing_deals_cache[key] = d
+
         today = date.today()
+        new_deals_count = 0
         for deal_data in deals:
             store_name = deal_data.get("store", "Unknown Store")
             store = store_cache.get(store_name)
@@ -185,16 +197,26 @@ class ScraperAgent:
             if original_price and original_price > price:
                 discount_pct = round(((original_price - price) / original_price) * 100)
 
+            valid_from = deal_data.get("valid_from", today)
+            valid_until = deal_data.get("valid_until", today + timedelta(days=7))
+
+            # Check for duplicate
+            deal_key = (product.id, store.id, price, valid_until)
+            if deal_key in existing_deals_cache:
+                continue
+
             deal = Deal(
                 product_id=product.id,
                 store_id=store.id,
                 price=price,
                 original_price=original_price,
                 discount_pct=discount_pct,
-                valid_from=deal_data.get("valid_from", today),
-                valid_until=deal_data.get("valid_until", today + timedelta(days=7)),
+                valid_from=valid_from,
+                valid_until=valid_until,
             )
             self.session.add(deal)
+            existing_deals_cache[deal_key] = deal
+            new_deals_count += 1
 
         await self.session.commit()
-        logging.info(f"Persisted {len(deals)} deals to the database.")
+        logging.info(f"Persisted {new_deals_count} new deals to the database.")
