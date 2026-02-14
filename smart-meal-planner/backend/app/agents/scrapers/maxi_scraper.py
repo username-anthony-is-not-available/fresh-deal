@@ -41,8 +41,7 @@ class MaxiScraper(BaseScraper):
                 await page.goto(url, wait_until="domcontentloaded", timeout=60000)
 
                 # Check for bot detection
-                content = await page.content()
-                if "Incapsula incident ID" in content or "distil" in content.lower():
+                if await self._check_incapsula_block(page):
                     logger.warning(f"Bot detection triggered on {url}")
                     continue
 
@@ -59,25 +58,14 @@ class MaxiScraper(BaseScraper):
                 await self._scroll_to_bottom(page, max_scrolls=3)
 
                 # Check for Flipp iframe
-                flyer_frame_selector = 'iframe[title="Main Panel"]'
-                flyer_frame = page.frame_locator(flyer_frame_selector)
-
-                try:
-                    frame_count = await flyer_frame.locator('[data-testid="product-tile"]').count()
-                    if frame_count > 0:
-                        logger.info(f"Found Flipp flyer frame with {frame_count} items.")
-                        frame_content = await flyer_frame.locator('html').inner_html()
-                        soup = BeautifulSoup(frame_content, 'html.parser')
-                        tiles = soup.select('[data-testid="product-tile"]')
-                        for tile in tiles:
-                            deal = self._parse_tile(tile)
-                            if deal and deal['name'] not in seen_names:
-                                deals.append(deal)
-                                seen_names.add(deal['name'])
-                                if len(deals) >= limit:
-                                    break
-                except Exception as e:
-                    logger.debug(f"Error checking Flipp frame: {e}")
+                tiles = await self._scrape_flipp_frame(page)
+                for tile in tiles:
+                    deal = self._parse_tile(tile)
+                    if deal and deal['name'] not in seen_names:
+                        deals.append(deal)
+                        seen_names.add(deal['name'])
+                        if len(deals) >= limit:
+                            break
 
                 # Also check native content
                 content = await page.content()

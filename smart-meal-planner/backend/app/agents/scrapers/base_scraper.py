@@ -5,6 +5,8 @@ import os
 import re
 from playwright.async_api import async_playwright, Playwright, Page
 from datetime import date, datetime
+from bs4 import BeautifulSoup
+import logging
 
 try:
     # playwright-stealth exposes helper functions, not a Stealth class.
@@ -197,6 +199,43 @@ class BaseScraper(ABC):
             print(f"Debug artifacts saved: {screenshot_path}, {html_path}")
         except Exception as e:
             print(f"Failed to save debug artifacts: {e}")
+
+    async def _check_incapsula_block(self, page: Page) -> bool:
+        """
+        Checks if the page is blocked by Incapsula/Imperva.
+        """
+        try:
+            content = await page.content()
+            if "Incapsula incident ID" in content or "Request unsuccessful. Incapsula incident ID" in content:
+                print(f"Anti-bot detection triggered (Incapsula) on {page.url}")
+                return True
+        except Exception:
+            pass
+        return False
+
+    async def _scrape_flipp_frame(
+        self, page: Page, tile_selector: str = 'div[data-testid="product-tile"]'
+    ) -> List[BeautifulSoup]:
+        """
+        Standardized method to locate and extract content from a Flipp-based flyer iframe.
+        """
+        flyer_frame_selector = 'iframe[title="Main Panel"]'
+        flyer_frame = page.frame_locator(flyer_frame_selector)
+
+        try:
+            # Wait for the iframe to be present
+            await page.wait_for_selector(flyer_frame_selector, timeout=15000)
+            # Wait for the tiles to appear in the frame
+            tile_locator = flyer_frame.locator(tile_selector)
+            await tile_locator.first.wait_for(timeout=15000)
+
+            # Get the HTML from the frame
+            frame_content = await flyer_frame.locator('html').inner_html()
+            soup = BeautifulSoup(frame_content, 'html.parser')
+            return soup.select(tile_selector)
+        except Exception as e:
+            print(f"Flipp flyer frame not found or timed out on {page.url}: {e}")
+            return []
 
     def _parse_flyer_dates(
         self, date_text: str
