@@ -27,51 +27,27 @@ class IgaScraper(BaseScraper):
             await self._random_delay(2, 5)
 
             # Detect Incapsula block
-            content = await page.content()
-            if "Incapsula incident ID" in content:
+            if await self._check_incapsula_block(page):
                 logger.critical("IGA access denied by Incapsula.")
                 return []
 
             # Handle the cookie consent button
             await self._handle_cookie_consent(page, 'button:has-text("Accept All")')
 
-            # Wait for flyer content to load
-            try:
-                # First try direct tiles
-                await page.wait_for_selector('div[class*="product-tile-wrapper"]', timeout=15000)
-            except Exception:
-                try:
-                    # Fallback to Flipp iframe if direct tiles not found
-                    logger.info("Direct tiles not found on IGA, looking for Flipp iframe.")
-                    flyer_frame = page.frame_locator('iframe[title="Main Panel"]')
-                    await flyer_frame.locator('div[data-testid="product-tile"]').first.wait_for(timeout=15000)
-                    logger.info("Found Flipp flyer frame on IGA.")
-                except Exception as e:
-                    logger.warning(f"Timed out waiting for product tiles on IGA (direct or iframe): {e}")
-
-            # Scroll to the bottom of the page to load all items
-            await self._scroll_to_bottom(page, max_scrolls=5)
-
-            logger.info("Parsing the page content for deals.")
-
-            # Check for Flipp iframe content first
-            flyer_frame = page.frame_locator('iframe[title="Main Panel"]')
-            try:
-                frame_content = await flyer_frame.locator('html').inner_html()
-                soup = BeautifulSoup(frame_content, 'html.parser')
-                product_tiles = soup.select('div[data-testid="product-tile"]')
-                if product_tiles:
-                    logger.info(f"Found {len(product_tiles)} product tiles in IGA Flipp iframe.")
-            except Exception:
-                product_tiles = []
+            # Use centralized Flipp frame scraper
+            product_tiles = await self._scrape_flipp_frame(page)
 
             if not product_tiles:
                 # Fallback to main page content
+                logger.info("Flipp frame not found on IGA, looking for native tiles.")
+                try:
+                    await page.wait_for_selector('div[class*="product-tile-wrapper"]', timeout=15000)
+                except Exception:
+                    pass
+                await self._scroll_to_bottom(page, max_scrolls=5)
                 content = await page.content()
                 soup = BeautifulSoup(content, 'html.parser')
                 product_tiles = soup.select('div[class*="product-tile-wrapper"]')
-                if product_tiles:
-                    logger.info(f"Found {len(product_tiles)} product tiles on IGA main page.")
 
             if not product_tiles:
                 logger.warning("No product tiles found on the IGA page. Saving debug info.")

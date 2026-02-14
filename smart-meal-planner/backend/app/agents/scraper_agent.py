@@ -10,6 +10,7 @@ from .scrapers.walmart_scraper import WalmartScraper
 from .scrapers.maxi_scraper import MaxiScraper
 from .scrapers.provigo_scraper import ProvigoScraper
 from .scrapers.iga_scraper import IgaScraper
+from .scrapers.super_c_scraper import SuperCScraper
 from .scrapers.adonis_scraper import AdonisScraper
 from .scrapers.costco_scraper import CostcoScraper
 from .scrapers.circulaire_en_ligne_scraper import CirculaireEnLigneScraper
@@ -32,6 +33,7 @@ class ScraperAgent:
             "maxi": MaxiScraper(),
             "provigo": ProvigoScraper(),
             "iga": IgaScraper(),
+            "super_c": SuperCScraper(),
             "adonis": AdonisScraper(postal_code=self.postal_code),
             "costco": CostcoScraper(),
         }

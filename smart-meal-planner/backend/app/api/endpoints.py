@@ -430,7 +430,7 @@ async def list_scrapers():
     """
     List available scrapers and their configurations.
     """
-    available_stores = ["metro", "walmart", "maxi", "provigo", "iga"]
+    available_stores = ["metro", "walmart", "maxi", "provigo", "iga", "super_c"]
     return {
         "scrapers": [
             {

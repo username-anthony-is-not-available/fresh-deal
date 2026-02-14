@@ -30,6 +30,11 @@ const ScrapingDashboardPage = () => {
 
   const legacyScrapers = [
     { id: 'metro', name: 'Metro (Playwright)', endpoint: '/admin/scrape/metro', color: 'blue', legacy: true },
+    { id: 'super_c', name: 'Super C (Playwright)', endpoint: '/admin/scrape/super_c', color: 'green', legacy: true },
+    { id: 'maxi', name: 'Maxi (Playwright)', endpoint: '/admin/scrape/maxi', color: 'red', legacy: true },
+    { id: 'provigo', name: 'Provigo (Playwright)', endpoint: '/admin/scrape/provigo', color: 'orange', legacy: true },
+    { id: 'iga', name: 'IGA (Playwright)', endpoint: '/admin/scrape/iga', color: 'red', legacy: true },
+    { id: 'walmart', name: 'Walmart (Playwright)', endpoint: '/admin/scrape/walmart', color: 'blue', legacy: true },
   ];
 
   // Fetch deal count on mount

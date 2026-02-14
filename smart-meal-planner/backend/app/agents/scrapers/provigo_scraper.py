@@ -29,27 +29,17 @@ class ProvigoScraper(BaseScraper):
             # Handle cookie consent
             await self._handle_cookie_consent(page, '#onetrust-accept-btn-handler')
 
-            # Try to find the Flipp iframe
-            flyer_frame_selector = 'iframe[title="Main Panel"]'
-            flyer_frame = page.frame_locator(flyer_frame_selector)
+            # Use centralized Flipp frame scraper
+            product_tiles = await self._scrape_flipp_frame(page)
 
-            # Check if we can find product tiles within the frame
-            try:
-                # Wait for the iframe to be present
-                await page.wait_for_selector(flyer_frame_selector, timeout=30000)
-                # Wait for the tiles to appear in the frame
-                tile_locator = flyer_frame.locator('div[data-testid="product-tile"]')
-                await tile_locator.first.wait_for(timeout=20000)
-                logger.info("Found Flipp flyer frame on Provigo.")
-
-                # Get the HTML from the frame
-                frame_content = await flyer_frame.locator('html').inner_html()
-                soup = BeautifulSoup(frame_content, 'html.parser')
-                product_tiles = soup.select('div[data-testid="product-tile"]')
-            except Exception as e:
-                logger.info(f"Flipp flyer frame not found or timed out ({e}), falling back to main page content.")
+            if not product_tiles:
                 # Fallback to main page content
-                await page.wait_for_selector('div[class*="product-tile-group__list__item"]', timeout=20000)
+                logger.info("Flipp frame not found on Provigo, looking for native tiles.")
+                try:
+                    await page.wait_for_selector('div[class*="product-tile-group__list__item"]', timeout=20000)
+                except Exception:
+                    pass
+                await self._scroll_to_bottom(page, max_scrolls=3)
                 content = await page.content()
                 soup = BeautifulSoup(content, 'html.parser')
                 product_tiles = soup.select('div[class*="product-tile-group__list__item"]')

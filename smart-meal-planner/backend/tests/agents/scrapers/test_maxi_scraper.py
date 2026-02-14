@@ -1,5 +1,6 @@
 
 import pytest
+from playwright.async_api import Page
 from unittest.mock import MagicMock, AsyncMock
 from bs4 import BeautifulSoup
 from app.agents.scrapers.maxi_scraper import MaxiScraper
@@ -92,7 +93,7 @@ async def test_scrape_page_success():
 @pytest.mark.asyncio
 async def test_scrape_page_flipp_iframe():
     scraper = MaxiScraper(headless=True)
-    mock_page = AsyncMock()
+    mock_page = MagicMock(spec=Page)
     mock_page.goto = AsyncMock()
     mock_page.content = AsyncMock(return_value='<html></html>')
     mock_page.wait_for_selector = AsyncMock()
@@ -101,16 +102,26 @@ async def test_scrape_page_flipp_iframe():
 
     # Mock frame locator
     mock_frame = MagicMock()
-    mock_frame.locator = MagicMock()
-    # Mock count to be > 0 so it uses the frame
-    mock_frame.locator('[data-testid="product-tile"]').count = AsyncMock(return_value=1)
-    mock_frame.locator('html').inner_html = AsyncMock(return_value="""
+    mock_page.frame_locator.return_value = mock_frame
+
+    mock_tile_locator = MagicMock()
+    mock_tile_locator.first.wait_for = AsyncMock()
+    mock_tile_locator.count = AsyncMock(return_value=1)
+
+    mock_html_locator = MagicMock()
+    mock_html_locator.inner_html = AsyncMock(return_value="""
         <div data-testid="product-tile">
             <div data-testid="product-title">Banana</div>
             <div data-testid="regular-price">$0.79</div>
         </div>
     """)
-    mock_page.frame_locator = MagicMock(return_value=mock_frame)
+
+    def locator_side_effect(selector):
+        if selector == 'html':
+            return mock_html_locator
+        return mock_tile_locator
+
+    mock_frame.locator.side_effect = locator_side_effect
 
     deals = await scraper._scrape_page(mock_page, limit=10)
 

@@ -7,12 +7,14 @@ from app.agents.scraper_agent import ScraperAgent
 from app.models.all_models import Store, Product, Deal
 import asyncio
 from playwright.async_api import Page
+from bs4 import BeautifulSoup
 from unittest.mock import AsyncMock, patch, MagicMock
 from app.agents.scrapers.walmart_scraper import WalmartScraper
 from app.agents.scrapers.provigo_scraper import ProvigoScraper
 from app.agents.scrapers.iga_scraper import IgaScraper
 from app.agents.scrapers.metro_scraper import MetroScraper
 from app.agents.scrapers.maxi_scraper import MaxiScraper
+from app.agents.scrapers.super_c_scraper import SuperCScraper
 from app.agents.scrapers.base_scraper import BaseScraper
 import os
 
@@ -413,3 +415,41 @@ def test_base_scraper_utilities():
     s, e = scraper._parse_flyer_dates("du 25 au 31 juillet 2024")
     assert s == date(2024, 7, 25)
     assert e == date(2024, 7, 31)
+
+@pytest.mark.asyncio
+async def test_super_c_scraper_parsing_logic():
+    """
+    Tests the parsing logic of the SuperCScraper using mock HTML content.
+    """
+    # Arrange
+    scraper = SuperCScraper()
+    mock_page = MagicMock(spec=Page)
+
+    # Super C uses the same Flipp format as Provigo in our mock data
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    mock_html_path = os.path.join(current_dir, "mock_provigo_flyer.html")
+    with open(mock_html_path, "r") as f:
+        mock_html = f.read()
+
+    mock_page.goto = AsyncMock()
+    mock_page.is_visible = AsyncMock(return_value=False)
+    mock_page.content = AsyncMock(return_value="<html></html>")
+    mock_page.wait_for_selector = AsyncMock()
+
+    # Mock centralized Flipp frame scraper (it's a method of BaseScraper)
+    # Since SuperCScraper inherits from BaseScraper, we can mock the method on the instance or class
+    with patch.object(BaseScraper, '_scrape_flipp_frame', new_callable=AsyncMock) as mock_flipp:
+        # The mock flipp frame should return a list of BeautifulSoup objects (tiles)
+        soup = BeautifulSoup(mock_html, 'html.parser')
+        mock_flipp.return_value = soup.select('div[data-testid="product-tile"]')
+
+        # Act
+        deals = await scraper._scrape_page(mock_page, limit=10)
+
+        # Assert
+        assert len(deals) == 2
+        assert "Chicken Breasts" in deals[0]["name"]
+        assert deals[0]["price"] == 12.99
+        assert deals[0]["store"] == "Super C"
+        assert deals[1]["name"] == "Black Diamond Cheese Slices"
+        assert deals[1]["price"] == 2.49
