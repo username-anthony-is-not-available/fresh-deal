@@ -4,6 +4,7 @@ from typing import List, Dict, Any, Optional
 from .base_scraper import BaseScraper
 from bs4 import BeautifulSoup
 import logging
+import asyncio
 
 logger = logging.getLogger(__name__)
 
@@ -19,105 +20,165 @@ class ProvigoScraper(BaseScraper):
         Scrapes the Provigo website for deals.
         """
         deals = []
-        url = "https://www.provigo.ca/en/flyer"
+        urls = [
+            "https://www.provigo.ca/en/deals/flyer",
+            "https://www.provigo.ca/en/flyer",
+            "https://www.provigo.ca/en/collection/deals-centre"
+        ]
 
-        try:
-            logger.info("Navigating to the Provigo flyer page.")
-            await page.goto(url, wait_until="networkidle", timeout=60000)
-            await self._random_delay(2, 5)
+        seen_names = set()
 
-            # Handle cookie consent
-            await self._handle_cookie_consent(page, '#onetrust-accept-btn-handler')
+        for url in urls:
+            if len(deals) >= limit:
+                break
 
-            # Use centralized Flipp frame scraper
-            product_tiles = await self._scrape_flipp_frame(page)
+            try:
+                logger.info(f"Navigating to Provigo flyer page: {url}")
+                await page.goto(url, wait_until="domcontentloaded", timeout=60000)
+                await asyncio.sleep(10)
 
-            if not product_tiles:
-                # Fallback to main page content
-                logger.info("Flipp frame not found on Provigo, looking for native tiles.")
+                # Check for bot detection
+                if await self._check_incapsula_block(page):
+                    logger.warning(f"Bot detection triggered on {url}")
+                    continue
+
+                # Handle cookie consent
+                await self._handle_cookie_consent(page, '#onetrust-accept-btn-handler')
+
+                # Handle location confirmation if it appears
                 try:
-                    await page.wait_for_selector('div[class*="product-tile-group__list__item"]', timeout=20000)
+                    yes_button = page.get_by_role("button", name="Yes")
+                    if await yes_button.is_visible(timeout=5000):
+                        await yes_button.click()
+                        await asyncio.sleep(2)
                 except Exception:
                     pass
+
+                # Wait for loading spinner to disappear
+                try:
+                    await page.wait_for_selector('div.loading--spinner', state='hidden', timeout=20000)
+                except Exception:
+                    pass
+
+                # Wait for content to appear
+                try:
+                    await page.wait_for_selector('[data-testid="product-title"]', timeout=20000)
+                except Exception:
+                    pass
+
+                # Check for Flipp iframe (some pages might still use it)
+                iframe_tiles = await self._scrape_flipp_frame(page)
+                for tile in iframe_tiles:
+                    deal = self._parse_tile(tile)
+                    if deal and deal['name'] not in seen_names:
+                        deals.append(deal)
+                        seen_names.add(deal['name'])
+                        if len(deals) >= limit:
+                            break
+
+                # Scroll to load more native content
                 await self._scroll_to_bottom(page, max_scrolls=3)
+
                 content = await page.content()
                 soup = BeautifulSoup(content, 'html.parser')
-                product_tiles = soup.select('div[class*="product-tile-group__list__item"]')
 
-            logger.info(f"Found {len(product_tiles)} product tiles on Provigo.")
+                # Find native tiles
+                product_tiles = soup.select('[data-testid="product-grid-component"]')
+                if not product_tiles:
+                    product_tiles = soup.select('div.chakra-linkbox')
+                if not product_tiles:
+                    product_tiles = soup.select('div[class*="product-tile"]')
 
-            if not product_tiles:
-                logger.warning("No product tiles found on the Provigo page. Saving debug info.")
-                await self._save_debug_artifacts(page, "provigo_debug")
-                return []
+                logger.info(f"Found {len(product_tiles)} potential native product tiles on Provigo at {url}.")
 
-            for tile in product_tiles:
-                if len(deals) >= limit:
-                    break
+                for tile in product_tiles:
+                    if len(deals) >= limit:
+                        break
 
-                try:
-                    deal = self._parse_tile(tile)
-                    if deal:
-                        deals.append(deal)
-                except Exception as e:
-                    logger.error(f"Error parsing a Provigo product tile: {e}")
+                    try:
+                        deal = self._parse_tile(tile)
+                        if deal and deal['name'] not in seen_names:
+                            deals.append(deal)
+                            seen_names.add(deal['name'])
+                    except Exception as e:
+                        logger.debug(f"Error parsing a Provigo product tile: {e}")
 
-        except Exception as e:
-            logger.critical(f"A critical error occurred while scraping Provigo: {e}")
-            await self._save_debug_artifacts(page, "provigo_critical_error")
+            except Exception as e:
+                logger.error(f"Error scraping Provigo URL {url}: {e}")
+                continue
 
-        logger.info(f"Scraped {len(deals)} deals from Provigo.")
+        if not deals:
+            logger.warning("No deals found on any Provigo URL. Saving debug info.")
+            await self._save_debug_artifacts(page, "provigo_debug")
+
+        logger.info(f"Scraped {len(deals)} unique deals from Provigo.")
         return deals
 
     def _parse_tile(self, tile: BeautifulSoup) -> Optional[Dict[str, Any]]:
         """
-        Parses a single product tile, supporting both Flipp and native selectors.
+        Parses a single Provigo product tile, supporting both Flipp and native selectors.
         """
         # 1. Extract Name
-        name_element = tile.select_one('[data-testid="product-title"]') # Flipp
-        if not name_element:
-            name_element = tile.select_one('h3[class*="product-tile__name"]') # Native
-
+        name_element = (
+            tile.select_one('[data-testid="product-title"]') or
+            tile.select_one('h3[class*="product-tile__name"]') or
+            tile.select_one('h3')
+        )
         if not name_element:
             return None
-        name = name_element.text.strip()
+        name = name_element.get_text(strip=True)
 
-        # 2. Extract Price
-        price_element = tile.select_one('.price__value') # Both Flipp and Native often use this
-        if not price_element:
-            price_element = tile.select_one('span[class*="price__value"]')
+        # 2. Extract Brand
+        brand_element = tile.select_one('[data-testid="product-brand"]')
+        brand = brand_element.get_text(strip=True) if brand_element else ""
+        if brand and brand.lower() not in name.lower():
+            name = f"{brand} {name}"
+
+        # 3. Extract Price
+        price_element = (
+            tile.select_one('[data-testid="price-product-tile"]') or
+            tile.select_one('[data-testid="sale-price"]') or
+            tile.select_one('[data-testid="regular-price"]') or
+            tile.select_one('.price__value') or
+            tile.select_one('span[class*="price__value"]')
+        )
 
         price = 0.0
         if price_element:
-            price_text = price_element.text.strip()
+            price_text = price_element.get_text(separator=" ", strip=True)
+            # Remove "sale", "was", etc.
+            price_text = re.sub(r'(?i)sale|was|save|member price', '', price_text).strip()
             price = self._parse_price(price_text) or 0.0
 
         if price == 0.0:
             return None
 
-        # 3. Extract Unit/Package Size
-        unit_element = tile.select_one('.product-tile__package-size') # Flipp
-        if not unit_element:
-            unit_element = tile.select_one('div.product-tile__package-size')
-        if not unit_element:
-            unit_element = tile.select_one('span[class*="product-tile__package-size"]') # Native
+        # 4. Extract Original Price
+        original_price = price
+        was_price_element = tile.select_one('span:contains("was")') or tile.select_one('.was-price')
+        if was_price_element:
+            original_price = self._parse_price(was_price_element.get_text()) or price
 
-        unit_text = unit_element.text.strip().lower() if unit_element else ""
-        unit = self._extract_unit(name + " " + unit_text)
+        # 5. Extract Unit/Package Size
+        unit_element = (
+            tile.select_one('[data-testid="product-package-size"]') or
+            tile.select_one('.product-tile__package-size') or
+            tile.select_one('span[class*="product-tile__package-size"]')
+        )
 
-        # 4. Extract Image
+        unit_text = unit_element.get_text(strip=True).lower() if unit_element else ""
+        unit = self._extract_unit(name + " " + unit_text + " " + (price_element.get_text() if price_element else ""))
+
+        # 6. Extract Image
         image_element = tile.select_one('img')
         image_url = None
         if image_element:
-            if image_element.has_attr('src'):
-                image_url = image_element['src']
-            elif image_element.has_attr('data-src'):
-                image_url = image_element['data-src']
+            image_url = image_element.get('src') or image_element.get('data-src')
 
         return {
             "name": name,
             "price": round(price, 2),
-            "original_price": round(price, 2),
+            "original_price": round(original_price, 2),
             "unit": unit,
             "store": self.STORE_NAME,
             "image_url": image_url,
