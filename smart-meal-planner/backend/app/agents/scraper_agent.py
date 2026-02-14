@@ -4,7 +4,7 @@ from sqlmodel import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.all_models import Store, Product, Deal
 from app.agents.flipp_scraper import FlippScraper
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime, timezone
 from .scrapers.metro_scraper import MetroScraper
 from .scrapers.walmart_scraper import WalmartScraper
 from .scrapers.maxi_scraper import MaxiScraper
@@ -48,6 +48,8 @@ class ScraperAgent:
         for store_name, deals in scraped_data.items():
             if deals:
                 await self.persist_deals(deals)
+            else:
+                await self.mark_store_as_scraped(store_name)
         logging.info("Daily scrape finished.")
 
     async def scrape(
@@ -71,21 +73,32 @@ class ScraperAgent:
         """
         Scrapes a single store, handling the fallback from a direct scraper to the Flipp API,
         and finally to circulaire-en-ligne.ca if both fail.
+        Includes a retry mechanism for direct browser-based scrapers.
         """
         scraper = self.scrapers.get(store_name.lower())
         if scraper:
-            try:
-                logging.info(f"Attempting direct scrape for {store_name}...")
-                deals = await scraper.scrape(limit=limit)
-                if deals:
+            max_retries = 3
+            for attempt in range(max_retries):
+                try:
                     logging.info(
-                        f"Direct scrape for {store_name} successful, found {len(deals)} deals."
+                        f"Attempting direct scrape for {store_name} (Attempt {attempt + 1}/{max_retries})..."
                     )
-                    return deals
-            except Exception as e:
-                logging.error(
-                    f"Direct scrape for {store_name} failed: {e}. Falling back to Flipp API."
-                )
+                    deals = await scraper.scrape(limit=limit)
+                    if deals:
+                        logging.info(
+                            f"Direct scrape for {store_name} successful, found {len(deals)} deals."
+                        )
+                        return deals
+                except Exception as e:
+                    logging.error(
+                        f"Direct scrape for {store_name} attempt {attempt + 1} failed: {e}."
+                    )
+                    if attempt < max_retries - 1:
+                        await asyncio.sleep(2**attempt)  # Exponential backoff
+                    else:
+                        logging.error(
+                            f"All {max_retries} attempts for {store_name} failed. Falling back to Flipp API."
+                        )
 
         # Fallback to Flipp API
         deals = await self._scrape_with_flipp(store_name, limit)
@@ -218,5 +231,28 @@ class ScraperAgent:
             existing_deals_cache[deal_key] = deal
             new_deals_count += 1
 
+        # Update last_scraped_at for all stores that provided deals
+        now = datetime.now(timezone.utc)
+        for store in store_cache.values():
+            store.last_scraped_at = now
+            self.session.add(store)
+
         await self.session.commit()
         logging.info(f"Persisted {new_deals_count} new deals to the database.")
+
+    async def mark_store_as_scraped(self, store_chain: str):
+        """
+        Updates the last_scraped_at timestamp for a store, even if no deals were found.
+        This prevents immediate re-scraping of a store that was just checked.
+        """
+        result = await self.session.execute(
+            select(Store).where(Store.chain == store_chain)
+        )
+        store = result.scalar_one_or_none()
+        if store:
+            store.last_scraped_at = datetime.now(timezone.utc)
+            self.session.add(store)
+            await self.session.commit()
+            logging.info(
+                f"Marked store {store_chain} as scraped at {store.last_scraped_at}."
+            )
