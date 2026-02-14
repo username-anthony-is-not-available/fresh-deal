@@ -68,8 +68,8 @@ def test_strategy_min_cost(mock_session):
             "quantity": 1,
             "unit": "L",
             "options": [
-                {"store_name": "Store A", "store_id": 1, "chain": "Chain A", "price": 2.00, "discount_pct": 0, "total_item_cost": 2.00},
-                {"store_name": "Store B", "store_id": 2, "chain": "Chain B", "price": 1.50, "discount_pct": 0, "total_item_cost": 1.50}
+                {"store_name": "Store A", "store_id": 1, "chain": "Chain A", "price": 2.00, "discount_pct": 0, "total_item_cost": 2.00, "category": "Dairy"},
+                {"store_name": "Store B", "store_id": 2, "chain": "Chain B", "price": 1.50, "discount_pct": 0, "total_item_cost": 1.50, "category": "Dairy"}
             ]
         }
     ]
@@ -79,6 +79,7 @@ def test_strategy_min_cost(mock_session):
 
     assert store_b["store"] == "Store B"
     assert result["total_cost"] == 1.50
+    assert store_b["items"][0]["category"] == "Dairy"
 
 def test_single_store_comparison(mock_session):
     optimizer = ShoppingListOptimizer(mock_session)

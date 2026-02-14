@@ -217,7 +217,8 @@ class ShoppingListOptimizer:
                     "chain": store.chain,
                     "price": final_price,
                     "discount_pct": deal.discount_pct,
-                    "unit_type": required_unit
+                    "unit_type": required_unit,
+                    "category": product.category
                 })
         return options
 
@@ -328,7 +329,8 @@ class ShoppingListOptimizer:
                 "unit": item["unit"],
                 "price_per_unit": selected_option["price"],
                 "cost": selected_option["total_item_cost"],
-                "discount_pct": selected_option.get("discount_pct")
+                "discount_pct": selected_option.get("discount_pct"),
+                "category": selected_option.get("category", "Grocery")
             })
 
             stores_usage[s_name]["subtotal"] += selected_option["total_item_cost"]
