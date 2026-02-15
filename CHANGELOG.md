@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Enhanced
+- **Dietary Safety**: Incorporated user dietary preferences and allergies into the AI meal plan generation prompt, ensuring safer recipe recommendations for users with restrictions like gluten-free or nut allergies.
 - **Scraping Performance**: Refactored `ScraperAgent` to support concurrent store scraping using `asyncio.gather` with a configurable semaphore, significantly reducing total scraping time.
 - **Database Optimization**: Optimized deal persistence by pre-fetching stores and products, reducing database round-trips.
 - **Base Scraper Utilities**: Added robust shared utilities to `BaseScraper` for cookie consent handling, automated scrolling, and standardized debug artifact collection.
