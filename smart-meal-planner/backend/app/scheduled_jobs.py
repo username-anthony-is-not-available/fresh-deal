@@ -7,19 +7,9 @@ from app.models.all_models import Store
 import logging
 from datetime import datetime, timezone
 from app.core.config import settings
+from app.services.notification_service import NotificationService
 
 logger = logging.getLogger(__name__)
-
-async def send_webhook_notification(message: str):
-    """
-    Sends a notification to the configured webhook URL.
-    """
-    if settings.WEBHOOK_URL:
-        try:
-            async with httpx.AsyncClient() as client:
-                await client.post(settings.WEBHOOK_URL, json={"text": message})
-        except Exception as e:
-            logger.error(f"Failed to send webhook notification: {e}", exc_info=True)
 
 async def run_scheduled_scrape():
     """
@@ -34,9 +24,9 @@ async def run_scheduled_scrape():
 
             success_message = "Scheduled scrape job finished successfully."
             logger.info(success_message)
-            await send_webhook_notification(f"Scrape job finished: {success_message}")
+            await NotificationService.send_notification(f"Scrape job finished: {success_message}")
 
     except Exception as e:
         error_message = f"An error occurred during the scheduled scrape: {e}"
         logger.error(error_message, exc_info=True)
-        await send_webhook_notification(f"Scrape job failed: {error_message}")
+        await NotificationService.send_notification(f"Scrape job failed: {error_message}")

@@ -5,6 +5,7 @@ from .base_scraper import BaseScraper
 from bs4 import BeautifulSoup
 import logging
 import asyncio
+import re
 
 logger = logging.getLogger(__name__)
 

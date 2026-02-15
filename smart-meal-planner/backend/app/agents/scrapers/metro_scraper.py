@@ -50,6 +50,9 @@ class MetroScraper(BaseScraper):
                 soup = BeautifulSoup(content, 'html.parser')
 
                 product_tiles = soup.select('div.default-product-tile.tile-product')
+                if not product_tiles:
+                    product_tiles = soup.select('div.product-tile-group__list__item')
+
                 logger.info(f"Found {len(product_tiles)} product tiles on Metro at {url}.")
 
                 for tile in product_tiles:
