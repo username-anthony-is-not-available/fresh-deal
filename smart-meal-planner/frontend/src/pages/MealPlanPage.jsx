@@ -5,7 +5,7 @@ import { HTML5Backend } from 'react-dnd-html5-backend';
 import DraggableMealCard from '../components/DraggableMealCard';
 import MealSlot from '../components/MealSlot';
 import DietaryFilters from '../components/DietaryFilters';
-import { RefreshCw, Calendar as CalendarIcon, Lightbulb, PiggyBank } from 'lucide-react';
+import { RefreshCw, Calendar as CalendarIcon, Lightbulb, PiggyBank, Search, X } from 'lucide-react';
 import api from '../services/api';
 import SkeletonLoader from '../components/SkeletonLoader';
 import { showSuccessToast, showErrorToast } from '../utils/toast';
@@ -50,6 +50,7 @@ const MealPlanPage = () => {
   const [regeneratingMeal, setRegeneratingMeal] = useState(null); // e.g., { day: 1, type: 'Breakfast' }
   const [error, setError] = useState(null);
   const [dietaryPreferences, setDietaryPreferences] = useState([]);
+  const [searchTerm, setSearchTerm] = useState('');
 
   const userId = localStorage.getItem('user_id') || 1;
 
@@ -204,8 +205,36 @@ const MealPlanPage = () => {
     );
   }
 
-  const planDays = plan.meal_plan || plan.days || [];
-  const startDate = planDays.length > 0 ? planDays[0].date : "Upcoming Week";
+  const planDaysRaw = plan.meal_plan || plan.days || [];
+
+  const filteredPlanDays = planDaysRaw.map(day => {
+    let meals = [];
+    if (day.meals && Array.isArray(day.meals)) {
+      meals = day.meals;
+    } else {
+      meals = [
+        { ...day.breakfast, type: 'Breakfast' },
+        { ...day.lunch, type: 'Lunch' },
+        { ...day.dinner, type: 'Dinner' }
+      ].filter(m => m && (m.recipe_name || m.name));
+    }
+
+    const filteredMeals = meals.filter(meal => {
+      if (!searchTerm) return true;
+      const query = searchTerm.toLowerCase();
+      const nameMatch = (meal.recipe_name || meal.name || '').toLowerCase().includes(query);
+      const ingredientMatch = meal.ingredients?.some(ing => {
+        const ingName = typeof ing === 'string' ? ing : (ing.item || '');
+        return ingName.toLowerCase().includes(query);
+      });
+      return nameMatch || ingredientMatch;
+    });
+
+    return { ...day, meals: filteredMeals };
+  }).filter(day => day.meals.length > 0);
+
+  const planDays = filteredPlanDays;
+  const startDate = planDaysRaw.length > 0 ? planDaysRaw[0].date : "Upcoming Week";
   const endDate = planDays.length > 0 ? planDays[planDays.length - 1].date : "";
   const dateRange = startDate && endDate ? `${startDate} - ${endDate}` : "This Week";
 
@@ -275,10 +304,12 @@ const MealPlanPage = () => {
     }
   };
 
+  const quickFilters = ['Chicken', 'Beef', 'Pasta'];
+
   return (
     <DndProvider backend={HTML5Backend}>
       <div>
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Weekly Meal Plan</h1>
             <p className="text-gray-500 text-sm sm:text-base">{dateRange}</p>
@@ -291,6 +322,45 @@ const MealPlanPage = () => {
             <RefreshCw className={`w-4 h-4 ${generating ? 'animate-spin' : ''}`} />
             <span>{generating ? 'Generating...' : 'Regenerate Plan'}</span>
           </button>
+        </div>
+
+        {/* Interactive Filter Bar */}
+        <div className="mb-8 space-y-4">
+          <div className="relative group max-w-2xl">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5 group-focus-within:text-primary-500 transition-colors" />
+            <input
+              type="text"
+              placeholder="Search recipes or ingredients (e.g., 'chicken')..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-12 pr-12 py-3 bg-white border border-gray-200 rounded-xl shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all"
+            />
+            {searchTerm && (
+              <button
+                onClick={() => setSearchTerm('')}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-sm font-medium text-gray-500 mr-2">Quick filters:</span>
+            {quickFilters.map((ingredient) => (
+              <button
+                key={ingredient}
+                onClick={() => setSearchTerm(searchTerm === ingredient ? '' : ingredient)}
+                className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all border ${
+                  searchTerm.toLowerCase() === ingredient.toLowerCase()
+                    ? 'bg-primary-600 text-white border-primary-600 shadow-md'
+                    : 'bg-white text-gray-700 border-gray-200 hover:border-primary-300 hover:bg-primary-50'
+                }`}
+              >
+                {ingredient}
+              </button>
+            ))}
+          </div>
         </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
@@ -309,17 +379,23 @@ const MealPlanPage = () => {
             </div>
           </div>
           <DietaryFilters selected={dietaryPreferences} onChange={handleDietaryChange} />
+
+          {searchTerm && planDays.length === 0 && (
+            <div className="text-center py-12 bg-gray-50 rounded-xl border border-dashed border-gray-300">
+              <Search className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900">No matching meals found</h3>
+              <p className="text-gray-500">Try a different ingredient or clear the search.</p>
+              <button
+                onClick={() => setSearchTerm('')}
+                className="mt-4 text-primary-600 font-semibold hover:text-primary-700"
+              >
+                Clear search
+              </button>
+            </div>
+          )}
+
           {planDays.map((day) => {
-            let meals = [];
-            if (day.meals && Array.isArray(day.meals)) {
-              meals = day.meals;
-            } else {
-              meals = [
-                { ...day.breakfast, type: 'Breakfast' },
-                { ...day.lunch, type: 'Lunch' },
-                { ...day.dinner, type: 'Dinner' }
-              ].filter(m => m && (m.recipe_name || m.name));
-            }
+            const meals = day.meals;
 
             return (
               <div key={day.day} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
