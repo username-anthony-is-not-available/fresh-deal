@@ -1,6 +1,7 @@
 
 import pytest
 import json
+import asyncio
 from unittest.mock import MagicMock, patch
 from app.services.llm_service import LLMService
 from datetime import datetime
@@ -82,8 +83,6 @@ def test_generate_meal_plan_with_model_type(mock_make_request):
     # Check if _make_api_request was called with the mapped model ID for 'chef'
     args, _ = mock_make_request.call_args
     assert args[0] == service.MODEL_MAPPING["chef"]
-
-import asyncio
 
 @pytest.mark.asyncio
 @patch("app.services.llm_service.LLMService._call_llm")
