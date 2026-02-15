@@ -15,6 +15,7 @@ from app.models.all_models import (
     Recipe,
     RecipeFeedback,
     RecipeIngredient,
+    Feedback,
 )
 
 from app.agents.mock_scraper import MockScraperAgent
@@ -33,6 +34,8 @@ from app.schemas import (
     NutritionSummaryRead,
     RecipeFeedbackCreate,
     RecipeRatingCreate,
+    FeedbackCreate,
+    FeedbackRead,
     PantryAddRequest,
     PantryItemRead,
 )
@@ -616,7 +619,10 @@ async def get_latest_plan(
     )  # scalars() needed for getting the objects directly if select(MealPlan)
     if not plan or not plan.content_json:
         raise HTTPException(status_code=404, detail="No plan found or plan is empty.")
-    return json.loads(plan.content_json)
+
+    plan_data = json.loads(plan.content_json)
+    plan_data["id"] = plan.id  # Include the meal plan ID for feedback
+    return plan_data
 
 
 @router.get("/shopping/optimize")
@@ -708,3 +714,72 @@ async def consume_pantry_from_latest_plan(
         user_id=user_id,
         household_size=user.household_size,
     )
+
+
+@router.post("/feedback", response_model=FeedbackRead)
+async def create_feedback(
+    feedback_in: FeedbackCreate,
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_async_session),
+):
+    feedback = Feedback(
+        user_id=current_user.id,
+        recipe_id=feedback_in.recipe_id,
+        meal_plan_id=feedback_in.meal_plan_id,
+        rating=feedback_in.rating,
+        comment=feedback_in.comment,
+    )
+    session.add(feedback)
+    await session.commit()
+    await session.refresh(feedback)
+    return feedback
+
+
+@router.get("/feedback", response_model=List[FeedbackRead])
+async def list_feedback(
+    recipe_id: Optional[int] = None,
+    meal_plan_id: Optional[int] = None,
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_async_session),
+):
+    statement = select(Feedback).where(Feedback.user_id == current_user.id)
+    if recipe_id:
+        statement = statement.where(Feedback.recipe_id == recipe_id)
+    if meal_plan_id:
+        statement = statement.where(Feedback.meal_plan_id == meal_plan_id)
+
+    statement = statement.order_by(Feedback.created_at.desc())
+    result = await session.execute(statement)
+    return result.scalars().all()
+
+
+@router.get("/feedback/summary")
+async def get_feedback_summary(
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_async_session),
+):
+    # Get average rating for recipes and meal plans
+    recipe_avg_result = await session.execute(
+        select(func.avg(Feedback.rating)).where(
+            Feedback.user_id == current_user.id, Feedback.recipe_id != None
+        )
+    )
+    recipe_avg = recipe_avg_result.scalar()
+
+    meal_plan_avg_result = await session.execute(
+        select(func.avg(Feedback.rating)).where(
+            Feedback.user_id == current_user.id, Feedback.meal_plan_id != None
+        )
+    )
+    meal_plan_avg = meal_plan_avg_result.scalar()
+
+    total_count_result = await session.execute(
+        select(func.count(Feedback.id)).where(Feedback.user_id == current_user.id)
+    )
+    total_count = total_count_result.scalar()
+
+    return {
+        "average_recipe_rating": float(recipe_avg) if recipe_avg is not None else 0,
+        "average_meal_plan_rating": float(meal_plan_avg) if meal_plan_avg is not None else 0,
+        "total_feedback_count": total_count or 0,
+    }

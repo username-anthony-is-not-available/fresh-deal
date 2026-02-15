@@ -22,6 +22,7 @@ class User(SQLModel, table=True):
 
     ratings: List["RecipeRating"] = Relationship(back_populates="user")
     feedback: List["RecipeFeedback"] = Relationship(back_populates="user")
+    feedbacks: List["Feedback"] = Relationship(back_populates="user")
     favorites: List["UserFavorite"] = Relationship(back_populates="user")
     nutrition_goal: Optional["UserNutritionGoal"] = Relationship(back_populates="user")
     daily_nutritions: List["DailyNutrition"] = Relationship(back_populates="user")
@@ -116,6 +117,7 @@ class Recipe(SQLModel, table=True):
 
     ratings: List["RecipeRating"] = Relationship(back_populates="recipe")
     feedback: List["RecipeFeedback"] = Relationship(back_populates="recipe")
+    feedbacks: List["Feedback"] = Relationship(back_populates="recipe")
     favorited_by: List["UserFavorite"] = Relationship(back_populates="recipe")
 
 
@@ -135,6 +137,22 @@ class MealPlan(SQLModel, table=True):
     end_date: date
     content_json: str  # Stores the full JSON structure of meals
     created_at: datetime = Field(default_factory=utc_now)
+
+    feedbacks: List["Feedback"] = Relationship(back_populates="meal_plan")
+
+
+class Feedback(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: int = Field(foreign_key="user.id")
+    recipe_id: Optional[int] = Field(default=None, foreign_key="recipe.id")
+    meal_plan_id: Optional[int] = Field(default=None, foreign_key="mealplan.id")
+    rating: int = Field(ge=1, le=5)
+    comment: Optional[str] = None
+    created_at: datetime = Field(default_factory=utc_now)
+
+    user: "User" = Relationship(back_populates="feedbacks")
+    recipe: Optional["Recipe"] = Relationship(back_populates="feedbacks")
+    meal_plan: Optional["MealPlan"] = Relationship(back_populates="feedbacks")
 
 
 class RecipeRating(SQLModel, table=True):
