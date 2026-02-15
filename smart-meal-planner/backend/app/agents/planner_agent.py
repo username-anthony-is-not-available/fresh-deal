@@ -102,6 +102,7 @@ class MealPlannerAgent:
         user_prefs = {
             "household_size": user.household_size,
             "dietary_preferences": user.dietary_preferences,
+            "allergies": user.allergies,
             "postal_code": user.postal_code
         }
 
