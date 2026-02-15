@@ -14,6 +14,31 @@ from app.services.deal_service import DealService
 logger = logging.getLogger(__name__)
 
 class LLMService:
+    MODEL_MAPPING = {
+        "standard": settings.DEFAULT_MODEL,
+        "chef": settings.OPENROUTER_MODEL,  # anthropic/claude-3.5-sonnet
+        "creative": "google/gemini-pro-1.5",
+        "budget": "meta-llama/llama-3.1-70b-instruct",
+    }
+
+    def _get_seasonal_context(self) -> str:
+        """Returns typical Quebec ingredients for the current season."""
+        month = datetime.now().month
+        if 3 <= month <= 5:
+            season = "Spring"
+            ingredients = "maple syrup, fiddleheads, asparagus, rhubarb, wild leeks"
+        elif 6 <= month <= 8:
+            season = "Summer"
+            ingredients = "strawberries, raspberries, blueberries, corn, tomatoes, cucumbers, beans"
+        elif 9 <= month <= 11:
+            season = "Autumn"
+            ingredients = "apples, pumpkins, squash, cranberries, root vegetables (beets, carrots), leeks"
+        else:
+            season = "Winter"
+            ingredients = "root vegetables (potatoes, parsnips, turnips), cabbage, preserved foods, hearty stews"
+
+        return f"Current Season in Quebec: {season}. Highly recommended seasonal ingredients: {ingredients}."
+
     def __init__(self):
         # OpenAI client requires an API key. If not set, use a dummy one to avoid init crash.
         # We check for the real key in _call_llm before making requests.
@@ -141,6 +166,7 @@ class LLMService:
         dietary_preferences: List[str],
         existing_meals: List[Dict[str, Any]],
         session,
+        model_type: Optional[str] = None,
     ) -> Optional[Dict[str, Any]]:
         """
         Generates a new, single meal, avoiding existing meals.
@@ -172,7 +198,7 @@ class LLMService:
         system_prompt = self._construct_system_prompt(dietary_preferences, user_allergies)
 
         try:
-            response = self._call_llm(prompt, system_prompt=system_prompt)
+            response = self._call_llm(prompt, system_prompt=system_prompt, model_type=model_type)
             new_meal = self._parse_llm_response(response)
             return new_meal.get(meal_type.lower())
         except Exception as e:
@@ -196,9 +222,12 @@ class LLMService:
             meal.get("recipe_name") or meal.get("name") for meal in existing_meals if meal
         ]
         formatted_deals = self.format_deals_for_llm(deals)
+        seasonal_context = self._get_seasonal_context()
 
         return f"""
         Generate a single replacement meal for a user's meal plan.
+
+        {seasonal_context}
 
         USER CONTEXT:
         - Household Size: {user.household_size}
@@ -257,7 +286,7 @@ class LLMService:
             "scaled_for_household": True,
         }
 
-    def generate_meal_plan(self, user_prefs: Dict, available_deals: List[Dict], recipes_db: List[Dict], user_favorites: List[int] = None) -> Dict:
+    def generate_meal_plan(self, user_prefs: Dict, available_deals: List[Dict], recipes_db: List[Dict], user_favorites: List[int] = None, model_type: Optional[str] = None) -> Dict:
         """
         Generates a meal plan based on user preferences and available deals.
 
@@ -275,7 +304,8 @@ class LLMService:
             "prefs": user_prefs,
             "deals": available_deals[:20],
             "week": week_dates[0]['date'],
-            "favorites": sorted(user_favorites)
+            "favorites": sorted(user_favorites),
+            "model_type": model_type
         }
         cache_key = self._get_cache_key("meal_plan", cache_key_data)
         cached = self._get_cached_response(cache_key)
@@ -291,7 +321,7 @@ class LLMService:
         )
 
         try:
-            response = self._call_llm(prompt, system_prompt=system_prompt)
+            response = self._call_llm(prompt, system_prompt=system_prompt, model_type=model_type)
             plan = self._parse_llm_response(response)
             self._set_cached_response(cache_key, plan)
             return plan
@@ -324,7 +354,7 @@ class LLMService:
             raise ValueError(f"Empty response from LLM model {model}")
         return content
 
-    def _call_llm(self, prompt: str, system_prompt: str = None) -> str:
+    def _call_llm(self, prompt: str, system_prompt: str = None, model_type: Optional[str] = None) -> str:
         """
         Calls the LLM API, handling mock mode, primary/fallback models, and retries.
         """
@@ -332,12 +362,15 @@ class LLMService:
             logger.info("Mock AI enabled or API Key missing. Triggering fallback.")
             raise APIError("Mock AI enabled or API Key missing", request=None, body=None)
 
+        # Determine target model
+        target_model = self.MODEL_MAPPING.get(model_type, self.model)
+
         # Try primary model
         try:
-            logger.info(f"Calling primary LLM model: {self.model}")
-            return self._make_api_request(self.model, prompt, system_prompt=system_prompt)
+            logger.info(f"Calling LLM model: {target_model} (specialization: {model_type})")
+            return self._make_api_request(target_model, prompt, system_prompt=system_prompt)
         except Exception as e:
-            logger.warning(f"Primary LLM model '{self.model}' failed after retries: {e}")
+            logger.warning(f"LLM model '{target_model}' failed after retries: {e}")
 
         # Try fallback model
         try:
@@ -350,11 +383,14 @@ class LLMService:
     def _construct_meal_plan_prompt(self, user_prefs: Dict, deals: List[Dict], recipes: List[Dict], week_dates: List[Dict], user_favorites: List[int]) -> str:
         formatted_deals = self.format_deals_for_llm(deals)
         household_size = user_prefs.get('household_size', 1)
+        seasonal_context = self._get_seasonal_context()
 
         return f"""
         Create a 7-day meal plan (Breakfast, Lunch, Dinner) for a user with these preferences: {json.dumps(user_prefs)}.
 
         GENERATE PLAN FOR: {week_dates[0]['date']} to {week_dates[6]['date']}
+
+        {seasonal_context}
 
         USER CONTEXT:
         - Household: {household_size} people. Scale recipe ingredients and shopping quantities accordingly.

@@ -51,8 +51,16 @@ const MealPlanPage = () => {
   const [error, setError] = useState(null);
   const [dietaryPreferences, setDietaryPreferences] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedModel, setSelectedModel] = useState('standard');
 
   const userId = localStorage.getItem('user_id') || 1;
+
+  const modelOptions = [
+    { id: 'standard', name: 'Standard (Llama 3.1)' },
+    { id: 'chef', name: 'Culinary Expert (Claude 3.5)' },
+    { id: 'creative', name: 'Creative Chef (Gemini 1.5)' },
+    { id: 'budget', name: 'Budget Expert (Llama 70B)' },
+  ];
 
   const dietaryOptions = ["vegetarian", "vegan", "gluten-free", "keto", "paleo"];
 
@@ -152,7 +160,7 @@ const MealPlanPage = () => {
       await savePreferences();
 
       // Then, trigger the meal plan generation
-      const data = await api.post(`/plans/generate?user_id=${userId}`);
+      const data = await api.post(`/plans/generate?user_id=${userId}&model=${selectedModel}`);
       if (data.task_id) {
         pollTaskStatus(data.task_id);
       } else {
@@ -180,13 +188,26 @@ const MealPlanPage = () => {
           Generate your first 7-day meal plan based on this week's best grocery deals.
         </p>
 
-        <div className="max-w-md mx-auto mb-8">
+        <div className="max-w-md mx-auto mb-8 space-y-6">
           <DietaryFilters selected={dietaryPreferences} onChange={handleDietaryChange} initialOpen={true} />
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-gray-700">Recipe Generation Model</label>
+            <select
+              value={selectedModel}
+              onChange={(e) => setSelectedModel(e.target.value)}
+              className="w-full bg-white border border-gray-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all"
+            >
+              {modelOptions.map(opt => (
+                <option key={opt.id} value={opt.id}>{opt.name}</option>
+              ))}
+            </select>
+          </div>
         </div>
 
         <button
           onClick={generatePlan}
-          className="bg-primary-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-primary-700 shadow-lg transition-all hover:scale-105"
+          className="bg-primary-600 text-white px-8 py-4 rounded-xl font-bold hover:bg-primary-700 shadow-lg transition-all hover:scale-105 active:scale-95"
         >
           Generate My Plan
         </button>
@@ -280,7 +301,8 @@ const MealPlanPage = () => {
         day: day.day_name,
         type: type,
         dietary_preferences: dietaryPreferences,
-        existing_meals: plan.meal_plan.flatMap(d => d.meals)
+        existing_meals: plan.meal_plan.flatMap(d => d.meals),
+        model_type: selectedModel
       });
 
       setPlan(currentPlan => {
@@ -314,14 +336,25 @@ const MealPlanPage = () => {
             <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Weekly Meal Plan</h1>
             <p className="text-gray-500 text-sm sm:text-base">{dateRange}</p>
           </div>
-          <button
-            onClick={generatePlan}
-            disabled={generating}
-            className="flex items-center justify-center gap-2 text-primary-700 bg-primary-50 px-4 py-2.5 rounded-lg hover:bg-primary-100 font-semibold disabled:opacity-50 w-full sm:w-auto shadow-sm sm:shadow-none"
-          >
-            <RefreshCw className={`w-4 h-4 ${generating ? 'animate-spin' : ''}`} />
-            <span>{generating ? 'Generating...' : 'Regenerate Plan'}</span>
-          </button>
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+            <select
+              value={selectedModel}
+              onChange={(e) => setSelectedModel(e.target.value)}
+              className="bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm font-medium focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all"
+            >
+              {modelOptions.map(opt => (
+                <option key={opt.id} value={opt.id}>{opt.name}</option>
+              ))}
+            </select>
+            <button
+              onClick={generatePlan}
+              disabled={generating}
+              className="flex items-center justify-center gap-2 text-primary-700 bg-primary-50 px-4 py-2.5 rounded-lg hover:bg-primary-100 font-semibold disabled:opacity-50 shadow-sm transition-colors"
+            >
+              <RefreshCw className={`w-4 h-4 ${generating ? 'animate-spin' : ''}`} />
+              <span>{generating ? 'Generating...' : 'Regenerate Plan'}</span>
+            </button>
+          </div>
         </div>
 
         {/* Interactive Filter Bar */}

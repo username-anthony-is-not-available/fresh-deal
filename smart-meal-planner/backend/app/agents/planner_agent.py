@@ -2,7 +2,7 @@
 import json
 import random
 import logging
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from sqlmodel import Session, select
 from sqlalchemy import func
 from sqlalchemy.orm import selectinload
@@ -95,7 +95,7 @@ class MealPlannerAgent:
                 })
         return deals_data
 
-    def generate_plan(self, user: User) -> Dict[str, Any]:
+    def generate_plan(self, user: User, model_type: Optional[str] = None) -> Dict[str, Any]:
         """Generates a meal plan using LLM Service."""
         deals = self.get_available_deals()
 
@@ -120,7 +120,7 @@ class MealPlannerAgent:
         filtered_recipes.sort(key=lambda r: (r.get("deal_score", 0), r.get("average_rating") or 2.5), reverse=True)
 
         try:
-            plan = self.llm_service.generate_meal_plan(user_prefs, deals, filtered_recipes, favorite_recipe_ids)
+            plan = self.llm_service.generate_meal_plan(user_prefs, deals, filtered_recipes, favorite_recipe_ids, model_type=model_type)
             validated_plan = self._validate_and_enrich(plan)
             return validated_plan
         except Exception as e:
