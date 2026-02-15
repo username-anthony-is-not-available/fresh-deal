@@ -1,5 +1,6 @@
 from pydantic import BaseModel, ConfigDict
 from typing import Optional, List, Dict, Any
+from datetime import datetime
 
 
 class PantryItemUpsert(BaseModel):
@@ -45,6 +46,31 @@ class UserRead(BaseModel):
     dietary_preferences: Optional[List[str]] = None
     allergies: Optional[list[str]] = None
     preferred_loyalty_programs: Optional[list[str]] = None
+
+    class Config:
+        orm_mode = True
+
+
+class FeedbackCreate(BaseModel):
+    recipe_id: Optional[int] = None
+    meal_plan_id: Optional[int] = None
+    rating: int
+    comment: Optional[str] = None
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "recipe_id": 1,
+                "rating": 5,
+                "comment": "Delicious!",
+            }
+        }
+
+
+class FeedbackRead(FeedbackCreate):
+    id: int
+    user_id: int
+    created_at: datetime
 
     class Config:
         orm_mode = True

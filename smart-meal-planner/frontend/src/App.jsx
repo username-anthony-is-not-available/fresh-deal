@@ -13,6 +13,7 @@ import FavoritesPage from './pages/FavoritesPage';
 import RecipesPage from './pages/RecipesPage';
 import RecipeDetailPage from './pages/RecipeDetailPage';
 import NutritionDashboard from './pages/NutritionDashboard';
+import FeedbackDashboardPage from './pages/FeedbackDashboardPage';
 import AuthContext, { AuthProvider } from './context/AuthContext';
 import { Toaster } from 'react-hot-toast';
 
@@ -55,6 +56,10 @@ function AppRoutes() {
         <Route
           path="nutrition"
           element={<PrivateRoute><NutritionDashboard /></PrivateRoute>}
+        />
+        <Route
+          path="feedback"
+          element={<PrivateRoute><FeedbackDashboardPage /></PrivateRoute>}
         />
         <Route
           path="recipes"

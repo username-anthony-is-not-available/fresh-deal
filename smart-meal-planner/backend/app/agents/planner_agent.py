@@ -6,7 +6,7 @@ from typing import List, Dict, Any, Optional
 from sqlmodel import Session, select
 from sqlalchemy import func
 from sqlalchemy.orm import selectinload
-from app.models.all_models import Product, Deal, Store, User, Recipe, RecipeRating, UserFavorite
+from app.models.all_models import Product, Deal, Store, User, Recipe, RecipeRating, UserFavorite, Feedback
 from app.services.llm_service import LLMService
 from app.services.recipe_service import RecipeService
 
@@ -20,27 +20,40 @@ class MealPlannerAgent:
 
     def _load_recipes_from_db(self) -> List[Dict]:
         """Loads all recipes from the database and calculates their average rating."""
-        avg_rating_subquery = (
-            select(
-                RecipeRating.recipe_id,
-                func.avg(RecipeRating.rating).label("average_rating"),
-            )
-            .group_by(RecipeRating.recipe_id)
-            .subquery()
-        )
+        # Subquery for RecipeRating
+        rr_sub = select(
+            RecipeRating.recipe_id,
+            func.avg(RecipeRating.rating).label("avg_rr"),
+            func.count(RecipeRating.id).label("count_rr")
+        ).group_by(RecipeRating.recipe_id).subquery()
+
+        # Subquery for Feedback
+        fb_sub = select(
+            Feedback.recipe_id,
+            func.avg(Feedback.rating).label("avg_fb"),
+            func.count(Feedback.id).label("count_fb")
+        ).where(Feedback.recipe_id != None).group_by(Feedback.recipe_id).subquery()
 
         statement = (
-            select(Recipe, avg_rating_subquery.c.average_rating)
-            .outerjoin(
-                avg_rating_subquery, Recipe.id == avg_rating_subquery.c.recipe_id
+            select(
+                Recipe,
+                rr_sub.c.avg_rr,
+                rr_sub.c.count_rr,
+                fb_sub.c.avg_fb,
+                fb_sub.c.count_fb
             )
+            .outerjoin(rr_sub, Recipe.id == rr_sub.c.recipe_id)
+            .outerjoin(fb_sub, Recipe.id == fb_sub.c.recipe_id)
             .options(selectinload(Recipe.ingredients))
         )
 
         results = self.session.exec(statement).unique().all()
 
         recipes_data = []
-        for recipe, avg_rating in results:
+        for recipe, avg_rr, count_rr, avg_fb, count_fb in results:
+            total_sum = (float(avg_rr or 0)) * (count_rr or 0) + (float(avg_fb or 0)) * (count_fb or 0)
+            total_count = (count_rr or 0) + (count_fb or 0)
+            avg_rating = total_sum / total_count if total_count > 0 else None
             try:
                 ingredients = json.loads(recipe.ingredients_json)
                 instructions = json.loads(recipe.instructions_json)

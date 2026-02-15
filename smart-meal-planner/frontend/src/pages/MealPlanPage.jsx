@@ -5,7 +5,8 @@ import { HTML5Backend } from 'react-dnd-html5-backend';
 import DraggableMealCard from '../components/DraggableMealCard';
 import MealSlot from '../components/MealSlot';
 import DietaryFilters from '../components/DietaryFilters';
-import { RefreshCw, Calendar as CalendarIcon, Lightbulb, PiggyBank, Search, X } from 'lucide-react';
+import { RefreshCw, Calendar as CalendarIcon, Lightbulb, PiggyBank, Search, X, Star, Send } from 'lucide-react';
+import clsx from 'clsx';
 import api from '../services/api';
 import SkeletonLoader from '../components/SkeletonLoader';
 import { showSuccessToast, showErrorToast } from '../utils/toast';
@@ -52,6 +53,8 @@ const MealPlanPage = () => {
   const [dietaryPreferences, setDietaryPreferences] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedModel, setSelectedModel] = useState('standard');
+  const [mealPlanFeedback, setMealPlanFeedback] = useState({ rating: 0, comment: '' });
+  const [submittingFeedback, setSubmittingFeedback] = useState(false);
 
   const userId = localStorage.getItem('user_id') || 1;
 
@@ -289,6 +292,28 @@ const MealPlanPage = () => {
 
       return planToUpdate;
     });
+  };
+
+  const handleMealPlanFeedback = async () => {
+    if (mealPlanFeedback.rating === 0) {
+      showErrorToast('Please select a rating before submitting.');
+      return;
+    }
+    setSubmittingFeedback(true);
+    try {
+      await api.post('/feedback', {
+        meal_plan_id: plan.id,
+        rating: mealPlanFeedback.rating,
+        comment: mealPlanFeedback.comment
+      });
+      showSuccessToast('Thank you for your feedback on this meal plan!');
+      setMealPlanFeedback({ rating: 0, comment: '' });
+    } catch (error) {
+      console.error("Failed to submit plan feedback", error);
+      showErrorToast('Failed to submit feedback.');
+    } finally {
+      setSubmittingFeedback(false);
+    }
   };
 
   const handleRegenerateMeal = async (day, type) => {
@@ -535,6 +560,52 @@ const MealPlanPage = () => {
                 )) || <li className="text-gray-400 italic">No deals listed</li>}
               </ul>
             </div>
+          </div>
+        </div>
+
+        {/* Meal Plan Feedback Section */}
+        <div className="mt-12 bg-white rounded-xl shadow-sm border border-gray-200 p-8 max-w-3xl mx-auto">
+          <div className="text-center mb-6">
+            <h2 className="text-xl font-bold text-gray-900">How do you like this Meal Plan?</h2>
+            <p className="text-gray-500">Your feedback helps us tailor future plans to your taste.</p>
+          </div>
+
+          <div className="flex flex-col items-center gap-6">
+            <div className="flex items-center gap-2">
+              {[1, 2, 3, 4, 5].map((star) => (
+                <button
+                  key={star}
+                  onClick={() => setMealPlanFeedback({ ...mealPlanFeedback, rating: star })}
+                  className="transition-transform hover:scale-110"
+                >
+                  <Star
+                    size={40}
+                    className={clsx(
+                      "transition-colors",
+                      (mealPlanFeedback.rating >= star) ? "text-yellow-400 fill-current" : "text-gray-200"
+                    )}
+                  />
+                </button>
+              ))}
+            </div>
+
+            <div className="w-full">
+              <textarea
+                placeholder="Any comments or suggestions for this plan? (e.g., 'Too many pasta dishes', 'Loved the variety!')"
+                value={mealPlanFeedback.comment}
+                onChange={(e) => setMealPlanFeedback({ ...mealPlanFeedback, comment: e.target.value })}
+                className="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all h-32 resize-none"
+              />
+            </div>
+
+            <button
+              onClick={handleMealPlanFeedback}
+              disabled={submittingFeedback || mealPlanFeedback.rating === 0}
+              className="flex items-center gap-2 bg-primary-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-primary-700 disabled:opacity-50 shadow-lg transition-all"
+            >
+              {submittingFeedback ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
+              <span>Submit Feedback</span>
+            </button>
           </div>
         </div>
       </div>

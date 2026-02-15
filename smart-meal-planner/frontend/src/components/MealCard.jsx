@@ -2,15 +2,28 @@ import React, { useState } from "react";
 import StarRating from "./StarRating";
 import FavoriteButton from "./FavoriteButton";
 import api from "../services/api";
-import { Check, X, RefreshCw } from "lucide-react";
+import clsx from "clsx";
+import { Check, X, RefreshCw, MessageSquare, Send } from "lucide-react";
 
 const MealCard = ({ type, meal, onRegenerate, isRegenerating }) => {
   const [rating, setRating] = useState(meal.user_rating || 0);
   const [isFavorited, setIsFavorited] = useState(meal.is_favorited || false);
   const [feedbackStatus, setFeedbackStatus] = useState(null); // 'made_it' or 'skipped'
+  const [comment, setComment] = useState("");
+  const [showComment, setShowComment] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleRate = (newRating) => {
+  const handleRate = async (newRating) => {
     setRating(newRating);
+    try {
+      await api.post("/feedback", {
+        recipe_id: meal.recipe_id,
+        rating: newRating,
+        comment: comment || undefined
+      });
+    } catch (error) {
+      console.error("Failed to submit rating/feedback", error);
+    }
   };
 
   const handleToggleFavorite = async () => {
@@ -33,10 +46,36 @@ const MealCard = ({ type, meal, onRegenerate, isRegenerating }) => {
     const originalStatus = feedbackStatus;
     setFeedbackStatus(status);
     try {
+      // Send both legacy feedback and new unified feedback if rating exists
       await api.post(`/recipes/${meal.recipe_id}/feedback`, { status });
+
+      if (rating > 0) {
+        await api.post("/feedback", {
+          recipe_id: meal.recipe_id,
+          rating: rating,
+          comment: `Status: ${status}. ${comment}`.trim()
+        });
+      }
     } catch (error) {
       console.error("Failed to submit feedback:", error);
       setFeedbackStatus(originalStatus); // Revert on error
+    }
+  };
+
+  const handleCommentSubmit = async () => {
+    if (!comment.trim()) return;
+    setIsSubmitting(true);
+    try {
+      await api.post("/feedback", {
+        recipe_id: meal.recipe_id,
+        rating: rating || 5, // Default to 5 if not rated but commented
+        comment: comment
+      });
+      setShowComment(false);
+    } catch (error) {
+      console.error("Failed to submit comment", error);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -111,12 +150,44 @@ const MealCard = ({ type, meal, onRegenerate, isRegenerating }) => {
       </div>
 
       <div className="mt-auto pt-3 border-t border-gray-100">
+        {showComment && (
+          <div className="mb-3 animate-in fade-in slide-in-from-bottom-2">
+            <div className="relative">
+              <textarea
+                autoFocus
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+                placeholder="Add a comment..."
+                className="w-full p-2 text-xs bg-gray-50 border border-gray-200 rounded-lg focus:ring-1 focus:ring-primary-500 outline-none resize-none h-16"
+              />
+              <button
+                onClick={handleCommentSubmit}
+                disabled={isSubmitting || !comment.trim()}
+                className="absolute bottom-2 right-2 p-1 bg-primary-600 text-white rounded-md hover:bg-primary-700 disabled:opacity-50"
+              >
+                {isSubmitting ? <RefreshCw size={12} className="animate-spin" /> : <Send size={12} />}
+              </button>
+            </div>
+          </div>
+        )}
         <div className="flex justify-between items-center gap-2">
-          <StarRating
-            recipeId={meal.recipe_id}
-            initialRating={rating}
-            onRatingSubmit={handleRate}
-          />
+          <div className="flex items-center gap-1">
+            <StarRating
+              recipeId={meal.recipe_id}
+              initialRating={rating}
+              onRatingSubmit={handleRate}
+            />
+            <button
+              onClick={() => setShowComment(!showComment)}
+              className={clsx(
+                "p-1 rounded-md transition-colors",
+                showComment || comment ? "text-primary-600 bg-primary-50" : "text-gray-400 hover:bg-gray-100"
+              )}
+              title="Add a comment"
+            >
+              <MessageSquare size={16} />
+            </button>
+          </div>
           {feedbackStatus ? (
             <div className="text-sm text-gray-600 font-medium">
               Thanks for the feedback!
