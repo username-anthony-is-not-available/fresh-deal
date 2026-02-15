@@ -1,5 +1,5 @@
 from playwright.async_api import Page
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from .base_scraper import BaseScraper
 from bs4 import BeautifulSoup
 import re
@@ -9,6 +9,9 @@ class CostcoScraper(BaseScraper):
     Scraper for Costco.ca.
     """
     STORE_NAME = "Costco"
+
+    def __init__(self, postal_code: str = "H4T1V6", headless: bool = True, proxy_manager: Optional[Any] = None, storage_path: str = "/tmp"):
+        super().__init__(postal_code, headless, proxy_manager, storage_path)
 
     async def _scrape_page(self, page: Page, limit: int = 50) -> List[Dict[str, Any]]:
         """

@@ -73,17 +73,17 @@ def generate_meal_plan_task(user_id: int, model_type: Optional[str] = None):
             stale_stores = session.exec(select(Store)).all()
             stale_chains = [s.chain for s in stale_stores if s.is_stale]
 
+            user = session.get(User, user_id)
+            if not user:
+                return {"error": "User not found"}
+
             if stale_chains:
                 from celery.utils.log import get_task_logger
                 logger = get_task_logger(__name__)
                 logger.info(
-                    f"Stale deals detected for {len(stale_chains)} stores: {stale_chains}. Triggering background refresh."
+                    f"Stale deals detected for {len(stale_chains)} stores: {stale_chains}. Triggering background refresh for postal code {user.postal_code}."
                 )
-                scrape_task.delay(stores=stale_chains)
-
-            user = session.get(User, user_id)
-            if not user:
-                return {"error": "User not found"}
+                scrape_task.delay(stores=stale_chains, postal_code=user.postal_code)
 
             planner = MealPlannerAgent(session)
             plan_data = planner.generate_plan(user, model_type=model_type)

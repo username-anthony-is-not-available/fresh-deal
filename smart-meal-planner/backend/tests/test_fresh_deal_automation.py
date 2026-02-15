@@ -64,7 +64,7 @@ def test_generate_meal_plan_task_triggers_scrape_on_stale_deals(
     generate_meal_plan_task(1)
 
     # Assert
-    mock_scrape_delay.assert_called_once_with(stores=["stale_chain"])
+    mock_scrape_delay.assert_called_once_with(stores=["stale_chain"], postal_code="H4T1V6")
 
 @pytest.mark.asyncio
 async def test_mark_store_as_scraped(async_session):

@@ -25,18 +25,19 @@ class ScraperAgent:
     if direct browser-based scraping fails.
     """
 
-    def __init__(self, session: AsyncSession, postal_code: str = "H4T1V6"):
+    def __init__(self, session: AsyncSession, postal_code: str = "H4T1V6", headless: bool = True):
         self.session = session
         self.postal_code = postal_code
+        self.headless = headless
         self.scrapers = {
-            "metro": MetroScraper(),
-            "walmart": WalmartScraper(),
-            "maxi": MaxiScraper(),
-            "provigo": ProvigoScraper(),
-            "iga": IgaScraper(),
-            "super_c": SuperCScraper(),
-            "adonis": AdonisScraper(postal_code=self.postal_code),
-            "costco": CostcoScraper(),
+            "metro": MetroScraper(postal_code=self.postal_code, headless=self.headless),
+            "walmart": WalmartScraper(postal_code=self.postal_code, headless=self.headless),
+            "maxi": MaxiScraper(postal_code=self.postal_code, headless=self.headless),
+            "provigo": ProvigoScraper(postal_code=self.postal_code, headless=self.headless),
+            "iga": IgaScraper(postal_code=self.postal_code, headless=self.headless),
+            "super_c": SuperCScraper(postal_code=self.postal_code, headless=self.headless),
+            "adonis": AdonisScraper(postal_code=self.postal_code, headless=self.headless),
+            "costco": CostcoScraper(postal_code=self.postal_code, headless=self.headless),
         }
 
     async def run_daily_scrape(self):
@@ -54,12 +55,21 @@ class ScraperAgent:
         logging.info("Daily scrape finished.")
 
     async def scrape(
-        self, stores: List[str], limit_per_store: int = 50
+        self, stores: List[str], limit_per_store: int = 50, user_id: Optional[int] = None
     ) -> Dict[str, List[Dict[str, Any]]]:
         """
         Scrapes a list of stores for grocery deals concurrently.
         For each store, it first attempts to use a direct scraper and falls back to Flipp API on failure.
         """
+        if user_id:
+            user = await self.session.get(User, user_id)
+            if user and user.postal_code:
+                logging.info(f"Using user-specific postal code: {user.postal_code} for user {user_id}")
+                self.postal_code = user.postal_code
+                # Update scrapers with the new postal code
+                for scraper in self.scrapers.values():
+                    scraper.postal_code = self.postal_code
+
         semaphore = asyncio.Semaphore(3)  # Max 3 concurrent browsers
 
         async def protected_scrape(store_name: str):
@@ -97,10 +107,15 @@ class ScraperAgent:
                     if attempt < max_retries - 1:
                         await asyncio.sleep(2**attempt)  # Exponential backoff
                     else:
-                        error_msg = f"All {max_retries} attempts for {store_name} failed. Falling back to Flipp API."
+                        error_msg = f"All {max_retries} attempts for {store_name} failed. Falling back to Flipp API. Last error: {e}"
                         logging.error(error_msg)
                         # Notify that the direct scraper failed, which might indicate a website structure change
-                        await NotificationService.send_scraper_failure_alert(store_name, f"Direct scraper failed after {max_retries} attempts: {e}")
+                        await NotificationService.send_scraper_failure_alert(
+                            store_name,
+                            f"Direct scraper failed after {max_retries} attempts. "
+                            f"Postal code: {self.postal_code}. "
+                            f"Last error: {str(e)}"
+                        )
 
         # Fallback to Flipp API
         deals = await self._scrape_with_flipp(store_name, limit)
@@ -116,13 +131,17 @@ class ScraperAgent:
         """
         Uses the FlippScraper to get deals for a specific store.
         """
-        logging.info(f"Using Flipp API for {store_name}...")
+        logging.info(f"Using Flipp API fallback for {store_name} (Postal Code: {self.postal_code})...")
         flipp_scraper = FlippScraper(
             postal_code=self.postal_code, stores=[store_name.lower()]
         )
-        deals = await flipp_scraper.scrape(limit=limit)
-        logging.info(f"Flipp API scrape for {store_name} found {len(deals)} deals.")
-        return deals
+        try:
+            deals = await flipp_scraper.scrape(limit=limit)
+            logging.info(f"Flipp API fallback for {store_name} found {len(deals)} deals.")
+            return deals
+        except Exception as e:
+            logging.error(f"Flipp API fallback failed for {store_name}: {e}")
+            return []
 
     async def _scrape_with_circulaire_en_ligne(
         self, store_name: str, limit: int

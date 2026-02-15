@@ -26,10 +26,12 @@ class BaseScraper(ABC):
 
     def __init__(
         self,
+        postal_code: str = "H4T1V6",
         headless: bool = True,
         proxy_manager: Optional[ProxyManager] = None,
         storage_path: str = "/tmp",
     ):
+        self.postal_code = postal_code
         self.headless = headless
         self.proxy_manager = proxy_manager or ProxyManager()
         self.storage_path = storage_path
@@ -426,6 +428,7 @@ class BaseScraper(ABC):
                 "candy",
                 "noix",
                 "nuts",
+                "sucre à la crème",
             ],
             "Meat & Poultry": [
                 "poulet",
@@ -443,6 +446,19 @@ class BaseScraper(ABC):
                 "ham",
                 "turkey",
                 "dinde",
+                "tourtière",
+                "ragoût",
+                "cipaille",
+                "pâté chinois",
+            ],
+            "Deli": [
+                "creton",
+                "smoked meat",
+                "boudin",
+                "salami",
+                "pastrami",
+                "pâté",
+                "charcuterie",
             ],
             "Seafood": [
                 "poisson",
@@ -539,6 +555,20 @@ class BaseScraper(ABC):
                 "salt",
                 "poivre",
                 "pepper",
+                "sirop d'érable",
+                "maple syrup",
+            ],
+            "International": [
+                "hummus",
+                "tofu",
+                "miso",
+                "soy sauce",
+                "soja",
+                "tacos",
+                "salsa",
+                "curry",
+                "couscous",
+                "quinoa",
             ],
             "Frozen": [
                 "surgelé",
