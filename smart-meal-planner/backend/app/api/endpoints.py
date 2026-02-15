@@ -627,6 +627,7 @@ async def get_latest_plan(
 async def optimize_shopping_list(
     user_id: int,
     strategy: str = "min_cost",
+    preferred_stores: Optional[List[str]] = Query(None),
     session: AsyncSession = Depends(get_async_session),
 ):
     """
@@ -653,7 +654,7 @@ async def optimize_shopping_list(
     plan_data = json.loads(plan.content_json)
 
     optimizer = ShoppingListOptimizer(session)  # Passing async session
-    result = await optimizer.generate_shopping_list_async(user, plan_data, strategy)
+    result = await optimizer.generate_shopping_list_async(user, plan_data, strategy, preferred_stores)
 
     return result
 
