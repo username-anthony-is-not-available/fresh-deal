@@ -31,6 +31,7 @@ class Settings(BaseSettings):
 
     # App Mode
     USE_MOCK_AI: bool = False
+    USE_SQLITE_LOCAL: bool = False
 
     # Sentry
     SENTRY_DSN: str | None = None
@@ -49,6 +50,7 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
 
     # Scraping
+    SCRAPING_CONCURRENCY: int = 3
     DEFAULT_POSTAL_CODE: str = "H4T1V6"
     SUPPORTED_STORES: list[str] = [
         "metro",
@@ -83,7 +85,7 @@ class Settings(BaseSettings):
 
         # If running in Docker (implied by default values being set to 'db'), construct postgres URL
         # But we need a way to detect if we want local sqlite fallback for dev without docker
-        if os.getenv("USE_SQLITE_LOCAL", "False").lower() == "true":
+        if self.USE_SQLITE_LOCAL:
              return "sqlite:///./local_dev.db"
 
         return f"postgresql://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_SERVER}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"

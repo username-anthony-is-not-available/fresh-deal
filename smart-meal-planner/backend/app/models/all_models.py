@@ -228,3 +228,13 @@ class PantryItem(SQLModel, table=True):
     updated_at: datetime = Field(default_factory=utc_now)
 
     user: "User" = Relationship(back_populates="pantry_items")
+
+
+class ScraperLog(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    store_name: str = Field(index=True)
+    status: str  # "success", "failure"
+    items_scraped: int = Field(default=0)
+    duration_seconds: float = Field(default=0.0)
+    error_message: Optional[str] = None
+    timestamp: datetime = Field(default_factory=utc_now)
