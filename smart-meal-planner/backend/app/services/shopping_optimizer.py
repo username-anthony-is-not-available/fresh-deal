@@ -3,8 +3,7 @@ import json
 import os
 from typing import List, Dict, Any, Tuple
 from sqlmodel import select
-from sqlalchemy.ext.asyncio import AsyncSession
-from app.models.all_models import Product, Deal, Store, MealPlan, User
+from app.models.all_models import Product, Deal, Store, User
 
 class ShoppingListOptimizer:
     def __init__(self, session):
@@ -24,7 +23,7 @@ class ShoppingListOptimizer:
     def get_recipe_by_id(self, recipe_id: str) -> Dict:
         return next((r for r in self.recipes if r["id"] == recipe_id), None)
 
-    async def generate_shopping_list_async(self, user: User, plan_data: Dict[str, Any], strategy: str = "min_cost") -> Dict[str, Any]:
+    async def generate_shopping_list_async(self, user: User, plan_data: Dict[str, Any], strategy: str = "min_cost", preferred_stores: List[str] = None) -> Dict[str, Any]:
         """
         Async version of generate_shopping_list.
         """
@@ -46,11 +45,11 @@ class ShoppingListOptimizer:
             })
 
         # 3. Optimize based on strategy
-        optimization_result = self._optimize_routes(priced_items, strategy)
+        optimization_result = self._optimize_routes(priced_items, strategy, preferred_stores)
 
         return optimization_result
 
-    def generate_shopping_list(self, user: User, plan_data: Dict[str, Any], strategy: str = "min_cost") -> Dict[str, Any]:
+    def generate_shopping_list(self, user: User, plan_data: Dict[str, Any], strategy: str = "min_cost", preferred_stores: List[str] = None) -> Dict[str, Any]:
         """
         Synchronous version (for tests or sync contexts).
         """
@@ -71,7 +70,7 @@ class ShoppingListOptimizer:
             })
 
         # 3. Optimize based on strategy
-        return self._optimize_routes(priced_items, strategy)
+        return self._optimize_routes(priced_items, strategy, preferred_stores)
 
     def _consolidate_ingredients(self, plan_data: Dict, household_size: int) -> Dict[Tuple[str, str], Dict]:
         """
@@ -168,7 +167,6 @@ class ShoppingListOptimizer:
         result = await self.session.execute(select(Product).where(Product.name == ingredient_name))
         product = result.scalars().first()
 
-        options = []
         if not product:
             return []
 
@@ -187,7 +185,6 @@ class ShoppingListOptimizer:
         """
         product = self.session.exec(select(Product).where(Product.name == ingredient_name)).first()
 
-        options = []
         if not product:
             return []
 
@@ -222,7 +219,7 @@ class ShoppingListOptimizer:
                 })
         return options
 
-    def _optimize_routes(self, priced_items: List[Dict], strategy: str) -> Dict[str, Any]:
+    def _optimize_routes(self, priced_items: List[Dict], strategy: str, preferred_stores: List[str] = None) -> Dict[str, Any]:
         stores_usage = {}
         total_estimated_savings = 0.0
         total_cost_regular = 0.0
@@ -233,6 +230,8 @@ class ShoppingListOptimizer:
         for item in priced_items:
             for opt in item["options"]:
                 all_stores.add(opt["store_name"])
+
+        total_items_requested = len(priced_items)
 
         single_store_baskets = {
             s: {"total": 0.0, "regular_total": 0.0, "items_count": 0, "missing": []}
@@ -294,8 +293,17 @@ class ShoppingListOptimizer:
 
                 for s_name in valid_store_names:
                     basket = single_store_baskets[s_name]
+
+                    # Grouping & Priority Logic:
+                    # Penalty for missing items (encourages one-stop)
                     penalty = len(basket["missing"]) * 100
-                    score = basket["total"] + penalty
+
+                    # Priority Bonus (if user prefers this store)
+                    priority_bonus = 0
+                    if preferred_stores and s_name in preferred_stores:
+                        priority_bonus = 500 # Significant boost
+
+                    score = basket["total"] + penalty - priority_bonus
 
                     if score < min_total:
                         min_total = score
@@ -352,11 +360,13 @@ class ShoppingListOptimizer:
         single_store_formatted = []
         for s_name, data in single_store_baskets.items():
             savings = data["regular_total"] - data["total"]
+            efficiency = (data["items_count"] / total_items_requested * 100) if total_items_requested > 0 else 0
             single_store_formatted.append({
                 "name": s_name,
                 "total": round(data["total"], 2),
                 "items_count": data["items_count"],
-                "savings": round(savings, 2)
+                "savings": round(savings, 2),
+                "trip_efficiency": round(efficiency, 1)
             })
         single_store_formatted.sort(key=lambda x: (len(single_store_baskets[x["name"]]["missing"]), x["total"]))
 
@@ -380,6 +390,9 @@ class ShoppingListOptimizer:
 
             detailed_comparison.append(ingredient_details)
 
+        total_items_found = sum(len(s["items"]) for s in recommended_stores)
+        overall_efficiency = (total_items_found / total_items_requested * 100) if total_items_requested > 0 else 0
+
         return {
             "strategy": strategy,
             "recommended_stores": recommended_stores,
@@ -390,4 +403,6 @@ class ShoppingListOptimizer:
             "single_store_comparison": single_store_formatted,
             "detailed_comparison": detailed_comparison,
             "all_stores": all_store_names,
+            "total_items_count": total_items_requested,
+            "trip_efficiency": round(overall_efficiency, 1)
         }

@@ -16,7 +16,6 @@ from app.models.all_models import (
     RecipeFeedback,
     RecipeIngredient,
 )
-from app.agents.flipp_scraper import CANADIAN_STORES
 
 from app.agents.mock_scraper import MockScraperAgent
 from app.services.shopping_optimizer import ShoppingListOptimizer
@@ -24,7 +23,6 @@ from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 from celery.result import AsyncResult
 import json
-from datetime import datetime, timedelta, timezone
 from app.tasks import generate_meal_plan_task, scrape_task
 from app.services.user_service import UserService
 from app.services.llm_service import LLMService
@@ -41,6 +39,7 @@ from app.schemas import (
 
 from app.models.all_models import PantryItem
 from app.services.pantry_service import PantryService
+from app.services.substitution_service import substitution_service
 
 router = APIRouter()
 
@@ -100,9 +99,6 @@ async def list_recipes(
         response.append(RecipeRead(**recipe_data))
 
     return response
-
-
-from app.services.substitution_service import substitution_service
 
 
 @router.get("/recipes/{recipe_id}", response_model=RecipeRead)
@@ -627,6 +623,7 @@ async def get_latest_plan(
 async def optimize_shopping_list(
     user_id: int,
     strategy: str = "min_cost",
+    preferred_stores: Optional[List[str]] = Query(None),
     session: AsyncSession = Depends(get_async_session),
 ):
     """
@@ -653,7 +650,7 @@ async def optimize_shopping_list(
     plan_data = json.loads(plan.content_json)
 
     optimizer = ShoppingListOptimizer(session)  # Passing async session
-    result = await optimizer.generate_shopping_list_async(user, plan_data, strategy)
+    result = await optimizer.generate_shopping_list_async(user, plan_data, strategy, preferred_stores)
 
     return result
 

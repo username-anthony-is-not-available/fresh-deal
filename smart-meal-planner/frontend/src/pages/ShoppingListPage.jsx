@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import ShoppingListItem from '../components/ShoppingListItem';
 import StoreComparison from '../components/StoreComparison';
 import IngredientPriceComparison from '../components/IngredientPriceComparison';
-import { Download, Share2, TrendingDown, MapPin, DollarSign, ListCollapse } from 'lucide-react';
+import { Download, Share2, TrendingDown, MapPin, DollarSign, ListCollapse, Zap } from 'lucide-react';
 import api from '../services/api';
 
 const ShoppingListPage = () => {
@@ -14,6 +14,10 @@ const ShoppingListPage = () => {
   const userId = localStorage.getItem('user_id') || 1;
   const [checkedItems, setCheckedItems] = useState({});
   const storageKey = `checked_items_${userId}`;
+  const [preferredStores, setPreferredStores] = useState(() => {
+    const saved = localStorage.getItem(`preferred_stores_${userId}`);
+    return saved ? JSON.parse(saved) : [];
+  });
 
   useEffect(() => {
     const saved = localStorage.getItem(storageKey);
@@ -38,6 +42,16 @@ const ShoppingListPage = () => {
     });
   };
 
+  const toggleStorePreference = (storeName) => {
+    setPreferredStores(prev => {
+      const updated = prev.includes(storeName)
+        ? prev.filter(s => s !== storeName)
+        : [...prev, storeName];
+      localStorage.setItem(`preferred_stores_${userId}`, JSON.stringify(updated));
+      return updated;
+    });
+  };
+
   const groupByCategory = (items) => {
     return items.reduce((groups, item) => {
       const category = item.category || 'Grocery';
@@ -53,7 +67,13 @@ const ShoppingListPage = () => {
     const fetchList = async () => {
       setLoading(true);
       try {
-        const result = await api.get(`shopping/optimize?user_id=${userId}&strategy=${strategy}`);
+        let url = `shopping/optimize?user_id=${userId}&strategy=${strategy}`;
+        if (preferredStores.length > 0) {
+          preferredStores.forEach(s => {
+            url += `&preferred_stores=${encodeURIComponent(s)}`;
+          });
+        }
+        const result = await api.get(url);
         setData(result);
       } catch (e) {
         console.error("Failed to fetch shopping list", e);
@@ -62,7 +82,7 @@ const ShoppingListPage = () => {
       }
     };
     fetchList();
-  }, [userId, strategy]);
+  }, [userId, strategy, preferredStores]);
 
   if (loading) {
       return <div className="p-8 text-center text-gray-500">Optimizing your shopping list...</div>;
@@ -217,8 +237,23 @@ const ShoppingListPage = () => {
                </p>
             </div>
 
+            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-6 rounded-2xl border border-blue-100 text-center shadow-sm">
+               <span className="inline-flex items-center justify-center p-3 bg-blue-100 rounded-full mb-3 text-blue-600">
+                   <Zap className="w-6 h-6" />
+               </span>
+               <span className="text-gray-600 font-medium block mb-1 uppercase text-xs tracking-wider">Trip Efficiency</span>
+               <span className="text-4xl font-extrabold text-blue-600">{data.trip_efficiency}%</span>
+               <p className="text-sm text-blue-700 mt-2 font-medium">
+                  Coverage: {data.total_items_count - data.unmatched_items.length}/{data.total_items_count} items
+               </p>
+            </div>
+
             {data.single_store_comparison && data.single_store_comparison.length > 0 && (
-                <StoreComparison stores={data.single_store_comparison} />
+                <StoreComparison
+                  stores={data.single_store_comparison}
+                  preferredStores={preferredStores}
+                  onTogglePreference={toggleStorePreference}
+                />
             )}
 
             <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
