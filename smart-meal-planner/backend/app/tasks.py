@@ -88,6 +88,17 @@ def generate_meal_plan_task(user_id: int, model_type: Optional[str] = None):
             planner = MealPlannerAgent(session)
             plan_data = planner.generate_plan(user, model_type=model_type)
 
+            # Enrich with nutrition data
+            try:
+                from app.agents.nutrition_agent import NutritionAgent
+                nutrition_agent = NutritionAgent(session=session)
+                loop = _get_or_create_event_loop()
+                plan_data = loop.run_until_complete(nutrition_agent.validate_plan(plan_data))
+            except Exception as e:
+                from celery.utils.log import get_task_logger
+                logger = get_task_logger(__name__)
+                logger.error(f"Failed to enrich plan with nutrition data: {e}")
+
             # Extract start date from the first day of the plan
             start_date_str = plan_data.get("meal_plan", [])[0].get("date")
             if start_date_str:
