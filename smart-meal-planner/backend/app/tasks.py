@@ -2,6 +2,7 @@ import json
 from celery import shared_task
 from app.celery_app import celery_app
 from sqlmodel import Session, select
+from sqlalchemy import func
 from app.core.db import engine, async_engine
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.all_models import User, MealPlan, Store, Product, Deal
@@ -48,6 +49,8 @@ def scrape_task(
                         await scraper_agent.persist_deals(store_deals)
                         total_deals += len(store_deals)
 
+                await session.commit()
+
                 if total_deals == 0:
                     return {"status": "No deals found", "count": 0}
 
@@ -73,13 +76,41 @@ def generate_meal_plan_task(user_id: int, model_type: Optional[str] = None):
             stale_stores = session.exec(select(Store)).all()
             stale_chains = [s.chain for s in stale_stores if s.is_stale]
 
-            if stale_chains:
+            # Check for active deals count efficiently
+            total_active = session.exec(
+                select(func.count(Deal.id)).where(Deal.valid_until >= date.today())
+            ).one()
+
+            if stale_chains or total_active < 20:
                 from celery.utils.log import get_task_logger
                 logger = get_task_logger(__name__)
-                logger.info(
-                    f"Stale deals detected for {len(stale_chains)} stores: {stale_chains}. Triggering background refresh."
-                )
-                scrape_task.delay(stores=stale_chains)
+
+                if total_active < 20:
+                    logger.info(f"Insufficient active deals ({total_active}). Forcing synchronous refresh.")
+                    # Run a quick scrape for a few stores synchronously to ensure we have data
+                    loop = _get_or_create_event_loop()
+                    async def quick_refresh():
+                        async with AsyncSession(async_engine) as async_session:
+                            scraper = ScraperAgent(async_session)
+                            # Just scrape 2 major stores with Flipp for speed
+                            major_stores = ["walmart", "metro"]
+                            results = await scraper.scrape(major_stores, limit_per_store=30)
+                            for _, deals in results.items():
+                                if deals:
+                                    await scraper.persist_deals(deals)
+
+                            await async_session.commit()
+
+                    try:
+                        loop.run_until_complete(quick_refresh())
+                    except Exception as e:
+                        logger.error(f"Quick refresh failed: {e}")
+
+                if stale_chains:
+                    logger.info(
+                        f"Stale deals detected for {len(stale_chains)} stores: {stale_chains}. Triggering background refresh."
+                    )
+                    scrape_task.delay(stores=stale_chains)
 
             user = session.get(User, user_id)
             if not user:

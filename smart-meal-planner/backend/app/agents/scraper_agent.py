@@ -1,9 +1,11 @@
 import asyncio
+import time
 from typing import List, Dict, Any, Optional
 from sqlmodel import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.models.all_models import Store, Product, Deal
+from app.models.all_models import Store, Product, Deal, ScraperLog
 from app.agents.flipp_scraper import FlippScraper
+from app.core.config import settings
 from datetime import date, timedelta, datetime, timezone
 from .scrapers.metro_scraper import MetroScraper
 from .scrapers.walmart_scraper import WalmartScraper
@@ -51,6 +53,8 @@ class ScraperAgent:
                 await self.persist_deals(deals)
             else:
                 await self.mark_store_as_scraped(store_name)
+
+        await self.session.commit()
         logging.info("Daily scrape finished.")
 
     async def scrape(
@@ -60,15 +64,30 @@ class ScraperAgent:
         Scrapes a list of stores for grocery deals concurrently.
         For each store, it first attempts to use a direct scraper and falls back to Flipp API on failure.
         """
-        semaphore = asyncio.Semaphore(3)  # Max 3 concurrent browsers
+        concurrency = getattr(settings, "SCRAPING_CONCURRENCY", 3)
+        semaphore = asyncio.Semaphore(concurrency)
 
         async def protected_scrape(store_name: str):
             async with semaphore:
-                return store_name, await self._scrape_store(store_name, limit_per_store)
+                start_time = time.time()
+                try:
+                    deals = await self._scrape_store(store_name, limit_per_store)
+                    duration = time.time() - start_time
+                    return store_name, deals, "success", duration, None
+                except Exception as e:
+                    duration = time.time() - start_time
+                    return store_name, [], "failure", duration, str(e)
 
         tasks = [protected_scrape(store_name) for store_name in stores]
         results = await asyncio.gather(*tasks)
-        return dict(results)
+
+        # Log all results sequentially using the agent's session
+        for store_name, deals, status, duration, error in results:
+            await self._log_scrape(store_name, status, len(deals), duration, error)
+
+        await self.session.commit()
+
+        return {r[0]: r[1] for r in results}
 
     async def _scrape_store(self, store_name: str, limit: int) -> List[Dict[str, Any]]:
         """
@@ -146,7 +165,7 @@ class ScraperAgent:
             logging.error(f"Circulaire-en-ligne fallback failed for {store_name}: {e}")
             return []
 
-    async def persist_deals(self, deals: List[Dict[str, Any]]):
+    async def persist_deals(self, deals: List[Dict[str, Any]], commit: bool = False):
         """
         Saves a list of scraped deals to the database efficiently.
         Uses a local cache to minimize database lookups and grouping commits.
@@ -179,32 +198,46 @@ class ScraperAgent:
                 key = (d.product_id, d.store_id, d.price, d.valid_until)
                 existing_deals_cache[key] = d
 
-        today = date.today()
-        new_deals_count = 0
+        # Identify and bulk-add missing stores
+        new_stores_added = False
         for deal_data in deals:
             store_name = deal_data.get("store", "Unknown Store")
-            store = store_cache.get(store_name)
-            if not store:
+            if store_name not in store_cache:
                 store = Store(
                     name=store_name, chain=store_name, postal_code=self.postal_code
                 )
                 self.session.add(store)
-                await self.session.flush()
-                await self.session.refresh(store)
                 store_cache[store_name] = store
+                new_stores_added = True
 
+        if new_stores_added:
+            await self.session.flush()
+
+        # Identify and bulk-add missing products
+        new_products_added = False
+        for deal_data in deals:
             product_name = deal_data.get("name", "Unknown Product")
-            product = product_cache.get(product_name)
-            if not product:
+            if product_name not in product_cache:
                 product = Product(
                     name=product_name,
                     category=deal_data.get("category", "Uncategorized"),
                     unit_type=deal_data.get("unit", "each"),
                 )
                 self.session.add(product)
-                await self.session.flush()
-                await self.session.refresh(product)
                 product_cache[product_name] = product
+                new_products_added = True
+
+        if new_products_added:
+            await self.session.flush()
+
+        today = date.today()
+        new_deals_count = 0
+        for deal_data in deals:
+            store_name = deal_data.get("store", "Unknown Store")
+            store = store_cache[store_name]
+
+            product_name = deal_data.get("name", "Unknown Product")
+            product = product_cache[product_name]
 
             price = deal_data.get("price", 0)
             original_price = deal_data.get("original_price", price)
@@ -239,7 +272,11 @@ class ScraperAgent:
             store.last_scraped_at = now
             self.session.add(store)
 
-        await self.session.commit()
+        if commit:
+            await self.session.commit()
+        else:
+            await self.session.flush()
+
         logging.info(f"Persisted {new_deals_count} new deals to the database.")
 
     async def mark_store_as_scraped(self, store_chain: str):
@@ -258,3 +295,25 @@ class ScraperAgent:
             logging.info(
                 f"Marked store {store_chain} as scraped at {store.last_scraped_at}."
             )
+
+    async def _log_scrape(
+        self,
+        store_name: str,
+        status: str,
+        items_scraped: int,
+        duration: float,
+        error_message: Optional[str] = None,
+    ):
+        """Records a scrape attempt in the ScraperLog table. Note: does not commit."""
+        try:
+            log = ScraperLog(
+                store_name=store_name,
+                status=status,
+                items_scraped=items_scraped,
+                duration_seconds=round(duration, 2),
+                error_message=error_message,
+            )
+            self.session.add(log)
+            await self.session.flush()
+        except Exception as e:
+            logging.error(f"Failed to record scraper log: {e}")

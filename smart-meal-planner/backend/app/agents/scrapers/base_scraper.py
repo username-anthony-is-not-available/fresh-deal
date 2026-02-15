@@ -332,10 +332,14 @@ class BaseScraper(ABC):
 
         # Clean up the text
         price_text = price_text.strip().lower()
+        # Replace non-breaking spaces and other weird whitespace
+        price_text = re.sub(r'\s+', ' ', price_text)
 
-        # Handle "X pour Y$" or "X for Y$" format
+        # Handle "X pour Y$" or "X for Y$" or "X/$Y" or "$Y/X"
+        # 1. X pour/for/$ Y (e.g., "2 pour 5,00$")
+        # Ensure we don't match if there's a $ right before the quantity
         multi_match = re.search(
-            r"(\d+)\s*(?:pour|for|/)\s*[\$]?\s*(\d+[,.]?\d*)\s*\$?", price_text
+            r"(?<![\$\d])(\d+)\s*(?:pour|for|/|ea\.)\s*[\$]?\s*(\d+[,.]?\d*)\s*\$?", price_text
         )
         if multi_match:
             try:
@@ -343,6 +347,26 @@ class BaseScraper(ABC):
                 total = float(multi_match.group(2).replace(",", "."))
                 return round(total / quantity, 2)
             except (ValueError, ZeroDivisionError):
+                pass
+
+        # 2. $Y / X or $Y ea.
+        multi_match_reverse = re.search(
+            r"[\$]?\s*(\d+[,.]?\d*)\s*\$?\s*(?:/|ea\.|pour|for)\s*(\d+)", price_text
+        )
+        if multi_match_reverse:
+            try:
+                total = float(multi_match_reverse.group(1).replace(",", "."))
+                quantity = int(multi_match_reverse.group(2))
+                return round(total / quantity, 2)
+            except (ValueError, ZeroDivisionError):
+                pass
+
+        # 3. Handle cent prices (e.g. 88¢ or 88c)
+        cent_match = re.search(r"(\d+)\s*(?:¢|c\b)", price_text)
+        if cent_match:
+            try:
+                return round(float(cent_match.group(1)) / 100, 2)
+            except ValueError:
                 pass
 
         # Handle standard price formats
@@ -359,17 +383,19 @@ class BaseScraper(ABC):
         """Extract unit from product description."""
         text_lower = text.lower()
 
-        if re.search(r"(/|per |par |la |each )?kg\b|\bkilo", text_lower):
+        # Prioritize weight-based units
+        # Use regex that allows digits before the unit (e.g., 1kg, 500g)
+        if re.search(r"(?:\d+|\b)kg\b|/kg\b|\bpar kg\b|\bkilo", text_lower):
             return "kg"
-        elif re.search(r"(/|per |par |la |each )?lb\b|\bpound", text_lower):
+        elif re.search(r"(?:\d+|\b)lb\b|/lb\b|\bpar lb\b|\bpound", text_lower):
             return "lb"
-        elif re.search(r"100\s*g\b", text_lower):
+        elif re.search(r"100\s*g\b|/100\s*g\b", text_lower):
             return "100g"
         elif re.search(r"\bml\b", text_lower):
             return "ml"
-        elif re.search(r"\d+\s*g\b|\bgramme", text_lower):
+        elif re.search(r"(?:\d+)\s*g\b|\bgramme", text_lower):
             return "g"
-        elif re.search(r"\d+\s*l\b|\blitre", text_lower):
+        elif re.search(r"(?:\d+)\s*l\b|\blitre", text_lower):
             return "L"
         else:
             return "each"

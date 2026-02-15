@@ -3,6 +3,12 @@
 ## [Unreleased]
 
 ### Enhanced
+- **Scraper Performance & Reliability (Part 14)**:
+    - Implemented bulk database persistence for scraped deals, reducing round-trips.
+    - Added `ScraperLog` tracking for detailed monitoring of scraping attempts and performance.
+    - Improved meal plan freshness by ensuring sufficient deal data is available (synchronous quick-refresh if needed).
+    - Enhanced price and unit parsing in `BaseScraper` for better multi-buy and bilingual support.
+    - Made scraping concurrency configurable via `SCRAPING_CONCURRENCY` setting.
 - **Dietary Safety**: Incorporated user dietary preferences and allergies into the AI meal plan generation prompt, ensuring safer recipe recommendations for users with restrictions like gluten-free or nut allergies.
 - **Scraping Performance**: Refactored `ScraperAgent` to support concurrent store scraping using `asyncio.gather` with a configurable semaphore, significantly reducing total scraping time.
 - **Database Optimization**: Optimized deal persistence by pre-fetching stores and products, reducing database round-trips.
