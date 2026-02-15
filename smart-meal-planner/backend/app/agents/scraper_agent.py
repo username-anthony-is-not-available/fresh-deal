@@ -14,6 +14,7 @@ from .scrapers.super_c_scraper import SuperCScraper
 from .scrapers.adonis_scraper import AdonisScraper
 from .scrapers.costco_scraper import CostcoScraper
 from .scrapers.circulaire_en_ligne_scraper import CirculaireEnLigneScraper
+from app.services.notification_service import NotificationService
 import logging
 
 
@@ -96,9 +97,10 @@ class ScraperAgent:
                     if attempt < max_retries - 1:
                         await asyncio.sleep(2**attempt)  # Exponential backoff
                     else:
-                        logging.error(
-                            f"All {max_retries} attempts for {store_name} failed. Falling back to Flipp API."
-                        )
+                        error_msg = f"All {max_retries} attempts for {store_name} failed. Falling back to Flipp API."
+                        logging.error(error_msg)
+                        # Notify that the direct scraper failed, which might indicate a website structure change
+                        await NotificationService.send_scraper_failure_alert(store_name, f"Direct scraper failed after {max_retries} attempts: {e}")
 
         # Fallback to Flipp API
         deals = await self._scrape_with_flipp(store_name, limit)
