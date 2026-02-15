@@ -62,6 +62,31 @@ class LLMService:
         except Exception as e:
             logger.error(f"Redis set error: {e}")
 
+    def _construct_system_prompt(self, dietary_preferences: List[str] = None, allergies: List[str] = None) -> str:
+        """
+        Constructs a system prompt that incorporates dietary restrictions and allergies.
+        """
+        dietary_preferences = dietary_preferences or []
+        allergies = allergies or []
+
+        base_prompt = "You are a helpful meal planning assistant that outputs valid JSON."
+
+        restrictions = []
+        if dietary_preferences:
+            restrictions.append(f"Dietary preferences: {', '.join(dietary_preferences)}")
+        if allergies:
+            restrictions.append(f"Allergies to avoid: {', '.join(allergies)}")
+
+        if restrictions:
+            restriction_text = " ".join(restrictions)
+            return (
+                f"{base_prompt} "
+                f"CRITICAL: The user has the following dietary restrictions: {restriction_text}. "
+                "You MUST ensure that all recommended recipes strictly follow these requirements. "
+                "Even though recipes are pre-filtered, you must remain vigilant in your selection and reasoning."
+            )
+        return base_prompt
+
     def format_deals_for_llm(self, deals: List[Dict]) -> str:
         """
         Convert deals to LLM-friendly format with context.
@@ -144,8 +169,10 @@ class LLMService:
             user, day, meal_type, dietary_preferences, existing_meals, filtered_recipes, active_deals
         )
 
+        system_prompt = self._construct_system_prompt(dietary_preferences, user_allergies)
+
         try:
-            response = self._call_llm(prompt)
+            response = self._call_llm(prompt, system_prompt=system_prompt)
             new_meal = self._parse_llm_response(response)
             return new_meal.get(meal_type.lower())
         except Exception as e:
@@ -258,8 +285,13 @@ class LLMService:
 
         prompt = self._construct_meal_plan_prompt(user_prefs, available_deals, recipes_db, week_dates, user_favorites)
 
+        system_prompt = self._construct_system_prompt(
+            user_prefs.get('dietary_preferences'),
+            user_prefs.get('allergies')
+        )
+
         try:
-            response = self._call_llm(prompt)
+            response = self._call_llm(prompt, system_prompt=system_prompt)
             plan = self._parse_llm_response(response)
             self._set_cached_response(cache_key, plan)
             return plan
@@ -273,12 +305,15 @@ class LLMService:
         retry=retry_if_exception_type((RateLimitError, APITimeoutError, APIConnectionError, InternalServerError)),
         before_sleep=lambda retry_state: logger.warning(f"Retrying LLM call due to {retry_state.outcome.exception()}...")
     )
-    def _make_api_request(self, model: str, prompt: str) -> str:
+    def _make_api_request(self, model: str, prompt: str, system_prompt: str = None) -> str:
         """Makes a single, retriable API call to the LLM."""
+        if not system_prompt:
+            system_prompt = "You are a helpful meal planning assistant that outputs valid JSON."
+
         completion = self.client.chat.completions.create(
             model=model,
             messages=[
-                {"role": "system", "content": "You are a helpful meal planning assistant that outputs valid JSON."},
+                {"role": "system", "content": system_prompt},
                 {"role": "user", "content": prompt}
             ],
             response_format={"type": "json_object"},
@@ -289,7 +324,7 @@ class LLMService:
             raise ValueError(f"Empty response from LLM model {model}")
         return content
 
-    def _call_llm(self, prompt: str) -> str:
+    def _call_llm(self, prompt: str, system_prompt: str = None) -> str:
         """
         Calls the LLM API, handling mock mode, primary/fallback models, and retries.
         """
@@ -300,14 +335,14 @@ class LLMService:
         # Try primary model
         try:
             logger.info(f"Calling primary LLM model: {self.model}")
-            return self._make_api_request(self.model, prompt)
+            return self._make_api_request(self.model, prompt, system_prompt=system_prompt)
         except Exception as e:
             logger.warning(f"Primary LLM model '{self.model}' failed after retries: {e}")
 
         # Try fallback model
         try:
             logger.info(f"Calling fallback LLM model: {self.fallback_model}")
-            return self._make_api_request(self.fallback_model, prompt)
+            return self._make_api_request(self.fallback_model, prompt, system_prompt=system_prompt)
         except Exception as e2:
             logger.error(f"Fallback LLM model '{self.fallback_model}' also failed after retries: {e2}")
             raise APIError("Both primary and fallback LLM models failed.", request=None, body=None)
