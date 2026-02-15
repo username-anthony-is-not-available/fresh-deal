@@ -3,8 +3,7 @@ import json
 import os
 from typing import List, Dict, Any, Tuple
 from sqlmodel import select
-from sqlalchemy.ext.asyncio import AsyncSession
-from app.models.all_models import Product, Deal, Store, MealPlan, User
+from app.models.all_models import Product, Deal, Store, User
 
 class ShoppingListOptimizer:
     def __init__(self, session):
@@ -168,7 +167,6 @@ class ShoppingListOptimizer:
         result = await self.session.execute(select(Product).where(Product.name == ingredient_name))
         product = result.scalars().first()
 
-        options = []
         if not product:
             return []
 
@@ -187,7 +185,6 @@ class ShoppingListOptimizer:
         """
         product = self.session.exec(select(Product).where(Product.name == ingredient_name)).first()
 
-        options = []
         if not product:
             return []
 

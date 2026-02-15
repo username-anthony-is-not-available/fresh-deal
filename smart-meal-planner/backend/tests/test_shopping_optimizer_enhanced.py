@@ -2,7 +2,6 @@
 import pytest
 from unittest.mock import MagicMock
 from app.services.shopping_optimizer import ShoppingListOptimizer
-from app.models.all_models import User
 
 @pytest.fixture
 def mock_session():
