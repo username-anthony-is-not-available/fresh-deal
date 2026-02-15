@@ -39,6 +39,10 @@ class Settings(BaseSettings):
     FATSECRET_API_KEY: str | None = None
     FATSECRET_API_SECRET: str | None = None
 
+    # Edamam API
+    EDAMAM_APP_ID: str | None = None
+    EDAMAM_APP_KEY: str | None = None
+
     # Auth
     SECRET_KEY: str = "a_very_secret_key"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30

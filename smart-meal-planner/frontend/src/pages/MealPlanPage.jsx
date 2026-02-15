@@ -411,6 +411,26 @@ const MealPlanPage = () => {
               </div>
             </div>
           </div>
+
+          {plan.nutritional_summary && (
+            <div className="lg:hidden bg-primary-50 rounded-xl p-6 border border-primary-100 mb-6">
+              <div className="flex justify-between items-center mb-4">
+                <h4 className="font-bold text-primary-900 uppercase tracking-wider text-xs">Weekly Nutrition</h4>
+                <span className="text-[10px] text-primary-400 italic">{plan.nutritional_summary.note}</span>
+              </div>
+              <div className="flex gap-8">
+                <div>
+                  <p className="text-2xl font-black text-primary-900">{plan.nutritional_summary.avg_daily_calories}</p>
+                  <p className="text-[10px] text-primary-600 uppercase font-bold">Avg. Cals</p>
+                </div>
+                <div>
+                  <p className="text-2xl font-black text-primary-900">{plan.nutritional_summary.avg_daily_protein}g</p>
+                  <p className="text-[10px] text-primary-600 uppercase font-bold">Avg. Protein</p>
+                </div>
+              </div>
+            </div>
+          )}
+
           <DietaryFilters selected={dietaryPreferences} onChange={handleDietaryChange} />
 
           {searchTerm && planDays.length === 0 && (
@@ -484,6 +504,25 @@ const MealPlanPage = () => {
                 <p className="text-xs text-green-600 mt-1">Saved compared to regular prices</p>
               </div>
             </div>
+
+            {plan.nutritional_summary && (
+              <div className="bg-primary-50 p-4 rounded-lg border border-primary-100 mb-6">
+                <h4 className="font-semibold text-primary-900 mb-3 text-sm uppercase tracking-wide">Nutritional Summary</h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-[10px] text-primary-600 uppercase font-bold">Avg. Calories</p>
+                    <p className="text-xl font-black text-primary-900">{plan.nutritional_summary.avg_daily_calories} <span className="text-xs font-normal text-primary-500">kcal</span></p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-primary-600 uppercase font-bold">Avg. Protein</p>
+                    <p className="text-xl font-black text-primary-900">{plan.nutritional_summary.avg_daily_protein}g</p>
+                  </div>
+                </div>
+                <p className="text-[10px] text-primary-400 mt-3 italic">
+                  {plan.nutritional_summary.note}
+                </p>
+              </div>
+            )}
 
             <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
               <h4 className="font-semibold text-gray-800 mb-2 text-sm">Key Deals Used</h4>

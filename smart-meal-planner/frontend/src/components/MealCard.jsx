@@ -81,6 +81,17 @@ const MealCard = ({ type, meal, onRegenerate, isRegenerating }) => {
         <span className="text-base sm:text-sm">{meal.recipe_name}</span>
       </h3>
 
+      {meal.nutrition && (
+        <div className="flex gap-3 mb-3 text-[10px] uppercase font-bold tracking-wider text-gray-400">
+          <div className="flex items-center gap-1">
+            <span className="text-primary-600">{meal.nutrition.calories || 0}</span> kcal
+          </div>
+          <div className="flex items-center gap-1">
+            <span className="text-primary-600">{meal.nutrition.protein || 0}g</span> protein
+          </div>
+        </div>
+      )}
+
       <div className="text-sm text-gray-500 mb-4 flex-grow">
         <ul className="space-y-1">
           {meal.ingredients.slice(0, 3).map((ing, idx) => (

@@ -27,4 +27,22 @@ describe('MealCard', () => {
 
     expect(screen.getByText('Lettuce')).toBeInTheDocument();
   });
+
+  it('renders nutrition information when available', () => {
+    const meal = {
+      recipe_id: 3,
+      recipe_name: 'Nutritious Meal',
+      ingredients: ['Ing 1'],
+      nutrition: {
+        calories: 500,
+        protein: 30
+      }
+    };
+    render(<MealCard type="Dinner" meal={meal} />);
+
+    expect(screen.getByText('500')).toBeInTheDocument();
+    expect(screen.getByText(/kcal/)).toBeInTheDocument();
+    expect(screen.getByText('30g')).toBeInTheDocument();
+    expect(screen.getByText(/protein/)).toBeInTheDocument();
+  });
 });
