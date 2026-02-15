@@ -3,6 +3,26 @@ import pytest
 import json
 from unittest.mock import MagicMock, patch
 from app.services.llm_service import LLMService
+from datetime import datetime
+
+def test_get_seasonal_context():
+    service = LLMService()
+    context = service._get_seasonal_context()
+    assert "Current Season in Quebec" in context
+
+    month = datetime.now().month
+    if 3 <= month <= 5:
+        assert "Spring" in context
+        assert "maple syrup" in context
+    elif 6 <= month <= 8:
+        assert "Summer" in context
+        assert "strawberries" in context
+    elif 9 <= month <= 11:
+        assert "Autumn" in context
+        assert "apples" in context
+    else:
+        assert "Winter" in context
+        assert "root vegetables" in context
 
 def test_construct_system_prompt_no_restrictions():
     service = LLMService()
@@ -49,6 +69,19 @@ def test_generate_meal_plan_passes_system_prompt(mock_call_llm):
     assert system_prompt is not None
     assert "gluten-free" in system_prompt
     assert "dairy" in system_prompt
+
+@patch("app.services.llm_service.LLMService._make_api_request")
+def test_generate_meal_plan_with_model_type(mock_make_request):
+    mock_make_request.return_value = json.dumps({"meal_plan": []})
+    service = LLMService()
+    user_prefs = {"household_size": 2}
+
+    # Test with 'chef' model
+    service.generate_meal_plan(user_prefs, [], [], model_type="chef")
+
+    # Check if _make_api_request was called with the mapped model ID for 'chef'
+    args, _ = mock_make_request.call_args
+    assert args[0] == service.MODEL_MAPPING["chef"]
 
 import asyncio
 

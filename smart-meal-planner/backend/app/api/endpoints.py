@@ -522,12 +522,12 @@ async def list_deals(
 
 
 @router.post("/plans/generate")
-async def generate_meal_plan(user_id: int):
+async def generate_meal_plan(user_id: int, model: Optional[str] = None):
     """
     Triggers meal plan generation in the background.
     Returns a task_id to poll.
     """
-    task = generate_meal_plan_task.delay(user_id)
+    task = generate_meal_plan_task.delay(user_id, model_type=model)
     return {"task_id": task.id, "status": "Processing"}
 
 
@@ -537,6 +537,7 @@ class RegenerateMealRequest(BaseModel):
     type: str
     dietary_preferences: List[str]
     existing_meals: List[Dict[str, Any]]
+    model_type: Optional[str] = None
 
 
 @router.post("/plans/regenerate-meal")
@@ -557,6 +558,7 @@ async def regenerate_meal(
         meal_type=request.type,
         dietary_preferences=request.dietary_preferences,
         existing_meals=request.existing_meals,
+        model_type=request.model_type,
     )
 
     if not new_meal:

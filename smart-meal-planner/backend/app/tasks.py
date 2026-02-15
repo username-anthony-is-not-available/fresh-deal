@@ -9,6 +9,7 @@ from app.agents.planner_agent import MealPlannerAgent
 from app.agents.scraper_agent import ScraperAgent
 from app.services.pantry_service import PantryService
 from datetime import datetime, timedelta, date
+from typing import Optional
 import asyncio
 
 
@@ -63,7 +64,7 @@ def scrape_task(
 
 
 @shared_task
-def generate_meal_plan_task(user_id: int):
+def generate_meal_plan_task(user_id: int, model_type: Optional[str] = None):
     # Tasks run in a separate process, so they need their own sync session
     with Session(engine) as session:
         try:
@@ -85,7 +86,7 @@ def generate_meal_plan_task(user_id: int):
                 return {"error": "User not found"}
 
             planner = MealPlannerAgent(session)
-            plan_data = planner.generate_plan(user)
+            plan_data = planner.generate_plan(user, model_type=model_type)
 
             # Extract start date from the first day of the plan
             start_date_str = plan_data.get("meal_plan", [])[0].get("date")
