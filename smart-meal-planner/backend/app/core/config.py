@@ -46,6 +46,7 @@ class Settings(BaseSettings):
 
     # Auth
     SECRET_KEY: str = "a_very_secret_key"
+    ENCRYPTION_KEY: str = "VQZJVhu2seQqq4ZOM_KlwxbqOE0WOf1070WURHeJABQ="
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     ALGORITHM: str = "HS256"
 
@@ -75,6 +76,10 @@ class Settings(BaseSettings):
         # Check for default secret key in production/staging environments
         if self.ENVIRONMENT in ["production", "staging"] and self.SECRET_KEY == "a_very_secret_key":
             raise ValueError("Default SECRET_KEY is not allowed in production or staging environments. Please generate a new one.")
+
+        # Check for default encryption key in production/staging environments
+        if self.ENVIRONMENT in ["production", "staging"] and self.ENCRYPTION_KEY == "VQZJVhu2seQqq4ZOM_KlwxbqOE0WOf1070WURHeJABQ=":
+            raise ValueError("Default ENCRYPTION_KEY is not allowed in production or staging environments. Please generate a new one.")
 
         return self
 
