@@ -15,9 +15,8 @@ class MaxiScraper(BaseScraper):
     """
     STORE_NAME = "Maxi"
 
-    def __init__(self, headless: bool = True, postal_code: str = "H2X 1Y1", proxy_manager: Optional[Any] = None, storage_path: str = "/tmp"):
-        super().__init__(headless, proxy_manager, storage_path)
-        self.postal_code = postal_code
+    def __init__(self, postal_code: str = "H2X 1Y1", headless: bool = True, proxy_manager: Optional[Any] = None, storage_path: str = "/tmp"):
+        super().__init__(postal_code, headless, proxy_manager, storage_path)
 
     async def _scrape_page(self, page: Page, limit: int = 50) -> List[Dict[str, Any]]:
         """

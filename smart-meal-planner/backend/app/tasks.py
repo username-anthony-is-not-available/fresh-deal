@@ -76,6 +76,10 @@ def generate_meal_plan_task(user_id: int, model_type: Optional[str] = None):
             stale_stores = session.exec(select(Store)).all()
             stale_chains = [s.chain for s in stale_stores if s.is_stale]
 
+            user = session.get(User, user_id)
+            if not user:
+                return {"error": "User not found"}
+
             # Check for active deals count efficiently
             total_active = session.exec(
                 select(func.count(Deal.id)).where(Deal.valid_until >= date.today())
@@ -86,12 +90,12 @@ def generate_meal_plan_task(user_id: int, model_type: Optional[str] = None):
                 logger = get_task_logger(__name__)
 
                 if total_active < 20:
-                    logger.info(f"Insufficient active deals ({total_active}). Forcing synchronous refresh.")
+                    logger.info(f"Insufficient active deals ({total_active}). Forcing synchronous refresh for postal code {user.postal_code}.")
                     # Run a quick scrape for a few stores synchronously to ensure we have data
                     loop = _get_or_create_event_loop()
                     async def quick_refresh():
                         async with AsyncSession(async_engine) as async_session:
-                            scraper = ScraperAgent(async_session)
+                            scraper = ScraperAgent(async_session, postal_code=user.postal_code)
                             # Just scrape 2 major stores with Flipp for speed
                             major_stores = ["walmart", "metro"]
                             results = await scraper.scrape(major_stores, limit_per_store=30)
@@ -108,13 +112,9 @@ def generate_meal_plan_task(user_id: int, model_type: Optional[str] = None):
 
                 if stale_chains:
                     logger.info(
-                        f"Stale deals detected for {len(stale_chains)} stores: {stale_chains}. Triggering background refresh."
+                        f"Stale deals detected for {len(stale_chains)} stores: {stale_chains}. Triggering background refresh for postal code {user.postal_code}."
                     )
-                    scrape_task.delay(stores=stale_chains)
-
-            user = session.get(User, user_id)
-            if not user:
-                return {"error": "User not found"}
+                    scrape_task.delay(stores=stale_chains, postal_code=user.postal_code)
 
             planner = MealPlannerAgent(session)
             plan_data = planner.generate_plan(user, model_type=model_type)

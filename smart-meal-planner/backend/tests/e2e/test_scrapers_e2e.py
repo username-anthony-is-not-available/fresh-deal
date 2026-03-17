@@ -8,6 +8,8 @@ from app.agents.scrapers.maxi_scraper import MaxiScraper
 from app.agents.scrapers.super_c_scraper import SuperCScraper
 from app.agents.scrapers.provigo_scraper import ProvigoScraper
 from app.agents.scrapers.walmart_scraper import WalmartScraper
+from app.agents.scrapers.metro_scraper import MetroScraper
+from app.agents.scrapers.costco_scraper import CostcoScraper
 
 # Constants for paths
 SNAPSHOTS_DIR = os.path.join(os.path.dirname(__file__), "snapshots")
@@ -34,7 +36,7 @@ async def setup_routing(page, main_snapshot: str, iframe_snapshot: str = None):
 
     async def handle_route(route):
         url = route.request.url
-        if any(domain in url for domain in ["iga.net", "maxi.ca", "superc.ca", "provigo.ca", "walmart.ca"]):
+        if any(domain in url for domain in ["iga.net", "maxi.ca", "superc.ca", "provigo.ca", "walmart.ca", "metro.ca", "costco.ca"]):
             await route.fulfill(body=main_content, content_type="text/html")
         elif "flipp.com/flyer" in url:
             if iframe_content:
@@ -95,3 +97,21 @@ async def test_walmart_scraper_e2e(pw_page):
     deals = await scraper._scrape_page(pw_page, limit=10)
     assert len(deals) >= 3
     assert any("Grapes" in d["name"] for d in deals)
+
+@pytest.mark.asyncio
+async def test_metro_scraper_e2e(pw_page):
+    await setup_routing(pw_page, "metro_native.html")
+    scraper = MetroScraper()
+    scraper._random_delay = lambda min_d=0, max_d=0: asyncio.sleep(0)
+    deals = await scraper._scrape_page(pw_page, limit=10)
+    assert len(deals) >= 2
+    assert any("Strawberries" in d["name"] for d in deals)
+
+@pytest.mark.asyncio
+async def test_costco_scraper_e2e(pw_page):
+    await setup_routing(pw_page, "costco_native.html")
+    scraper = CostcoScraper()
+    scraper._random_delay = lambda min_d=0, max_d=0: asyncio.sleep(0)
+    deals = await scraper._scrape_page(pw_page, limit=10)
+    assert len(deals) >= 2
+    assert any("Olive Oil" in d["name"] for d in deals)
