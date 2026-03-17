@@ -1,7 +1,7 @@
 import json
 from typing import Optional, List
 from sqlmodel import SQLModel, Field, Relationship
-from datetime import datetime, date, timezone
+from datetime import datetime, date, timezone, timedelta
 from app.core.crypto import EncryptedString, EncryptedInt
 
 
@@ -48,9 +48,6 @@ class User(SQLModel, table=True):
     @dietary_preferences.setter
     def dietary_preferences(self, value: List[str]):
         self.dietary_preferences_json = json.dumps(value)
-
-
-from datetime import timedelta
 
 
 class Store(SQLModel, table=True):

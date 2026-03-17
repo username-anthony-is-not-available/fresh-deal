@@ -1,4 +1,3 @@
-import os
 from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -79,7 +78,7 @@ class Settings(BaseSettings):
 
         # Check for default encryption key in production/staging environments
         if self.ENVIRONMENT in ["production", "staging"] and self.ENCRYPTION_KEY == "VQZJVhu2seQqq4ZOM_KlwxbqOE0WOf1070WURHeJABQ=":
-            raise ValueError("Default ENCRYPTION_KEY is not allowed in production or staging environments. Please generate a new one.")
+             raise ValueError("Default ENCRYPTION_KEY is not allowed in production or staging environments. Please generate a new one.")
 
         return self
 

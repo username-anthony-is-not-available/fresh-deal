@@ -1,7 +1,6 @@
-import pytest
 from app.core.crypto import encrypt_data, decrypt_data
 from app.models.all_models import User
-from sqlmodel import Session, create_engine, SQLModel, select
+from sqlmodel import Session, create_engine, SQLModel
 from sqlalchemy.orm import sessionmaker
 
 def test_encrypt_decrypt_utility():
