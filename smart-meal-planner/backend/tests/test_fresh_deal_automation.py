@@ -51,6 +51,8 @@ def test_generate_meal_plan_task_triggers_scrape_on_stale_deals(
     fresh_store.last_scraped_at = datetime.now(timezone.utc) - timedelta(days=1)
 
     mock_session.exec.return_value.all.return_value = [stale_store, fresh_store]
+    # Handle active deals count check
+    mock_session.exec.return_value.one.return_value = 100
 
     mock_user = User(id=1, email="test@example.com", household_size=2, postal_code="H4T1V6")
     mock_session.get.return_value = mock_user

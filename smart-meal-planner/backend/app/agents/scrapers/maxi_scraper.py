@@ -203,6 +203,10 @@ class MaxiScraper(BaseScraper):
         price_text_for_unit = price_element.get_text(strip=True).lower() if price_element else ""
         unit = self._extract_unit(name + " " + unit_text + " " + price_text_for_unit)
 
+        # Loyalty Info
+        loyalty_info = self._parse_loyalty_points(tile.get_text(separator=" "))
+        loyalty_program, loyalty_points = loyalty_info if loyalty_info else (None, None)
+
         # Image URL
         image_element = tile.select_one('[data-testid="product-image"] img') or tile.select_one('img')
         image_url = None
@@ -218,5 +222,7 @@ class MaxiScraper(BaseScraper):
             "unit": unit,
             "store": self.STORE_NAME,
             "image_url": image_url,
-            "category": self._categorize_product(name)
+            "category": self._categorize_product(name),
+            "loyalty_program": loyalty_program,
+            "loyalty_points": loyalty_points,
         }

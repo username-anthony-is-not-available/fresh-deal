@@ -13,9 +13,17 @@ try:
     from playwright_stealth import stealth_async
 except Exception:  # pragma: no cover
     stealth_async = None
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Tuple
 from app.core.proxy_manager import ProxyManager
 from .user_agents import USER_AGENTS
+
+# Loyalty programs mapping
+LOYALTY_PROGRAMS = {
+    "PC Optimum": ["PC Optimum", "Optimum"],
+    "Scene+": ["Scene+"],
+    "Moi": ["Moi"],
+    "AIR MILES": ["AIR MILES", "Air Miles"]
+}
 
 
 class BaseScraper(ABC):
@@ -424,6 +432,25 @@ class BaseScraper(ABC):
             return price
 
         return round(price / (1 - discount_pct / 100), 2)
+
+    def _parse_loyalty_points(self, text: str) -> Optional[Tuple[str, int]]:
+        """Parse loyalty points from text, e.g., 'Earn 2000 PC Optimum points'."""
+        if not text:
+            return None
+
+        text_lower = text.lower()
+        for program, keywords in LOYALTY_PROGRAMS.items():
+            for keyword in keywords:
+                if keyword.lower() in text_lower:
+                    # Regex to find numbers, handling commas
+                    match = re.search(r'(\d{1,3}(,\d{3})*|\d+)\s*(points)?', text_lower)
+                    if match:
+                        try:
+                            points_str = match.group(1).replace(',', '')
+                            return program, int(points_str)
+                        except (ValueError, IndexError):
+                            continue
+        return None
 
     def _categorize_product(self, name: str) -> str:
         """Categorize product based on name."""
