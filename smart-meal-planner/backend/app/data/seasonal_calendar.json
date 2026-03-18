@@ -1,0 +1,14 @@
+{
+  "1": ["beet", "cabbage", "carrot", "garlic", "leek", "onion", "parsnip", "potato", "rutabaga", "shallot", "squash", "turnip"],
+  "2": ["beet", "cabbage", "carrot", "garlic", "leek", "onion", "parsnip", "potato", "rutabaga", "shallot", "squash", "turnip"],
+  "3": ["beet", "cabbage", "carrot", "garlic", "leek", "maple syrup", "onion", "parsnip", "potato", "rutabaga", "shallot", "squash", "turnip"],
+  "4": ["beet", "cabbage", "carrot", "garlic", "leek", "maple syrup", "onion", "parsnip", "potato", "rutabaga", "shallot", "squash", "turnip"],
+  "5": ["asparagus", "beet", "cabbage", "carrot", "fiddlehead", "garlic", "leek", "lettuce", "maple syrup", "onion", "parsnip", "potato", "radish", "rhubarb", "rutabaga", "shallot", "spinach", "squash", "turnip", "wild leek"],
+  "6": ["asparagus", "bean", "beet", "broccoli", "cabbage", "carrot", "cauliflower", "cucumber", "garlic", "leek", "lettuce", "onion", "pea", "potato", "radish", "rhubarb", "rutabaga", "shallot", "spinach", "strawberry", "turnip", "zucchini"],
+  "7": ["apple", "bean", "beet", "blueberry", "broccoli", "cabbage", "carrot", "cauliflower", "cherry", "corn", "cucumber", "garlic", "leek", "lettuce", "onion", "pea", "pepper", "potato", "radish", "raspberry", "rhubarb", "rutabaga", "shallot", "spinach", "strawberry", "tomato", "turnip", "zucchini"],
+  "8": ["apple", "bean", "beet", "blueberry", "broccoli", "cabbage", "carrot", "cauliflower", "cherry", "corn", "cucumber", "eggplant", "garlic", "grape", "leek", "lettuce", "melon", "onion", "peach", "pear", "pepper", "plum", "potato", "radish", "raspberry", "rutabaga", "shallot", "spinach", "strawberry", "tomato", "turnip", "zucchini"],
+  "9": ["apple", "bean", "beet", "blueberry", "broccoli", "Brussels sprout", "cabbage", "carrot", "cauliflower", "corn", "cranberry", "cucumber", "eggplant", "garlic", "grape", "leek", "lettuce", "melon", "onion", "pear", "pepper", "plum", "potato", "pumpkin", "radish", "raspberry", "rutabaga", "shallot", "spinach", "squash", "tomato", "turnip", "zucchini"],
+  "10": ["apple", "beet", "broccoli", "Brussels sprout", "cabbage", "carrot", "cauliflower", "cranberry", "garlic", "leek", "lettuce", "onion", "parsnip", "pear", "potato", "pumpkin", "radish", "rutabaga", "shallot", "spinach", "squash", "turnip"],
+  "11": ["apple", "beet", "cabbage", "carrot", "garlic", "leek", "onion", "parsnip", "potato", "pumpkin", "rutabaga", "shallot", "squash", "turnip"],
+  "12": ["beet", "cabbage", "carrot", "garlic", "leek", "onion", "parsnip", "potato", "rutabaga", "shallot", "squash", "turnip"]
+}

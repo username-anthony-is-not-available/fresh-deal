@@ -10,6 +10,7 @@ from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_excep
 from app.core.config import settings
 from app.services.recipe_service import RecipeService
 from app.services.deal_service import DealService
+from app.services.seasonal_service import SeasonalService
 
 logger = logging.getLogger(__name__)
 
@@ -22,22 +23,22 @@ class LLMService:
     }
 
     def _get_seasonal_context(self) -> str:
-        """Returns typical Quebec ingredients for the current season."""
+        """Returns typical Quebec ingredients for the current month."""
         month = datetime.now().month
+        ingredients = self.seasonal_service.get_seasonal_ingredients(month)
+        ingredients_str = ", ".join(ingredients)
+
+        # Simple season name for context
         if 3 <= month <= 5:
             season = "Spring"
-            ingredients = "maple syrup, fiddleheads, asparagus, rhubarb, wild leeks"
         elif 6 <= month <= 8:
             season = "Summer"
-            ingredients = "strawberries, raspberries, blueberries, corn, tomatoes, cucumbers, beans"
         elif 9 <= month <= 11:
             season = "Autumn"
-            ingredients = "apples, pumpkins, squash, cranberries, root vegetables (beets, carrots), leeks"
         else:
             season = "Winter"
-            ingredients = "root vegetables (potatoes, parsnips, turnips), cabbage, preserved foods, hearty stews"
 
-        return f"Current Season in Quebec: {season}. Highly recommended seasonal ingredients: {ingredients}."
+        return f"Current Month: {datetime.now().strftime('%B')}. Season in Quebec: {season}. Highly recommended local seasonal ingredients: {ingredients_str}."
 
     def __init__(self):
         # OpenAI client requires an API key. If not set, use a dummy one to avoid init crash.
@@ -50,6 +51,7 @@ class LLMService:
         )
         self.model = settings.DEFAULT_MODEL
         self.fallback_model = settings.FALLBACK_MODEL
+        self.seasonal_service = SeasonalService()
 
         # Initialize Redis
         try:
