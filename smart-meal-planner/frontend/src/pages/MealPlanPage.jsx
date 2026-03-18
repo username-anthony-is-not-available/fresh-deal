@@ -5,7 +5,7 @@ import { HTML5Backend } from 'react-dnd-html5-backend';
 import DraggableMealCard from '../components/DraggableMealCard';
 import MealSlot from '../components/MealSlot';
 import DietaryFilters from '../components/DietaryFilters';
-import { RefreshCw, Calendar as CalendarIcon, Lightbulb, PiggyBank, Search, X, Star, Send } from 'lucide-react';
+import { RefreshCw, Calendar as CalendarIcon, Lightbulb, PiggyBank, Search, X, Star, Send, Download, FileText } from 'lucide-react';
 import clsx from 'clsx';
 import api from '../services/api';
 import SkeletonLoader from '../components/SkeletonLoader';
@@ -55,6 +55,7 @@ const MealPlanPage = () => {
   const [selectedModel, setSelectedModel] = useState('standard');
   const [mealPlanFeedback, setMealPlanFeedback] = useState({ rating: 0, comment: '' });
   const [submittingFeedback, setSubmittingFeedback] = useState(false);
+  const [exporting, setExporting] = useState(null); // 'ical' or 'pdf'
 
   const userId = localStorage.getItem('user_id') || 1;
 
@@ -351,6 +352,34 @@ const MealPlanPage = () => {
     }
   };
 
+  const handleExport = async (format) => {
+    setExporting(format);
+    try {
+      const blobData = await api.get(`/plans/${userId}/export/${format}`, {
+        responseType: 'blob',
+      });
+
+      const blob = new Blob([blobData], {
+        type: format === 'ical' ? 'text/calendar' : 'application/pdf'
+      });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `meal_plan_${userId}.${format === 'ical' ? 'ics' : 'pdf'}`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+
+      showSuccessToast(`Meal plan exported as ${format.toUpperCase()}!`);
+    } catch (err) {
+      console.error(`Failed to export ${format}`, err);
+      showErrorToast(`Failed to export meal plan. Please try again.`);
+    } finally {
+      setExporting(null);
+    }
+  };
+
   const quickFilters = ['Chicken', 'Beef', 'Pasta'];
 
   return (
@@ -371,14 +400,34 @@ const MealPlanPage = () => {
                 <option key={opt.id} value={opt.id}>{opt.name}</option>
               ))}
             </select>
-            <button
-              onClick={generatePlan}
-              disabled={generating}
-              className="flex items-center justify-center gap-2 text-primary-700 bg-primary-50 px-4 py-2.5 rounded-lg hover:bg-primary-100 font-semibold disabled:opacity-50 shadow-sm transition-colors"
-            >
-              <RefreshCw className={`w-4 h-4 ${generating ? 'animate-spin' : ''}`} />
-              <span>{generating ? 'Generating...' : 'Regenerate Plan'}</span>
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => handleExport('ical')}
+                disabled={exporting === 'ical'}
+                className="flex items-center justify-center gap-2 text-gray-700 bg-white border border-gray-200 px-3 py-2 rounded-lg hover:bg-gray-50 font-medium disabled:opacity-50 shadow-sm transition-colors"
+                title="Export to Calendar (iCal)"
+              >
+                <CalendarIcon className="w-4 h-4" />
+                <span className="hidden md:inline">iCal</span>
+              </button>
+              <button
+                onClick={() => handleExport('pdf')}
+                disabled={exporting === 'pdf'}
+                className="flex items-center justify-center gap-2 text-gray-700 bg-white border border-gray-200 px-3 py-2 rounded-lg hover:bg-gray-50 font-medium disabled:opacity-50 shadow-sm transition-colors"
+                title="Export as PDF"
+              >
+                <FileText className="w-4 h-4" />
+                <span className="hidden md:inline">PDF</span>
+              </button>
+              <button
+                onClick={generatePlan}
+                disabled={generating}
+                className="flex items-center justify-center gap-2 text-primary-700 bg-primary-50 px-4 py-2.5 rounded-lg hover:bg-primary-100 font-semibold disabled:opacity-50 shadow-sm transition-colors"
+              >
+                <RefreshCw className={`w-4 h-4 ${generating ? 'animate-spin' : ''}`} />
+                <span>{generating ? 'Generating...' : 'Regenerate Plan'}</span>
+              </button>
+            </div>
           </div>
         </div>
 
