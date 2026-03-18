@@ -6,9 +6,11 @@ from typing import List, Dict, Any, Optional
 from sqlmodel import Session, select
 from sqlalchemy import func
 from sqlalchemy.orm import selectinload
+from datetime import datetime
 from app.models.all_models import Product, Deal, Store, User, Recipe, RecipeRating, UserFavorite, Feedback
 from app.services.llm_service import LLMService
 from app.services.recipe_service import RecipeService
+from app.services.seasonal_service import SeasonalService
 
 logger = logging.getLogger(__name__)
 
@@ -16,6 +18,7 @@ class MealPlannerAgent:
     def __init__(self, session: Session):
         self.session = session
         self.llm_service = LLMService()
+        self.seasonal_service = SeasonalService()
         self.recipes = self._load_recipes_from_db()
 
     def _load_recipes_from_db(self) -> List[Dict]:
@@ -250,10 +253,13 @@ class MealPlannerAgent:
 
     def _calculate_deal_scores(self, recipes: List[Dict], deals: List[Dict]) -> List[Dict]:
         """
-        Calculates a deal score for each recipe based on active deals.
-        The score is a weighted sum of matching ingredients, where weights
-        are determined by the quality score of the deal.
+        Calculates a deal score and seasonal score for each recipe.
+        The deal score is based on active deals.
+        The seasonal score is based on Quebec seasonal produce.
+        Total score = deal_score + seasonal_score
         """
+        current_month = datetime.now().month
+
         # Create a mapping of product name to its best quality score
         product_quality_map = {}
         for d in deals:
@@ -283,7 +289,10 @@ class MealPlannerAgent:
                         total_deal_score += weight
                         break
 
-            recipe["deal_score"] = round(total_deal_score, 2)
+            seasonal_score = self.seasonal_service.calculate_seasonal_score(recipe_ingredients, current_month)
+
+            recipe["deal_score"] = round(total_deal_score + seasonal_score, 2)
             recipe["on_sale_ingredients"] = list(set(matching_ingredients))
+            recipe["seasonal_score"] = seasonal_score
 
         return recipes
