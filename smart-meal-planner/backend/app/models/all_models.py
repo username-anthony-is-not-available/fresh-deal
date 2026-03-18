@@ -1,7 +1,8 @@
 import json
 from typing import Optional, List
 from sqlmodel import SQLModel, Field, Relationship
-from datetime import datetime, date, timezone
+from datetime import datetime, date, timezone, timedelta
+from app.core.crypto import EncryptedString, EncryptedInt
 
 
 def utc_now():
@@ -13,10 +14,10 @@ class User(SQLModel, table=True):
     email: str = Field(unique=True, index=True)
     hashed_password: str
     is_active: bool = Field(default=True)
-    postal_code: str
-    household_size: int
-    dietary_preferences_json: Optional[str] = Field(default="[]")
-    allergies_json: Optional[str] = Field(default="[]")
+    postal_code: str = Field(sa_type=EncryptedString)
+    household_size: int = Field(sa_type=EncryptedInt)
+    dietary_preferences_json: Optional[str] = Field(default="[]", sa_type=EncryptedString)
+    allergies_json: Optional[str] = Field(default="[]", sa_type=EncryptedString)
     preferred_loyalty_programs_json: Optional[str] = Field(default="[]")
     created_at: datetime = Field(default_factory=utc_now)
 
@@ -47,9 +48,6 @@ class User(SQLModel, table=True):
     @dietary_preferences.setter
     def dietary_preferences(self, value: List[str]):
         self.dietary_preferences_json = json.dumps(value)
-
-
-from datetime import timedelta
 
 
 class Store(SQLModel, table=True):
