@@ -7,6 +7,7 @@ from app.api.endpoints import router as api_router
 from app.api import nutrition
 from app.api import deals_export
 from app.api import flyer_upload
+from app.api import plan_export
 from app.core.logging_config import setup_logging
 import logging
 from prometheus_fastapi_instrumentator import Instrumentator
@@ -134,6 +135,7 @@ app.include_router(auth_endpoints.router, prefix="/auth", tags=["auth"])
 app.include_router(nutrition.router, prefix="/api", tags=["nutrition"])
 app.include_router(deals_export.router, prefix="/api", tags=["deals-export"])
 app.include_router(flyer_upload.router, prefix="/api", tags=["flyer-upload"])
+app.include_router(plan_export.router, prefix="/api", tags=["plan-export"])
 
 
 @app.get("/health")
