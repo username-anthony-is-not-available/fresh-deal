@@ -86,6 +86,8 @@ class Deal(SQLModel, table=True):
 
     loyalty_program: Optional[str] = None
     loyalty_points: Optional[int] = None
+    quality_score: Optional[float] = Field(default=None)
+    quality_level: Optional[str] = Field(default=None)
 
     product: Product = Relationship(back_populates="deals")
     store: Store = Relationship(link_model=None)  # Simple relationship
@@ -226,6 +228,20 @@ class PantryItem(SQLModel, table=True):
     updated_at: datetime = Field(default_factory=utc_now)
 
     user: "User" = Relationship(back_populates="pantry_items")
+
+
+class Feedback(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: int = Field(foreign_key="user.id")
+    recipe_id: Optional[int] = Field(default=None, foreign_key="recipe.id")
+    meal_plan_id: Optional[int] = Field(default=None, foreign_key="mealplan.id")
+    rating: int = Field(ge=1, le=5)
+    comment: Optional[str] = None
+    created_at: datetime = Field(default_factory=utc_now)
+
+    user: "User" = Relationship(back_populates="feedbacks")
+    recipe: Optional["Recipe"] = Relationship(back_populates="feedbacks")
+    meal_plan: Optional["MealPlan"] = Relationship(back_populates="feedbacks")
 
 
 class ScraperLog(SQLModel, table=True):

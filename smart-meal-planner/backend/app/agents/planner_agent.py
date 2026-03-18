@@ -104,7 +104,8 @@ class MealPlannerAgent:
                     "price": deal.price,
                     "discount": deal.discount_pct,
                     "category": product.category,
-                    "unit": product.unit_type
+                    "unit": product.unit_type,
+                    "quality_score": deal.quality_score or 50.0
                 })
         return deals_data
 
@@ -250,12 +251,21 @@ class MealPlannerAgent:
     def _calculate_deal_scores(self, recipes: List[Dict], deals: List[Dict]) -> List[Dict]:
         """
         Calculates a deal score for each recipe based on active deals.
-        The score is the number of recipe ingredients that are currently on sale.
+        The score is a weighted sum of matching ingredients, where weights
+        are determined by the quality score of the deal.
         """
-        on_sale_products = {d["product"].lower() for d in deals}
+        # Create a mapping of product name to its best quality score
+        product_quality_map = {}
+        for d in deals:
+            name = d["product"].lower()
+            quality = d.get("quality_score", 50.0)
+            if name not in product_quality_map or quality > product_quality_map[name]:
+                product_quality_map[name] = quality
 
         for recipe in recipes:
             matching_ingredients = []
+            total_deal_score = 0.0
+
             # We use normalized_ingredients for matching
             recipe_ingredients = recipe.get("normalized_ingredients", [])
 
@@ -265,12 +275,15 @@ class MealPlannerAgent:
 
                 # Simple matching: check if any on-sale product name is in the ingredient name
                 # or if the ingredient name is in any on-sale product name.
-                for sale_prod in on_sale_products:
+                for sale_prod, quality in product_quality_map.items():
                     if sale_prod in ing_name or ing_name in sale_prod:
                         matching_ingredients.append(ing_name)
+                        # Weighted score: Excellent deals (score 80+) contribute more
+                        weight = quality / 100.0
+                        total_deal_score += weight
                         break
 
-            recipe["deal_score"] = len(matching_ingredients)
+            recipe["deal_score"] = round(total_deal_score, 2)
             recipe["on_sale_ingredients"] = list(set(matching_ingredients))
 
         return recipes

@@ -17,6 +17,7 @@ from .scrapers.adonis_scraper import AdonisScraper
 from .scrapers.costco_scraper import CostcoScraper
 from .scrapers.circulaire_en_ligne_scraper import CirculaireEnLigneScraper
 from app.services.notification_service import NotificationService
+from app.services.deal_quality_service import deal_quality_service, DealQuality
 import logging
 
 
@@ -264,6 +265,12 @@ class ScraperAgent:
             if original_price and original_price > price:
                 discount_pct = round(((original_price - price) / original_price) * 100)
 
+            # Automated fresh-deal Enhancement: Score deal quality
+            quality_score = deal_quality_service.score_deal(deal_data)
+            if quality_score.quality == DealQuality.NOISE:
+                logging.debug(f"Skipping deal '{product_name}' at {store_name} as it was identified as NOISE.")
+                continue
+
             valid_from = deal_data.get("valid_from", today)
             valid_until = deal_data.get("valid_until", today + timedelta(days=7))
 
@@ -280,6 +287,10 @@ class ScraperAgent:
                 discount_pct=discount_pct,
                 valid_from=valid_from,
                 valid_until=valid_until,
+                loyalty_program=deal_data.get("loyalty_program"),
+                loyalty_points=deal_data.get("loyalty_points"),
+                quality_score=quality_score.overall_score,
+                quality_level=quality_score.quality.value,
             )
             self.session.add(deal)
             existing_deals_cache[deal_key] = deal

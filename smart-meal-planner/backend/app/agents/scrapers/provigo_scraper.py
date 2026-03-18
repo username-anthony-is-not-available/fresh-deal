@@ -173,7 +173,11 @@ class ProvigoScraper(BaseScraper):
         unit_text = unit_element.get_text(strip=True).lower() if unit_element else ""
         unit = self._extract_unit(name + " " + unit_text + " " + (price_element.get_text() if price_element else ""))
 
-        # 6. Extract Image
+        # 6. Extract Loyalty Info
+        loyalty_info = self._parse_loyalty_points(tile.get_text(separator=" "))
+        loyalty_program, loyalty_points = loyalty_info if loyalty_info else (None, None)
+
+        # 7. Extract Image
         image_element = tile.select_one('img')
         image_url = None
         if image_element:
@@ -186,5 +190,7 @@ class ProvigoScraper(BaseScraper):
             "unit": unit,
             "store": self.STORE_NAME,
             "image_url": image_url,
-            "category": self._categorize_product(name)
+            "category": self._categorize_product(name),
+            "loyalty_program": loyalty_program,
+            "loyalty_points": loyalty_points,
         }
