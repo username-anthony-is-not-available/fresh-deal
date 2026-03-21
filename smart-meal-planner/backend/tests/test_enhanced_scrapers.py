@@ -57,8 +57,9 @@ async def test_adonis_scraper_delegation():
         mock_scrape.return_value = [{"name": "Adonis Pita", "price": 2.99, "store": "Adonis"}]
 
         scraper = AdonisScraper(postal_code="H4T1V6")
-        deals = await scraper.scrape(limit=5)
+        deals, proxy = await scraper.scrape(limit=5)
 
         assert len(deals) == 1
         assert deals[0]["name"] == "Adonis Pita"
+        assert proxy is None
         mock_scrape.assert_called_once()

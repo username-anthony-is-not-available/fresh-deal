@@ -18,6 +18,7 @@ from .scrapers.costco_scraper import CostcoScraper
 from .scrapers.circulaire_en_ligne_scraper import CirculaireEnLigneScraper
 from app.services.notification_service import NotificationService
 from app.services.deal_quality_service import deal_quality_service, DealQuality
+from app.services.scraper_health_service import ScraperHealthService
 import logging
 
 
@@ -78,48 +79,71 @@ class ScraperAgent:
         concurrency = getattr(settings, "SCRAPING_CONCURRENCY", 3)
         semaphore = asyncio.Semaphore(concurrency)
 
+        health_service = ScraperHealthService(self.session)
+        # Pre-fetch circuit breaker status to avoid concurrent session usage in asyncio.gather
+        skip_direct_map = {}
+        for store_name in stores:
+            skip_direct_map[store_name] = await health_service.should_skip_direct_scrape(store_name)
+            if skip_direct_map[store_name]:
+                logging.warning(f"Circuit breaker active for {store_name}. Will skip direct scrape.")
+
         async def protected_scrape(store_name: str):
             async with semaphore:
                 start_time = time.time()
                 try:
-                    deals = await self._scrape_store(store_name, limit_per_store)
+                    skip_direct = skip_direct_map.get(store_name, False)
+                    deals, scraper_type, proxy_used = await self._scrape_store(
+                        store_name, limit_per_store, skip_direct=skip_direct
+                    )
                     duration = time.time() - start_time
-                    return store_name, deals, "success", duration, None
+                    return store_name, deals, "success", duration, None, scraper_type, proxy_used
                 except Exception as e:
                     duration = time.time() - start_time
-                    return store_name, [], "failure", duration, str(e)
+                    return store_name, [], "failure", duration, str(e), "unknown", None
 
         tasks = [protected_scrape(store_name) for store_name in stores]
         results = await asyncio.gather(*tasks)
 
         # Log all results sequentially using the agent's session
-        for store_name, deals, status, duration, error in results:
-            await self._log_scrape(store_name, status, len(deals), duration, error)
+        for store_name, deals, status, duration, error, s_type, proxy in results:
+            await self._log_scrape(store_name, status, len(deals), duration, error, s_type, proxy)
 
         await self.session.commit()
 
         return {r[0]: r[1] for r in results}
 
-    async def _scrape_store(self, store_name: str, limit: int) -> List[Dict[str, Any]]:
+    async def _scrape_store(
+        self, store_name: str, limit: int, skip_direct: bool = False
+    ) -> tuple[List[Dict[str, Any]], str, Optional[str]]:
         """
         Scrapes a single store, handling the fallback from a direct scraper to the Flipp API,
         and finally to circulaire-en-ligne.ca if both fail.
         Includes a retry mechanism for direct browser-based scrapers.
         """
         scraper = self.scrapers.get(store_name.lower())
-        if scraper:
+
+        if scraper and not skip_direct:
             max_retries = 3
             for attempt in range(max_retries):
                 try:
                     logging.info(
                         f"Attempting direct scrape for {store_name} (Attempt {attempt + 1}/{max_retries})..."
                     )
-                    deals = await scraper.scrape(limit=limit)
+                    # The scraper itself manages proxy rotation and returns deals
+                    # We'll update the scraper to return the proxy used alongside deals
+                    result = await scraper.scrape(limit=limit)
+
+                    # Support both old and new return types during transition
+                    if isinstance(result, tuple):
+                        deals, proxy_used = result
+                    else:
+                        deals, proxy_used = result, getattr(scraper.proxy_manager, 'last_proxy', None)
+
                     if deals:
                         logging.info(
                             f"Direct scrape for {store_name} successful, found {len(deals)} deals."
                         )
-                        return deals
+                        return deals, "direct", proxy_used
                 except Exception as e:
                     logging.error(
                         f"Direct scrape for {store_name} attempt {attempt + 1} failed: {e}."
@@ -140,10 +164,11 @@ class ScraperAgent:
         # Fallback to Flipp API
         deals = await self._scrape_with_flipp(store_name, limit)
         if deals:
-            return deals
+            return deals, "flipp", None
 
-        # Final fallback: circulaire-en-ligne.ca (as mentioned in Reddit thread)
-        return await self._scrape_with_circulaire_en_ligne(store_name, limit)
+        # Final fallback: circulaire-en-ligne.ca
+        deals = await self._scrape_with_circulaire_en_ligne(store_name, limit)
+        return deals, "fallback", None
 
     async def _scrape_with_flipp(
         self, store_name: str, limit: int
@@ -333,12 +358,16 @@ class ScraperAgent:
         items_scraped: int,
         duration: float,
         error_message: Optional[str] = None,
+        scraper_type: str = "direct",
+        proxy_used: Optional[str] = None,
     ):
         """Records a scrape attempt in the ScraperLog table. Note: does not commit."""
         try:
             log = ScraperLog(
                 store_name=store_name,
                 status=status,
+                scraper_type=scraper_type,
+                proxy_used=proxy_used,
                 items_scraped=items_scraped,
                 duration_seconds=round(duration, 2),
                 error_message=error_message,

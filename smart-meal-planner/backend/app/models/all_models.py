@@ -234,6 +234,8 @@ class ScraperLog(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     store_name: str = Field(index=True)
     status: str  # "success", "failure"
+    scraper_type: Optional[str] = Field(default="direct")  # "direct", "flipp", "fallback"
+    proxy_used: Optional[str] = None
     items_scraped: int = Field(default=0)
     duration_seconds: float = Field(default=0.0)
     error_message: Optional[str] = None
