@@ -344,11 +344,24 @@ class BaseScraper(ABC):
         # Replace non-breaking spaces and other weird whitespace
         price_text = re.sub(r'\s+', ' ', price_text)
 
-        # Handle "X pour Y$" or "X for Y$" or "X/$Y" or "$Y/X"
+        # Ignore marketing patterns that contain numbers but aren't prices
+        # e.g., "Buy 1 get 1 free", "2nd at 50% off"
+        marketing_ignore = [
+            r"buy \d+ get \d+",
+            r"\d+(?:st|nd|rd|th) at \d+%",
+            r"save \$\d+[,.]?\d*",
+            r"rabais de \d+[,.]?\d*\s*\$",
+            r"limit \d+",
+            r"limite \d+"
+        ]
+        for pattern in marketing_ignore:
+            price_text = re.sub(pattern, "", price_text)
+
+        # Handle "X pour Y$" or "X for Y$" or "X/$Y" or "$Y/X" or "X ch." or "X l'unité"
         # 1. X pour/for/$ Y (e.g., "2 pour 5,00$")
         # Ensure we don't match if there's a $ right before the quantity
         multi_match = re.search(
-            r"(?<![\$\d])(\d+)\s*(?:pour|for|/|ea\.)\s*[\$]?\s*(\d+[,.]?\d*)\s*\$?", price_text
+            r"(?<![\$\d])(\d+)\s*(?:pour|for|/|ea\.|ch\.|l'unité)\s*[\$]?\s*(\d+[,.]?\d*)\s*\$?", price_text
         )
         if multi_match:
             try:
@@ -358,9 +371,9 @@ class BaseScraper(ABC):
             except (ValueError, ZeroDivisionError):
                 pass
 
-        # 2. $Y / X or $Y ea.
+        # 2. $Y / X or $Y ea. or $Y ch. or $Y l'unité
         multi_match_reverse = re.search(
-            r"[\$]?\s*(\d+[,.]?\d*)\s*\$?\s*(?:/|ea\.|pour|for)\s*(\d+)", price_text
+            r"[\$]?\s*(\d+[,.]?\d*)\s*\$?\s*(?:/|ea\.|ch\.|l'unité|pour|for)\s*(\d+)", price_text
         )
         if multi_match_reverse:
             try:
@@ -379,12 +392,23 @@ class BaseScraper(ABC):
                 pass
 
         # Handle standard price formats
-        price_match = re.search(r"(\d+[,.]?\d*)\s*\$?", price_text)
+        # We want to be careful not to match random numbers if a $ is present elsewhere
+        price_match = re.search(r"(\d+[,.]?\d*)\s*\$|\$\s*(\d+[,.]?\d*)", price_text)
         if price_match:
             try:
-                return float(price_match.group(1).replace(",", "."))
+                val = price_match.group(1) or price_match.group(2)
+                return float(val.replace(",", "."))
             except ValueError:
                 pass
+
+        # Fallback for just a number if no $ was found in the whole string
+        if "$" not in price_text:
+            price_match = re.search(r"(\d+[,.]\d{2})", price_text)
+            if price_match:
+                try:
+                    return float(price_match.group(1).replace(",", "."))
+                except ValueError:
+                    pass
 
         return None
 
@@ -406,6 +430,12 @@ class BaseScraper(ABC):
             return "g"
         elif re.search(r"(?:\d+)\s*l\b|\blitre", text_lower):
             return "L"
+        elif re.search(r"\bsac\b|\bbte\b|\bboîte\b|\bbox\b", text_lower):
+            return "sac/box"
+        elif re.search(r"\bpqt\b|\bpaquet\b|\bpack\b", text_lower):
+            return "pack"
+        elif re.search(r"\bcaisse\b|\bcase\b", text_lower):
+            return "case"
         else:
             return "each"
 
@@ -502,6 +532,12 @@ class BaseScraper(ABC):
                 "ragoût",
                 "cipaille",
                 "pâté chinois",
+                "agneau",
+                "lamb",
+                "veau",
+                "veal",
+                "canard",
+                "duck",
             ],
             "Deli": [
                 "creton",
@@ -511,6 +547,9 @@ class BaseScraper(ABC):
                 "pastrami",
                 "pâté",
                 "charcuterie",
+                "pepperoni",
+                "bologne",
+                "bologna",
             ],
             "Seafood": [
                 "poisson",
@@ -609,6 +648,16 @@ class BaseScraper(ABC):
                 "pepper",
                 "sirop d'érable",
                 "maple syrup",
+                "miel",
+                "honey",
+                "beurre d'arachide",
+                "peanut butter",
+                "confiture",
+                "jam",
+                "moutarde",
+                "mustard",
+                "ketchup",
+                "mayonnaise",
             ],
             "International": [
                 "hummus",
