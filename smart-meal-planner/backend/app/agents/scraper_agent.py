@@ -145,13 +145,22 @@ class ScraperAgent:
                         )
                         return deals, "direct", proxy_used
                 except Exception as e:
+                    error_str = str(e).lower()
+                    prefix = "[GENERAL]"
+                    if "timeout" in error_str:
+                        prefix = "[TIMEOUT]"
+                    elif "incapsula" in error_str or "denied" in error_str or "anti-bot" in error_str:
+                        prefix = "[BOT_BLOCK]"
+                    elif "selector" in error_str or "not found" in error_str:
+                        prefix = "[STRUCTURE]"
+
                     logging.error(
-                        f"Direct scrape for {store_name} attempt {attempt + 1} failed: {e}."
+                        f"Direct scrape for {store_name} attempt {attempt + 1} failed {prefix}: {e}."
                     )
                     if attempt < max_retries - 1:
                         await asyncio.sleep(2**attempt)  # Exponential backoff
                     else:
-                        error_msg = f"All {max_retries} attempts for {store_name} failed. Falling back to Flipp API. Last error: {e}"
+                        error_msg = f"{prefix} All {max_retries} attempts for {store_name} failed. Falling back to Flipp API. Last error: {e}"
                         logging.error(error_msg)
                         # Notify that the direct scraper failed, which might indicate a website structure change
                         await NotificationService.send_scraper_failure_alert(
@@ -275,8 +284,29 @@ class ScraperAgent:
         if new_products_added:
             await self.session.flush()
 
+        # Fetch recent price history for all products to assist quality scoring
+        history_cutoff = date.today() - timedelta(days=30)
+        product_ids = [p.id for p in product_cache.values() if p.id]
+        history_map = {}
+        if product_ids:
+            history_result = await self.session.execute(
+                select(Deal.product_id, Deal.price)
+                .where(Deal.product_id.in_(product_ids))
+                .where(Deal.valid_from >= history_cutoff)
+            )
+            for p_id, p_price in history_result.all():
+                if p_id not in history_map:
+                    history_map[p_id] = []
+                history_map[p_id].append(p_price)
+
         today = date.today()
         new_deals_count = 0
+
+        # Detect repetitive prices in the batch
+        batch_flags = deal_quality_service.detect_repetitive_prices(deals)
+        if batch_flags:
+            logging.warning(f"Batch quality issues detected: {batch_flags}")
+
         for deal_data in deals:
             store_name = deal_data.get("store", "Unknown Store")
             store = store_cache[store_name]
@@ -290,8 +320,9 @@ class ScraperAgent:
             if original_price and original_price > price:
                 discount_pct = round(((original_price - price) / original_price) * 100)
 
-            # Automated fresh-deal Enhancement: Score deal quality
-            quality_score = deal_quality_service.score_deal(deal_data)
+            # Automated fresh-deal Enhancement: Score deal quality with history
+            hist_prices = history_map.get(product.id, [])
+            quality_score = deal_quality_service.score_deal(deal_data, historical_prices=hist_prices)
             if quality_score.quality == DealQuality.NOISE:
                 logging.debug(f"Skipping deal '{product_name}' at {store_name} as it was identified as NOISE.")
                 continue

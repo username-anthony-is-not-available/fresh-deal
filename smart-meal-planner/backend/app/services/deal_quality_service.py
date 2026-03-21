@@ -78,6 +78,14 @@ class DealQualityService:
         r"everyday low price",
         r"economisez gros",
         r"rabais exceptionnel",
+        r"prix choc",
+        r"super prix",
+        r"liquidation",
+        r"rabais imbattable",
+        r"super achat",
+        r"great buy",
+        r"vendeur vedette",
+        r"top seller",
     ]
 
     # Suspicious price patterns (too good to be true) - Base prices per kg/unit
@@ -86,12 +94,17 @@ class DealQualityService:
         ("beef", 8.00),  # per kg
         ("seafood", 7.00),
         ("meat", 4.00),  # per kg minimum (e.g., pork/chicken)
+        ("butter", 6.50), # per kg (standard 454g is usually $3+)
+        ("cheese", 6.00), # per kg
+        ("eggs", 0.15),  # per egg
+        ("milk", 1.00),  # per L
+        ("bread", 1.50), # per loaf
         ("dairy", 0.75),
-        ("produce", 0.50),
+        ("produce", 0.30),
         ("bakery", 1.00),
-        ("beverages", 0.50),
+        ("beverages", 0.40),
         ("frozen", 1.50),
-        ("pantry", 0.75),
+        ("pantry", 0.50),
     ]
 
     # Common "fake discount" products (often always on "sale")
@@ -107,6 +120,11 @@ class DealQualityService:
         "wonder bread",
         "pain wonder",
         "st-hubert",
+        "olymel",
+        "lafleur",
+        "p\'tit québec",
+        "kraft dinner",
+        "kd",
     ]
 
     def __init__(self):
@@ -181,8 +199,8 @@ class DealQualityService:
             flags.append("Promotional marketing text in sale info")
 
         # 3. Price reasonableness check
-        unit = deal.get("unit", "kg")
-        min_price = self._get_minimum_believable_price(category, unit)
+        unit = str(deal.get("unit", "kg")).lower()
+        min_price = self._get_minimum_believable_price(category + " " + name, unit)
         if price < min_price:
             adjustments["suspicious_price"] = -25
             score -= 25
@@ -241,7 +259,7 @@ class DealQualityService:
             quality = DealQuality.GOOD
         elif score >= 45:
             quality = DealQuality.AVERAGE
-        elif score >= 25:
+        elif score >= 30:
             quality = DealQuality.POOR
         else:
             quality = DealQuality.NOISE
@@ -262,22 +280,61 @@ class DealQualityService:
         Get minimum believable price for a category, adjusted for unit.
         """
         category_lower = category.lower()
-        base_price = 0.50  # Default minimum
+        base_price = 0.40  # Default minimum
 
         for cat_key, min_p in self.MIN_BELIEVABLE_PRICES:
             if cat_key in category_lower:
                 base_price = min_p
                 break
 
-        # Adjust for unit (reference is kg)
+        # Adjust for unit
+        if "egg" in category_lower:
+            # Base price is per egg
+            if "12" in unit or "doz" in unit or "each" in unit: # Default to dozen for each if egg
+                return base_price * 12
+            if "18" in unit:
+                return base_price * 18
+            return base_price
+
+        if any(kw in category_lower for kw in ["butter", "beurre", "margarin"]):
+            if "454" in unit or "each" in unit:
+                return 2.95 # Hardcoded standard minimum for 454g
+
+        # Reference is kg for most things
         if unit == "lb":
             return base_price * 0.453592
         elif unit == "100g":
             return base_price / 10.0
         elif unit == "g":
             return base_price / 1000.0
+        elif unit == "ml":
+            return base_price / 1000.0
+        elif unit == "L":
+            return base_price
 
         return base_price
+
+    def detect_repetitive_prices(self, deals: List[Dict[str, Any]]) -> List[str]:
+        """
+        Detects if a batch of deals has suspiciously repetitive prices.
+        If many deals have the exact same price (e.g. $1.00), it might be a scraping error.
+        """
+        if len(deals) < 10:
+            return []
+
+        price_counts = {}
+        for d in deals:
+            p = d.get("price", 0)
+            if p > 0:
+                price_counts[p] = price_counts.get(p, 0) + 1
+
+        flags = []
+        for price, count in price_counts.items():
+            # If more than 40% of deals have the same price, and it's more than 5 items
+            if count > 5 and count / len(deals) > 0.4:
+                flags.append(f"Suspiciously repetitive price: {count} items at ${price:.2f}")
+
+        return flags
 
     def _calculate_confidence(self, deal: Dict[str, Any], flags: List[str]) -> float:
         """Calculate confidence in the quality assessment."""
