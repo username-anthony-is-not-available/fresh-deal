@@ -126,5 +126,6 @@ class IgaScraper(BaseScraper):
             "unit": unit,
             "store": self.STORE_NAME,
             "image_url": image_url,
-            "category": self._categorize_product(name)
+            "category": self._categorize_product(name),
+            "sale_info": price_element.text.strip() if price_element else None
         }

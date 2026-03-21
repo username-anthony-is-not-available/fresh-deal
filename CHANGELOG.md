@@ -15,6 +15,12 @@
 - **Base Scraper Utilities**: Added robust shared utilities to `BaseScraper` for cookie consent handling, automated scrolling, and standardized debug artifact collection.
 - **Bilingual Date Parsing**: Improved flyer date parsing to support both English and French month names common in Quebec grocery flyers.
 - **Product Categorization**: Expanded keyword mapping for automatic product categorization with improved accuracy.
+- **Fresh-Deal Enhancement (Part 8)**:
+    - Enriched `Deal` model with `image_url` and `sale_info` for better user context and visual experience.
+    - Implemented `PriceRecord` model to track historical price data for products at specific stores.
+    - Integrated price history into `ScraperAgent` and `DealQualityService` to improve deal quality assessment and detect "fake" sales.
+    - Updated all major store scrapers (Walmart, Metro, Provigo, Maxi, IGA, Super C) to extract product images and detailed sale descriptions.
+    - Enhanced frontend `DealCard` to display product images and raw sale text.
 
 ### Fixed
 - Corrected `AsyncSession` type hinting and usage in `ScraperAgent` to ensure full asynchronous compatibility.

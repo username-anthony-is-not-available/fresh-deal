@@ -523,6 +523,8 @@ async def list_deals(
             "loyalty_program": deal.loyalty_program,
             "loyalty_points": deal.loyalty_points,
             "is_stale": store.is_stale,
+            "image_url": deal.image_url,
+            "sale_info": deal.sale_info,
         }
 
         # Calculate effective price for sorting and display
