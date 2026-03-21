@@ -43,6 +43,7 @@ from app.schemas import (
 from app.models.all_models import PantryItem
 from app.services.pantry_service import PantryService
 from app.services.substitution_service import substitution_service
+from app.services.scraper_health_service import ScraperHealthService
 
 router = APIRouter()
 
@@ -465,6 +466,28 @@ async def get_scraper_status(session: AsyncSession = Depends(get_async_session))
         }
         for store in stores
     ]
+
+
+@router.get("/admin/scrapers/health")
+async def get_scrapers_health(
+    days: int = 7, session: AsyncSession = Depends(get_async_session)
+):
+    """
+    Provides detailed health metrics for all scrapers based on logs.
+    """
+    health_service = ScraperHealthService(session)
+    return await health_service.get_store_health_metrics(days=days)
+
+
+@router.get("/admin/scrapers/health/summary")
+async def get_scrapers_health_summary(
+    session: AsyncSession = Depends(get_async_session)
+):
+    """
+    Provides a high-level summary of the entire scraping system health.
+    """
+    health_service = ScraperHealthService(session)
+    return await health_service.get_system_health_summary()
 
 
 @router.get("/deals")

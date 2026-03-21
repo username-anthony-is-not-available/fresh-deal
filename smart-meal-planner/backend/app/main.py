@@ -20,6 +20,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from app.scheduled_jobs import run_scheduled_scrape
+from app.tasks import cleanup_old_data_task
 import os
 
 
@@ -61,6 +62,10 @@ async def lifespan(app: FastAPI):
             f"Invalid CRON schedule '{cron_schedule_str}', falling back to default '0 6 * * *'. Error: {e}"
         )
         scheduler.add_job(run_scheduled_scrape, "cron", hour=6, minute=0)
+
+    # Also add the weekly cleanup task
+    scheduler.add_job(cleanup_old_data_task, "cron", day_of_week="sun", hour=0, minute=0)
+
     scheduler.start()
 
     yield

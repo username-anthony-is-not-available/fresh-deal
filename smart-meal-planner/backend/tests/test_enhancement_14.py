@@ -93,4 +93,4 @@ def test_enhanced_unit_extraction():
     assert scraper._extract_unit("Steak par kg") == "kg"
     assert scraper._extract_unit("Yogurt 100 g") == "100g"
     assert scraper._extract_unit("Milk 1L") == "L"
-    assert scraper._extract_unit("Eggs 12 pack") == "each"
+    assert scraper._extract_unit("Eggs 12 pack") == "pack"

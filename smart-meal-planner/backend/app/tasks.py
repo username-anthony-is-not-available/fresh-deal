@@ -4,7 +4,7 @@ from sqlmodel import Session, select
 from sqlalchemy import func
 from app.core.db import engine, async_engine
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.models.all_models import User, MealPlan, Store, Deal
+from app.models.all_models import User, MealPlan, Store, Deal, ScraperLog
 from app.agents.planner_agent import MealPlannerAgent
 from app.agents.scraper_agent import ScraperAgent
 from app.services.pantry_service import PantryService
@@ -63,6 +63,41 @@ def scrape_task(
                 return {"error": str(e)}
 
     return loop.run_until_complete(run_scrape())
+
+
+from sqlalchemy import delete
+
+@shared_task
+def cleanup_old_data_task():
+    """
+    Task to prune old database records to maintain performance.
+    - Deletes ScraperLog entries older than 30 days.
+    - Deletes expired Deal entries older than 14 days.
+    """
+    with Session(engine) as session:
+        try:
+            now = datetime.now(timezone.utc)
+            log_cutoff = now - timedelta(days=30)
+            deal_cutoff = now.date() - timedelta(days=14)
+
+            # Bulk Prune ScraperLogs
+            log_del_stmt = delete(ScraperLog).where(ScraperLog.timestamp < log_cutoff)
+            log_result = session.execute(log_del_stmt)
+            logs_deleted = log_result.rowcount
+
+            # Bulk Prune expired Deals
+            deal_del_stmt = delete(Deal).where(Deal.valid_until < deal_cutoff)
+            deal_result = session.execute(deal_del_stmt)
+            deals_deleted = deal_result.rowcount
+
+            session.commit()
+            return {
+                "status": "Success",
+                "logs_deleted": logs_deleted,
+                "deals_deleted": deals_deleted,
+            }
+        except Exception as e:
+            return {"error": str(e)}
 
 
 @shared_task
