@@ -2,7 +2,6 @@ import pytest
 from unittest.mock import patch, AsyncMock
 from app.agents.scraper_agent import ScraperAgent
 from sqlalchemy.ext.asyncio import AsyncSession
-import asyncio
 
 @pytest.mark.asyncio
 async def test_scraper_agent_notifies_on_direct_failure():

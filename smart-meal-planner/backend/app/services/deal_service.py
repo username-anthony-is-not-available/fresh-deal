@@ -1,7 +1,7 @@
 
 from sqlmodel import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.models.all_models import Deal, Product, Store
+from app.models.all_models import Deal
 from sqlalchemy.orm import selectinload
 from typing import List, Dict, Any
 from datetime import datetime, timezone

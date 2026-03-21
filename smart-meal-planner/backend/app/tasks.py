@@ -1,11 +1,10 @@
 import json
 from celery import shared_task
-from app.celery_app import celery_app
 from sqlmodel import Session, select
 from sqlalchemy import func
 from app.core.db import engine, async_engine
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.models.all_models import User, MealPlan, Store, Product, Deal
+from app.models.all_models import User, MealPlan, Store, Deal
 from app.agents.planner_agent import MealPlannerAgent
 from app.agents.scraper_agent import ScraperAgent
 from app.services.pantry_service import PantryService

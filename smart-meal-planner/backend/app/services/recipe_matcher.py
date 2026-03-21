@@ -1,8 +1,7 @@
 
-from typing import List, Dict, Any, Optional
+from typing import List, Dict
 from sqlmodel import Session, select, func, col
-from sqlalchemy.orm import selectinload
-from app.models.all_models import Recipe, RecipeIngredient, Deal
+from app.models.all_models import Recipe, RecipeIngredient
 
 class RecipeMatcher:
     def __init__(self, session: Session):

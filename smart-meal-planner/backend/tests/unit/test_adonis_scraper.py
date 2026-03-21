@@ -1,8 +1,7 @@
 
 import pytest
 from app.agents.scrapers.adonis_scraper import AdonisScraper
-from unittest.mock import patch, MagicMock
-import asyncio
+from unittest.mock import patch
 
 @pytest.mark.asyncio
 async def test_adonis_scraper_mock():

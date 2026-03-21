@@ -3,7 +3,6 @@ from unittest.mock import AsyncMock, MagicMock
 from playwright.async_api import Page
 from app.agents.scrapers.iga_scraper import IgaScraper
 import os
-from bs4 import BeautifulSoup
 
 @pytest.mark.asyncio
 async def test_iga_scraper_parsing_logic():

@@ -405,7 +405,7 @@ class FlippScraper:
                 CANADIAN_STORES[s].name for s in self.stores if s in CANADIAN_STORES
             )
         
-        print(f"Starting Flipp scraper...")
+        print("Starting Flipp scraper...")
         print(f"Location: {self.postal_code}")
         print(f"Stores: {store_names}")
         print(f"Search terms: {len(terms)}")
@@ -433,7 +433,7 @@ class FlippScraper:
         # Deduplicate and limit
         final_items = self.items[:limit]
         
-        print(f"\nScraping complete!")
+        print("\nScraping complete!")
         print(f"Total unique items: {len(final_items)}")
         
         # Summary by store

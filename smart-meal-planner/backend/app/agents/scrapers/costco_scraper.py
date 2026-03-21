@@ -2,7 +2,6 @@ from playwright.async_api import Page
 from typing import List, Dict, Any, Optional
 from .base_scraper import BaseScraper
 from bs4 import BeautifulSoup
-import re
 
 class CostcoScraper(BaseScraper):
     """

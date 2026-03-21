@@ -3,7 +3,7 @@ import json
 import logging
 from typing import List, Dict, Any
 from sqlalchemy.orm import Session
-from sqlmodel import Session, select
+from sqlmodel import Session
 from app.models.all_models import Recipe, RecipeIngredient
 from app.core.config import settings
 

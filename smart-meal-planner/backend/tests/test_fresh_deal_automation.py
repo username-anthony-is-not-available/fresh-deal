@@ -1,13 +1,12 @@
 import pytest
 import pytest_asyncio
 from datetime import datetime, timezone, timedelta
-from sqlmodel import Session, SQLModel, create_engine, select
+from sqlmodel import Session, SQLModel
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from app.models.all_models import Store, User
 from app.tasks import generate_meal_plan_task
 from app.agents.scraper_agent import ScraperAgent
 from unittest.mock import patch, MagicMock
-import asyncio
 
 # Setup for async tests
 async_engine = create_async_engine("sqlite+aiosqlite:///:memory:")

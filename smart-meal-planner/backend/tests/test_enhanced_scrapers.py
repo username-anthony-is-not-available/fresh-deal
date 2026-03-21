@@ -1,10 +1,8 @@
 import pytest
 from playwright.async_api import Page
-from typing import List, Dict, Any
 from app.agents.scrapers.costco_scraper import CostcoScraper
 from app.agents.scrapers.adonis_scraper import AdonisScraper
 from unittest.mock import AsyncMock, MagicMock, patch
-from bs4 import BeautifulSoup
 
 @pytest.mark.asyncio
 async def test_costco_scraper_parsing_logic():

@@ -1,11 +1,6 @@
-import asyncio
-import httpx
-from sqlmodel import select
 from app.core.db import get_async_session
 from app.agents.scraper_agent import ScraperAgent
-from app.models.all_models import Store
 import logging
-from datetime import datetime, timezone
 from app.core.config import settings
 from app.services.notification_service import NotificationService
 

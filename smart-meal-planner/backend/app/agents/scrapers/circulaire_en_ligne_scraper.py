@@ -17,7 +17,7 @@ import re
 import logging
 from typing import List, Dict, Any, Optional
 from bs4 import BeautifulSoup
-from datetime import datetime, date
+from datetime import datetime
 from .base_scraper import BaseScraper
 
 logger = logging.getLogger(__name__)
@@ -90,7 +90,7 @@ class CirculaireEnLigneScraper(BaseScraper):
         This page is specifically mentioned in the Reddit thread as a good
         source of curated, text-based deal information.
         """
-        logger.info(f"Scraping best deals from circulaire-en-ligne.ca")
+        logger.info("Scraping best deals from circulaire-en-ligne.ca")
 
         html = await self._fetch_page(self.BEST_DEALS_URL)
         if not html:

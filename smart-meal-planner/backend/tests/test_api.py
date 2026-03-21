@@ -1,14 +1,11 @@
-import os
 import pytest
-import asyncio
-from fastapi.testclient import TestClient
 from httpx import AsyncClient, ASGITransport
-from sqlmodel import Session, SQLModel, create_engine
+from sqlmodel import SQLModel
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 from sqlmodel.pool import StaticPool
 from app.main import app
-from app.core.db import get_async_session, get_session
+from app.core.db import get_async_session
 from app.models.all_models import User, Recipe, RecipeFeedback
 from app.api.auth_endpoints import get_current_user
 from sqlmodel import select

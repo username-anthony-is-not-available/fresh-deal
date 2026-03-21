@@ -1,7 +1,6 @@
 
 import pytest
-import json
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 from sqlmodel import Session, SQLModel, create_engine
 from app.agents.planner_agent import MealPlannerAgent
 from app.models.all_models import Recipe, User

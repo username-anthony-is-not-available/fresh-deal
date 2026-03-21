@@ -1,6 +1,5 @@
 
 import pytest
-import asyncio
 from unittest.mock import MagicMock, AsyncMock
 
 from app.agents.flipp_scraper import FlippScraper

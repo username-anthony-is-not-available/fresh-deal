@@ -761,14 +761,14 @@ async def get_feedback_summary(
     # Get average rating for recipes and meal plans
     recipe_avg_result = await session.execute(
         select(func.avg(Feedback.rating)).where(
-            Feedback.user_id == current_user.id, Feedback.recipe_id != None
+            Feedback.user_id == current_user.id, Feedback.recipe_id.is_not(None)
         )
     )
     recipe_avg = recipe_avg_result.scalar()
 
     meal_plan_avg_result = await session.execute(
         select(func.avg(Feedback.rating)).where(
-            Feedback.user_id == current_user.id, Feedback.meal_plan_id != None
+            Feedback.user_id == current_user.id, Feedback.meal_plan_id.is_not(None)
         )
     )
     meal_plan_avg = meal_plan_avg_result.scalar()
