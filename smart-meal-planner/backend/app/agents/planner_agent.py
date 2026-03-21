@@ -35,7 +35,7 @@ class MealPlannerAgent:
             Feedback.recipe_id,
             func.avg(Feedback.rating).label("avg_fb"),
             func.count(Feedback.id).label("count_fb")
-        ).where(Feedback.recipe_id != None).group_by(Feedback.recipe_id).subquery()
+        ).where(Feedback.recipe_id.is_not(None)).group_by(Feedback.recipe_id).subquery()
 
         statement = (
             select(

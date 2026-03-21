@@ -39,5 +39,23 @@ export default defineConfig([
     languageOptions: {
         globals: globals.node
     }
+  },
+  // Vitest global support
+  {
+    files: ['src/**/*.test.{js,jsx}', 'src/test/setup.js'],
+    languageOptions: {
+      globals: {
+        ...globals.browser,
+        ...globals.jest, // Vitest uses jest-compatible globals
+        vi: 'readonly',
+        describe: 'readonly',
+        it: 'readonly',
+        expect: 'readonly',
+        beforeEach: 'readonly',
+        afterEach: 'readonly',
+        beforeAll: 'readonly',
+        afterAll: 'readonly'
+      }
+    }
   }
 ])
