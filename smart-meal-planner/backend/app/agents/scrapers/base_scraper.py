@@ -6,7 +6,6 @@ import re
 from playwright.async_api import async_playwright, Playwright, Page
 from datetime import date, datetime
 from bs4 import BeautifulSoup
-import logging
 
 try:
     # playwright-stealth exposes helper functions, not a Stealth class.
@@ -263,9 +262,9 @@ class BaseScraper(ABC):
         # Translate French months to English for strptime
         french_to_english = {
             "janv.": "jan", "févr.": "feb", "mars": "mar", "avr.": "apr", "mai": "may", "juin": "jun",
-            "juil.": "jul", "août": "aug", "sept.": "sep", "oct.": "oct", "nov.": "nov", "déc.": "dec",
+            "juil.": "jul", "août": "august", "sept.": "sep", "oct.": "oct", "nov.": "nov", "déc.": "dec",
             "janvier": "january", "février": "february", "avril": "april", "juillet": "july",
-            "août": "august", "septembre": "september", "octobre": "october", "novembre": "november", "décembre": "december"
+            "septembre": "september", "octobre": "october", "novembre": "november", "décembre": "december"
         }
         for fr, en in french_to_english.items():
             date_text = date_text.replace(fr, en)

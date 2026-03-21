@@ -1,9 +1,7 @@
 import pytest
 import os
-import asyncio
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 from playwright.async_api import Page
-from bs4 import BeautifulSoup
 
 from app.agents.scrapers.walmart_scraper import WalmartScraper
 from app.agents.scrapers.iga_scraper import IgaScraper
@@ -12,7 +10,6 @@ from app.agents.scrapers.maxi_scraper import MaxiScraper
 from app.agents.scrapers.provigo_scraper import ProvigoScraper
 from app.agents.scrapers.super_c_scraper import SuperCScraper
 from app.agents.scrapers.costco_scraper import CostcoScraper
-from app.agents.scrapers.base_scraper import BaseScraper
 
 # Constants for paths
 SNAPSHOTS_DIR = os.path.join(os.path.dirname(__file__), "e2e", "snapshots")

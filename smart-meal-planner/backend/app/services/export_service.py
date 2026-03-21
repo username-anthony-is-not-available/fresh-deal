@@ -3,10 +3,9 @@ from reportlab.lib.pagesizes import letter
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
-from datetime import datetime, time, timedelta, date
+from datetime import datetime, time, timedelta
 import io
-import json
-from typing import Dict, Any, List
+from typing import Dict, Any
 
 class ExportService:
     @staticmethod

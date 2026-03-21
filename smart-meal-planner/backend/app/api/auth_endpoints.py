@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-from sqlmodel import Session, select
+from sqlmodel import select
 from jose import JWTError, jwt
 from app.core.config import settings
 from app.core.db import get_async_session

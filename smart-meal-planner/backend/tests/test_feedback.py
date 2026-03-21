@@ -2,11 +2,9 @@
 import pytest
 import pytest_asyncio
 from httpx import AsyncClient
-from sqlmodel import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.all_models import User, Recipe, MealPlan, Feedback
 from app.core.security import create_access_token
-from .test_api import session_fixture, client_fixture
 
 @pytest_asyncio.fixture(name="test_user")
 async def user_fixture(session: AsyncSession):

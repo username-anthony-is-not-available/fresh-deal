@@ -1,4 +1,3 @@
-import json
 from app.services.export_service import ExportService
 
 def test_ical_generation():

@@ -141,20 +141,6 @@ class MealPlan(SQLModel, table=True):
     feedbacks: List["Feedback"] = Relationship(back_populates="meal_plan")
 
 
-class Feedback(SQLModel, table=True):
-    id: Optional[int] = Field(default=None, primary_key=True)
-    user_id: int = Field(foreign_key="user.id")
-    recipe_id: Optional[int] = Field(default=None, foreign_key="recipe.id")
-    meal_plan_id: Optional[int] = Field(default=None, foreign_key="mealplan.id")
-    rating: int = Field(ge=1, le=5)
-    comment: Optional[str] = None
-    created_at: datetime = Field(default_factory=utc_now)
-
-    user: "User" = Relationship(back_populates="feedbacks")
-    recipe: Optional["Recipe"] = Relationship(back_populates="feedbacks")
-    meal_plan: Optional["MealPlan"] = Relationship(back_populates="feedbacks")
-
-
 class RecipeRating(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     user_id: int = Field(foreign_key="user.id")

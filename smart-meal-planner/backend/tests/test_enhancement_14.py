@@ -3,10 +3,8 @@ import pytest_asyncio
 from app.agents.scraper_agent import ScraperAgent
 from app.agents.scrapers.base_scraper import BaseScraper
 from app.models.all_models import Store, Product, Deal, ScraperLog
-from sqlmodel import SQLModel, create_engine, select
+from sqlmodel import SQLModel, select
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from datetime import date, timedelta
-import asyncio
 
 # In-memory SQLite database for testing
 async_engine = create_async_engine("sqlite+aiosqlite:///:memory:")

@@ -1,7 +1,7 @@
 import pytest
 import json
 from httpx import AsyncClient, ASGITransport
-from sqlmodel import Session, SQLModel, create_engine
+from sqlmodel import SQLModel
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 from sqlmodel.pool import StaticPool

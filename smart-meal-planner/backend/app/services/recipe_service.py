@@ -1,7 +1,7 @@
 
 from sqlmodel import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.models.all_models import Recipe, RecipeIngredient, RecipeRating
+from app.models.all_models import Recipe
 from sqlalchemy.orm import selectinload
 from typing import List, Dict, Any
 import json

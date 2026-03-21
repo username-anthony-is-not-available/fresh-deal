@@ -1,5 +1,4 @@
 
-import pytest
 from app.services.recipe_service import RecipeService
 
 def test_scale_ingredients_double():
