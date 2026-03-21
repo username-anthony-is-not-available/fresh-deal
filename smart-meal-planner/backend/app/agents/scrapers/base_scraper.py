@@ -55,10 +55,11 @@ class BaseScraper(ABC):
         """
         pass
 
-    async def scrape(self, limit: int = 50) -> List[Dict[str, Any]]:
+    async def scrape(self, limit: int = 50) -> tuple[List[Dict[str, Any]], Optional[str]]:
         """
         The main method that handles browser setup, teardown, and proxy rotation.
         It calls the _scrape_page method where the actual scraping logic resides.
+        Returns a tuple of (deals, proxy_used).
         """
         proxy = self.proxy_manager.get_proxy()
 
@@ -69,15 +70,34 @@ class BaseScraper(ABC):
                 context = await self._get_context(browser)
                 page = await self._get_page(context)
 
+                # Check for Incapsula block immediately after loading
+                # (Assuming the implementation will navigate to the URL)
+                # Subclasses should call this check.
+
                 await self._simulate_mouse_movement(page)
                 deals = await self._scrape_page(page, limit)
+
+                # Check if it was blocked at any point
+                if await self._check_incapsula_block(page):
+                    raise Exception("Anti-bot detection triggered (Incapsula)")
+
                 await context.storage_state(path=self.storage_state_path)
-                return deals
+                return deals, proxy
             except Exception as e:
-                print(f"Scraping failed with proxy {proxy}: {e}")
+                error_msg = str(e)
+                print(f"Scraping failed with proxy {proxy}: {error_msg}")
+
+                if "Incapsula" in error_msg or "Anti-bot" in error_msg:
+                    # Specific handling for bot detection - blacklist proxy longer if possible
+                    if proxy:
+                        self.proxy_manager.blacklist_proxy(proxy)
+                    raise Exception(f"Bot detection triggered: {error_msg}")
+
                 if proxy:
+                    # General failure, still blacklist proxy but might be structure change
                     self.proxy_manager.blacklist_proxy(proxy)
-                return []
+
+                raise e
             finally:
                 if browser:
                     await browser.close()

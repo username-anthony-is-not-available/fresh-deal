@@ -72,19 +72,27 @@ class DealQualityService:
         r"final sale",
         r"solde monstre",
         r"monster sale",
+        r"aubaine",
+        r"prix imbattable",
+        r"bas prix de tous les jours",
+        r"everyday low price",
+        r"economisez gros",
+        r"rabais exceptionnel",
     ]
 
-    # Suspicious price patterns (too good to be true)
-    MIN_BELIEVABLE_PRICES = {
-        "meat": 2.00,  # per kg minimum
-        "seafood": 5.00,
-        "dairy": 0.50,
-        "produce": 0.30,
-        "bakery": 0.50,
-        "beverages": 0.25,
-        "frozen": 1.00,
-        "pantry": 0.50,
-    }
+    # Suspicious price patterns (too good to be true) - Base prices per kg/unit
+    # Ordered from most specific to least specific
+    MIN_BELIEVABLE_PRICES = [
+        ("beef", 8.00),  # per kg
+        ("seafood", 7.00),
+        ("meat", 4.00),  # per kg minimum (e.g., pork/chicken)
+        ("dairy", 0.75),
+        ("produce", 0.50),
+        ("bakery", 1.00),
+        ("beverages", 0.50),
+        ("frozen", 1.50),
+        ("pantry", 0.75),
+    ]
 
     # Common "fake discount" products (often always on "sale")
     PERPETUAL_SALE_PRODUCTS = [
@@ -94,6 +102,11 @@ class DealQualityService:
         "saucisse à hot dog",
         "pizza combo",
         "combo pizza",
+        "dempster",
+        "villaggio",
+        "wonder bread",
+        "pain wonder",
+        "st-hubert",
     ]
 
     def __init__(self):
@@ -168,7 +181,8 @@ class DealQualityService:
             flags.append("Promotional marketing text in sale info")
 
         # 3. Price reasonableness check
-        min_price = self._get_minimum_believable_price(category)
+        unit = deal.get("unit", "kg")
+        min_price = self._get_minimum_believable_price(category, unit)
         if price < min_price:
             adjustments["suspicious_price"] = -25
             score -= 25
@@ -243,15 +257,27 @@ class DealQualityService:
             adjustments=adjustments,
         )
 
-    def _get_minimum_believable_price(self, category: str) -> float:
-        """Get minimum believable price for a category."""
+    def _get_minimum_believable_price(self, category: str, unit: str = "kg") -> float:
+        """
+        Get minimum believable price for a category, adjusted for unit.
+        """
         category_lower = category.lower()
+        base_price = 0.50  # Default minimum
 
-        for cat_key, min_price in self.MIN_BELIEVABLE_PRICES.items():
+        for cat_key, min_p in self.MIN_BELIEVABLE_PRICES:
             if cat_key in category_lower:
-                return min_price
+                base_price = min_p
+                break
 
-        return 0.25  # Default minimum
+        # Adjust for unit (reference is kg)
+        if unit == "lb":
+            return base_price * 0.453592
+        elif unit == "100g":
+            return base_price / 10.0
+        elif unit == "g":
+            return base_price / 1000.0
+
+        return base_price
 
     def _calculate_confidence(self, deal: Dict[str, Any], flags: List[str]) -> float:
         """Calculate confidence in the quality assessment."""

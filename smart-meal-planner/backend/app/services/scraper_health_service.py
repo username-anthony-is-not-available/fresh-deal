@@ -96,3 +96,29 @@ class ScraperHealthService:
             "critical_scrapers": critical_stores,
             "timestamp": datetime.now(timezone.utc)
         }
+
+    async def should_skip_direct_scrape(self, store_name: str) -> bool:
+        """
+        Circuit breaker: returns True if the direct scraper for this store
+        has been failing consistently, suggesting we should skip it and use fallbacks.
+        """
+        since_date = datetime.now(timezone.utc) - timedelta(hours=24)
+        stmt = (
+            select(ScraperLog)
+            .where(
+                ScraperLog.store_name == store_name,
+                ScraperLog.scraper_type == "direct",
+                ScraperLog.timestamp >= since_date
+            )
+            .order_by(desc(ScraperLog.timestamp))
+            .limit(3)
+        )
+
+        result = await self.session.execute(stmt)
+        recent_logs = result.scalars().all()
+
+        if len(recent_logs) < 3:
+            return False
+
+        # If all 3 most recent direct attempts failed, trigger circuit breaker
+        return all(log.status == "failure" for log in recent_logs)
