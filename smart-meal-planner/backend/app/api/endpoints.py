@@ -522,8 +522,6 @@ async def list_deals(
             "valid_until": deal.valid_until,
             "loyalty_program": deal.loyalty_program,
             "loyalty_points": deal.loyalty_points,
-            "quality_score": deal.quality_score,
-            "quality_level": deal.quality_level,
             "is_stale": store.is_stale,
         }
 
