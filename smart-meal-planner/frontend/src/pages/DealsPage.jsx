@@ -11,11 +11,7 @@ const DealsPage = () => {
   const [loyaltyFilter, setLoyaltyFilter] = useState('');
   const [qualityFilter, setQualityFilter] = useState('');
 
-  useEffect(() => {
-    fetchDeals();
-  }, [sortBy]);
-
-  const fetchDeals = async () => {
+  const fetchDeals = React.useCallback(async () => {
     try {
       const params = new URLSearchParams({
         sort_by: sortBy,
@@ -28,7 +24,11 @@ const DealsPage = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [sortBy]);
+
+  useEffect(() => {
+    fetchDeals();
+  }, [fetchDeals]);
 
   const seedData = async () => {
     try {

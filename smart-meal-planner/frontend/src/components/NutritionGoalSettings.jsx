@@ -1,11 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
 import { Save } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { getNutritionGoal, createOrUpdateNutritionGoal } from '../services/nutritionService';
 
 const NutritionGoalSettings = () => {
-    const { t } = useTranslation();
     const [formData, setFormData] = useState({
         goal_type: 'maintenance',
         target_calories: '',
@@ -27,7 +25,7 @@ const NutritionGoalSettings = () => {
                         target_fats: response.target_fats || '',
                     });
                 }
-            } catch (error) {
+            } catch {
                 // It's okay if it fails, means no goal is set yet
                 console.log("No existing nutrition goal found.");
             }
