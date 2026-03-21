@@ -19,8 +19,10 @@ async def test_adonis_scraper_mock():
         ]
 
         scraper = AdonisScraper(postal_code="H4T1V6")
-        deals = await scraper.scrape(limit=10, search_terms=["cheese"])
+        deals_result = await scraper.scrape(limit=10, search_terms=["cheese"])
+        deals, proxy = deals_result
 
         assert len(deals) == 1
         assert deals[0]["name"] == "Feta Cheese"
         assert deals[0]["store"] == "Adonis"
+        assert proxy is None

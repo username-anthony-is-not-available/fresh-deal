@@ -88,6 +88,8 @@ class Deal(SQLModel, table=True):
     loyalty_points: Optional[int] = None
     quality_score: Optional[float] = Field(default=None)
     quality_level: Optional[str] = Field(default=None)
+    image_url: Optional[str] = Field(default=None)
+    sale_info: Optional[str] = Field(default=None)
 
     product: Product = Relationship(back_populates="deals")
     store: Store = Relationship(link_model=None)  # Simple relationship
@@ -239,4 +241,12 @@ class ScraperLog(SQLModel, table=True):
     items_scraped: int = Field(default=0)
     duration_seconds: float = Field(default=0.0)
     error_message: Optional[str] = None
+    timestamp: datetime = Field(default_factory=utc_now)
+
+
+class PriceRecord(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    product_id: int = Field(foreign_key="product.id", index=True)
+    store_id: int = Field(foreign_key="store.id", index=True)
+    price: float
     timestamp: datetime = Field(default_factory=utc_now)
