@@ -1,38 +1,8 @@
-import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import React from "react";
+import { Link } from "react-router-dom";
 import { ChefHat, ShoppingBag, DollarSign } from "lucide-react";
-import api from "../services/api";
 
 const HomePage = () => {
-  const navigate = useNavigate();
-  const [formData, setFormData] = useState({
-    postal_code: "H4T 1V6",
-    household_size: 4,
-    dietary_preferences: "None",
-  });
-  const [loading, setLoading] = useState(false);
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-
-    try {
-      // Seed data first to ensure we have products
-      await api.post("/data/seed", {});
-
-      const user = await api.post("/onboard", formData);
-      if (user) {
-        // Store user ID in localStorage for simple session management
-        localStorage.setItem("user_id", user.id);
-        navigate("/plan");
-      }
-    } catch (error) {
-      console.error("Error onboarding:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   return (
     <div className="max-w-4xl mx-auto">
       <div className="text-center mb-12">

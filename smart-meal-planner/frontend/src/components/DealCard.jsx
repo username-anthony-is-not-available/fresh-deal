@@ -2,11 +2,12 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import SavingsBadge from './SavingsBadge';
 import LoyaltyBadge from './LoyaltyBadge';
-import { Tag } from 'lucide-react';
+import QualityBadge from './QualityBadge';
+import { Tag, AlertTriangle } from 'lucide-react';
 
 const DealCard = ({ deal }) => {
   const { t } = useTranslation();
-  const { product, store, loyalty_program, loyalty_points, effective_price, image_url, sale_info } = deal;
+  const { product, store, loyalty_program, loyalty_points, effective_price, quality_level, quality_score, image_url, sale_info } = deal;
 
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow flex flex-col h-full">
@@ -21,6 +22,12 @@ const DealCard = ({ deal }) => {
         </div>
       )}
       <div className="p-4 flex-grow">
+        <div className="flex justify-between items-start mb-2">
+           <QualityBadge level={quality_level} score={quality_score} />
+           {quality_level === 'poor' && (
+             <AlertTriangle className="w-4 h-4 text-yellow-500" title="Possible quality issues detected" />
+           )}
+        </div>
         <div className="flex justify-between items-start">
           <div className="flex-1">
             <span className="text-xs text-gray-500 uppercase tracking-wider font-semibold">{product.category}</span>

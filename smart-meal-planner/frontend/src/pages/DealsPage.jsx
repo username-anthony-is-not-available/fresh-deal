@@ -9,12 +9,9 @@ const DealsPage = () => {
   const [filter, setFilter] = useState('');
   const [sortBy, setSortBy] = useState('');
   const [loyaltyFilter, setLoyaltyFilter] = useState('');
+  const [qualityFilter, setQualityFilter] = useState('');
 
-  useEffect(() => {
-    fetchDeals();
-  }, [sortBy]);
-
-  const fetchDeals = async () => {
+  const fetchDeals = React.useCallback(async () => {
     try {
       const params = new URLSearchParams({
         sort_by: sortBy,
@@ -27,7 +24,11 @@ const DealsPage = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [sortBy]);
+
+  useEffect(() => {
+    fetchDeals();
+  }, [fetchDeals]);
 
   const seedData = async () => {
     try {
@@ -42,7 +43,8 @@ const DealsPage = () => {
     const nameMatch = d.product.name.toLowerCase().includes(filter.toLowerCase());
     const categoryMatch = d.product.category.toLowerCase().includes(filter.toLowerCase());
     const loyaltyMatch = loyaltyFilter ? d.loyalty_program === loyaltyFilter : true;
-    return (nameMatch || categoryMatch) && loyaltyMatch;
+    const qualityMatch = qualityFilter ? d.quality_level === qualityFilter : true;
+    return (nameMatch || categoryMatch) && loyaltyMatch && qualityMatch;
   });
 
   return (
@@ -85,6 +87,17 @@ const DealsPage = () => {
              <option value="Scene+">Scene+</option>
              <option value="Moi">Moi</option>
              <option value="AIR MILES">AIR MILES</option>
+           </select>
+           <select
+             value={qualityFilter}
+             onChange={(e) => setQualityFilter(e.target.value)}
+             className="px-4 py-2 border border-gray-300 rounded-lg bg-white hover:bg-gray-50 text-gray-700"
+             aria-label="Filter by deal quality"
+           >
+             <option value="">All Qualities</option>
+             <option value="excellent">Excellent Deals</option>
+             <option value="good">Good Value</option>
+             <option value="average">Average</option>
            </select>
         </div>
       </div>

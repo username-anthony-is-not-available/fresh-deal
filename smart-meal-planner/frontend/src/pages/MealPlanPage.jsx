@@ -66,8 +66,6 @@ const MealPlanPage = () => {
     { id: 'budget', name: 'Budget Expert (Llama 70B)' },
   ];
 
-  const dietaryOptions = ["vegetarian", "vegan", "gluten-free", "keto", "paleo"];
-
   const handleDietaryChange = (e) => {
     const { value, checked } = e.target;
     setDietaryPreferences(prev =>
@@ -93,10 +91,10 @@ const MealPlanPage = () => {
         delete data.days;
       }
       setPlan(data);
-    } catch (e) {
+      } catch (err) {
       // A 404 is an expected outcome for users without a plan yet.
       // We don't treat it as a render-blocking error.
-      if (e.response && e.response.status === 404) {
+        if (err.response && err.response.status === 404) {
         setPlan(null); // Ensure plan is null to show the generation view
       } else {
         // For other errors (500, network issues), show an error message.
@@ -151,7 +149,7 @@ const MealPlanPage = () => {
     try {
       await api.patch(`/users/${userId}`, { dietary_preferences: dietaryPreferences });
       showSuccessToast('Dietary preferences saved!');
-    } catch (error) {
+    } catch {
       showErrorToast('Failed to save preferences.');
     }
   };
@@ -172,7 +170,7 @@ const MealPlanPage = () => {
         showSuccessToast('Your new meal plan is ready!');
         setGenerating(false);
       }
-    } catch (e) {
+    } catch {
       setGenerating(false);
       // The interceptor will show the error toast.
     }
@@ -345,7 +343,7 @@ const MealPlanPage = () => {
 
       showSuccessToast(`${type} for ${day.day_name} has been regenerated!`);
 
-    } catch (err) {
+    } catch {
       showErrorToast(`Failed to regenerate meal. Please try again.`);
     } finally {
       setRegeneratingMeal(null);

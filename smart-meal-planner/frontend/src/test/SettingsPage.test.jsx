@@ -1,9 +1,8 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import SettingsPage from '../pages/SettingsPage';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import toast from 'react-hot-toast';
 import SettingsService from '../services/SettingsService';
 
 // Mock the services and hooks

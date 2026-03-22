@@ -45,11 +45,22 @@ class ScraperHealthService:
             avg_duration = sum(l.duration_seconds for l in logs) / total_runs
             total_items = sum(l.items_scraped for l in logs)
 
-            # Determine consecutive failures
+            # Determine consecutive failures and categorize them
             consecutive_failures = 0
+            error_categories = {}
             for l in logs:
                 if l.status == "failure":
                     consecutive_failures += 1
+                    msg = l.error_message or ""
+                    if "[TIMEOUT]" in msg:
+                        cat = "Timeout"
+                    elif "[BOT_BLOCK]" in msg:
+                        cat = "Bot Block"
+                    elif "[STRUCTURE]" in msg:
+                        cat = "Structure Change"
+                    else:
+                        cat = "General/Unknown"
+                    error_categories[cat] = error_categories.get(cat, 0) + 1
                 else:
                     break
 
@@ -69,6 +80,7 @@ class ScraperHealthService:
                 "status": status,
                 "consecutive_failures": consecutive_failures,
                 "total_runs": total_runs,
+                "error_breakdown": error_categories,
                 "last_error": logs[0].error_message if logs[0].status == "failure" else None
             })
 
