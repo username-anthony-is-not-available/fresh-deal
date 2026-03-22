@@ -7,10 +7,20 @@ import { Tag, AlertTriangle } from 'lucide-react';
 
 const DealCard = ({ deal }) => {
   const { t } = useTranslation();
-  const { product, store, loyalty_program, loyalty_points, effective_price, quality_level, quality_score } = deal;
+  const { product, store, loyalty_program, loyalty_points, effective_price, quality_level, quality_score, image_url, sale_info } = deal;
 
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow flex flex-col h-full">
+      {image_url && (
+        <div className="h-48 overflow-hidden bg-gray-100 flex items-center justify-center">
+          <img
+            src={image_url}
+            alt={product.name}
+            className="w-full h-full object-contain"
+            onError={(e) => { e.target.style.display = 'none'; }}
+          />
+        </div>
+      )}
       <div className="p-4 flex-grow">
         <div className="flex justify-between items-start mb-2">
            <QualityBadge level={quality_level} score={quality_score} />
@@ -45,6 +55,12 @@ const DealCard = ({ deal }) => {
           {effective_price < deal.price && (
             <div className="text-sm text-green-600 font-semibold mt-1">
               {t('effective_price')}: ${effective_price.toFixed(2)}
+            </div>
+          )}
+
+          {sale_info && (
+            <div className="mt-2 text-sm text-accent-700 bg-accent-50 px-2 py-1 rounded inline-block font-medium">
+              {sale_info}
             </div>
           )}
         </div>

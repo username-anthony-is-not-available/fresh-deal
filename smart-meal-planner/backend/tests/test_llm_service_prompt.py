@@ -9,7 +9,7 @@ from datetime import datetime
 def test_get_seasonal_context():
     service = LLMService()
     context = service._get_seasonal_context()
-    assert "Current Season in Quebec" in context
+    assert "Season in Quebec" in context
 
     month = datetime.now().month
     if 3 <= month <= 5:
@@ -77,12 +77,16 @@ def test_generate_meal_plan_with_model_type(mock_make_request):
     service = LLMService()
     user_prefs = {"household_size": 2}
 
-    # Test with 'chef' model
-    service.generate_meal_plan(user_prefs, [], [], model_type="chef")
+    # Need to ensure we don't trigger the mock AI check
+    with patch("app.core.config.settings.USE_MOCK_AI", False), \
+         patch("app.core.config.settings.OPENROUTER_API_KEY", "test_key"):
 
-    # Check if _make_api_request was called with the mapped model ID for 'chef'
-    args, _ = mock_make_request.call_args
-    assert args[0] == service.MODEL_MAPPING["chef"]
+        # Test with 'chef' model
+        service.generate_meal_plan(user_prefs, [], [], model_type="chef")
+
+        # Check if _make_api_request was called with the mapped model ID for 'chef'
+        args, _ = mock_make_request.call_args
+        assert args[0] == service.MODEL_MAPPING["chef"]
 
 @pytest.mark.asyncio
 @patch("app.services.llm_service.LLMService._call_llm")

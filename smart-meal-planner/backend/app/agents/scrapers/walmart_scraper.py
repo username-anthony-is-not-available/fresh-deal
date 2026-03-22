@@ -122,7 +122,8 @@ class WalmartScraper(BaseScraper):
                 "image_url": image_url,
                 "category": "Flyer", # Will be overridden in _scrape_page
                 "valid_from": valid_from,
-                "valid_until": valid_until
+                "valid_until": valid_until,
+                "sale_info": price_element.text.strip() if price_element else None
             }
         except (AttributeError, ValueError, TypeError) as e:
             logger.error(f"Error parsing deal element: {e}")

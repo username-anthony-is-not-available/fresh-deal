@@ -1,9 +1,9 @@
 import asyncio
 import time
 from typing import List, Dict, Any, Optional
-from sqlmodel import select
+from sqlmodel import select, desc
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.models.all_models import Store, Product, Deal, ScraperLog, User
+from app.models.all_models import Store, Product, Deal, ScraperLog, User, PriceRecord
 from app.agents.flipp_scraper import FlippScraper
 from app.core.config import settings
 from datetime import date, timedelta, datetime, timezone
@@ -290,11 +290,30 @@ class ScraperAgent:
             if original_price and original_price > price:
                 discount_pct = round(((original_price - price) / original_price) * 100)
 
+            # Fetch historical prices for quality scoring
+            hist_stmt = (
+                select(PriceRecord.price)
+                .where(PriceRecord.product_id == product.id, PriceRecord.store_id == store.id)
+                .order_by(desc(PriceRecord.timestamp))
+                .limit(5)
+            )
+            hist_result = await self.session.execute(hist_stmt)
+            historical_prices = hist_result.scalars().all()
+
             # Automated fresh-deal Enhancement: Score deal quality
-            quality_score = deal_quality_service.score_deal(deal_data)
+            quality_score = deal_quality_service.score_deal(deal_data, historical_prices=historical_prices)
             if quality_score.quality == DealQuality.NOISE:
                 logging.debug(f"Skipping deal '{product_name}' at {store_name} as it was identified as NOISE.")
                 continue
+
+            # Record price in history if it's new or different from last recorded
+            if not historical_prices or historical_prices[0] != price:
+                price_record = PriceRecord(
+                    product_id=product.id,
+                    store_id=store.id,
+                    price=price
+                )
+                self.session.add(price_record)
 
             valid_from = deal_data.get("valid_from", today)
             valid_until = deal_data.get("valid_until", today + timedelta(days=7))
@@ -316,6 +335,8 @@ class ScraperAgent:
                 loyalty_points=deal_data.get("loyalty_points"),
                 quality_score=quality_score.overall_score,
                 quality_level=quality_score.quality.value,
+                image_url=deal_data.get("image_url"),
+                sale_info=deal_data.get("sale_info"),
             )
             self.session.add(deal)
             existing_deals_cache[deal_key] = deal

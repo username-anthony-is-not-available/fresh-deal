@@ -225,4 +225,5 @@ class MaxiScraper(BaseScraper):
             "category": self._categorize_product(name),
             "loyalty_program": loyalty_program,
             "loyalty_points": loyalty_points,
+            "sale_info": price_element.get_text(separator=" ", strip=True) if price_element else None
         }
