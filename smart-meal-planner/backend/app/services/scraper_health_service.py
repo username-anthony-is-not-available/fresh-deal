@@ -1,5 +1,6 @@
 from typing import List, Dict, Any, Optional
 from sqlmodel import select, func, desc
+from sqlalchemy import delete
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.all_models import ScraperLog
 from datetime import datetime, timedelta, timezone
@@ -58,6 +59,10 @@ class ScraperHealthService:
                         cat = "Bot Block"
                     elif "[STRUCTURE]" in msg:
                         cat = "Structure Change"
+                    elif "[PROXY_FAIL]" in msg:
+                        cat = "Proxy Failure"
+                    elif "[RATE_LIMIT]" in msg:
+                        cat = "Rate Limited"
                     else:
                         cat = "General/Unknown"
                     error_categories[cat] = error_categories.get(cat, 0) + 1
@@ -134,3 +139,16 @@ class ScraperHealthService:
 
         # If all 3 most recent direct attempts failed, trigger circuit breaker
         return all(log.status == "failure" for log in recent_logs)
+
+    async def reset_store_circuit_breaker(self, store_name: str):
+        """
+        Resets the circuit breaker for a store by deleting recent failure logs.
+        """
+        since_date = datetime.now(timezone.utc) - timedelta(hours=24)
+        stmt = delete(ScraperLog).where(
+            ScraperLog.store_name == store_name,
+            ScraperLog.status == "failure",
+            ScraperLog.timestamp >= since_date
+        )
+        await self.session.execute(stmt)
+        await self.session.commit()
