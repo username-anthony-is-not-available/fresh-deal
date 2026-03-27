@@ -12,6 +12,7 @@ import RegisterPage from './pages/RegisterPage';
 import FavoritesPage from './pages/FavoritesPage';
 import RecipesPage from './pages/RecipesPage';
 import RecipeDetailPage from './pages/RecipeDetailPage';
+import PantryPage from './pages/PantryPage';
 import NutritionDashboard from './pages/NutritionDashboard';
 import FeedbackDashboardPage from './pages/FeedbackDashboardPage';
 import AuthContext, { AuthProvider } from './context/AuthContext';
@@ -52,6 +53,10 @@ function AppRoutes() {
         <Route
           path="favorites"
           element={<PrivateRoute><FavoritesPage /></PrivateRoute>}
+        />
+        <Route
+          path="pantry"
+          element={<PrivateRoute><PantryPage /></PrivateRoute>}
         />
         <Route
           path="nutrition"
