@@ -490,6 +490,18 @@ async def get_scrapers_health_summary(
     return await health_service.get_system_health_summary()
 
 
+@router.post("/admin/scrapers/{store_name}/reset")
+async def reset_scraper_circuit_breaker(
+    store_name: str, session: AsyncSession = Depends(get_async_session)
+):
+    """
+    Resets the circuit breaker for a specific store.
+    """
+    health_service = ScraperHealthService(session)
+    await health_service.reset_store_circuit_breaker(store_name)
+    return {"message": f"Circuit breaker for {store_name} reset successfully."}
+
+
 @router.get("/deals")
 async def list_deals(
     sort_by: Optional[str] = Query(

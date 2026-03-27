@@ -4,7 +4,7 @@ from sqlmodel import Session, select
 from sqlalchemy import func
 from app.core.db import engine, async_engine
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.models.all_models import User, MealPlan, Store, Deal, ScraperLog
+from app.models.all_models import User, MealPlan, Store, Deal, ScraperLog, PriceRecord
 from app.agents.planner_agent import MealPlannerAgent
 from app.agents.scraper_agent import ScraperAgent
 from app.services.pantry_service import PantryService
@@ -90,11 +90,18 @@ def cleanup_old_data_task():
             deal_result = session.execute(deal_del_stmt)
             deals_deleted = deal_result.rowcount
 
+            # Bulk Prune old PriceRecords (older than 90 days)
+            price_cutoff = now - timedelta(days=90)
+            price_del_stmt = delete(PriceRecord).where(PriceRecord.timestamp < price_cutoff)
+            price_result = session.execute(price_del_stmt)
+            prices_deleted = price_result.rowcount
+
             session.commit()
             return {
                 "status": "Success",
                 "logs_deleted": logs_deleted,
                 "deals_deleted": deals_deleted,
+                "prices_deleted": prices_deleted,
             }
         except Exception as e:
             return {"error": str(e)}

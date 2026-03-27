@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Play, RefreshCw, CheckCircle, XCircle, Clock, Database, Loader2, Trash2, Square, StopCircle, Zap, Globe } from 'lucide-react';
+import { Play, RefreshCw, CheckCircle, XCircle, Clock, Database, Loader2, Trash2, Square, StopCircle, Zap, Globe, Activity, AlertTriangle, ShieldAlert } from 'lucide-react';
 import clsx from 'clsx';
 import api from '../services/api';
+import toast from 'react-hot-toast';
 
 // Available Canadian stores in Flipp API
 const FLIPP_STORES = [
@@ -24,6 +25,9 @@ const ScrapingDashboardPage = () => {
   const [isSeeding, setIsSeeding] = useState(false);
   const [isScraping, setIsScraping] = useState({});
   const [dealCount, setDealCount] = useState(null);
+  const [healthMetrics, setHealthMetrics] = useState([]);
+  const [healthSummary, setHealthSummary] = useState(null);
+  const [isLoadingHealth, setIsLoadingHealth] = useState(true);
   
   // Flipp scraper options
   const [selectedStores, setSelectedStores] = useState(['metro', 'maxi', 'walmart', 'super_c']);
@@ -41,10 +45,27 @@ const ScrapingDashboardPage = () => {
     { id: 'costco', name: 'Costco (Playwright)', endpoint: '/admin/scrape/costco', color: 'blue', legacy: true },
   ];
 
-  // Fetch deal count on mount
+  // Fetch data on mount
   useEffect(() => {
     fetchDealCount();
+    fetchHealthData();
   }, []);
+
+  const fetchHealthData = async () => {
+    setIsLoadingHealth(true);
+    try {
+      const [metrics, summary] = await Promise.all([
+        api.get('/admin/scrapers/health'),
+        api.get('/admin/scrapers/health/summary')
+      ]);
+      setHealthMetrics(metrics);
+      setHealthSummary(summary);
+    } catch (e) {
+      console.error('Failed to fetch health data', e);
+    } finally {
+      setIsLoadingHealth(false);
+    }
+  };
 
   // Poll active tasks
   useEffect(() => {
@@ -76,9 +97,10 @@ const ScrapingDashboardPage = () => {
           : t
       ));
 
-      // If task completed, refresh deal count
+      // If task completed, refresh data
       if (data.status === 'SUCCESS' || data.status === 'FAILURE') {
         fetchDealCount();
+        fetchHealthData();
       }
     } catch (e) {
       console.error('Failed to poll task', e);
@@ -230,6 +252,16 @@ const ScrapingDashboardPage = () => {
     );
   };
 
+  const resetCircuitBreaker = async (storeName) => {
+    try {
+      await api.post(`/admin/scrapers/${storeName}/reset`);
+      toast.success(`Circuit breaker for ${storeName} reset`);
+      fetchHealthData();
+    } catch (e) {
+      toast.error(`Failed to reset circuit breaker for ${storeName}`);
+    }
+  };
+
   return (
     <div className="space-y-8">
       {/* Header */}
@@ -246,12 +278,164 @@ const ScrapingDashboardPage = () => {
             </span>
           </div>
           <button
-            onClick={fetchDealCount}
+            onClick={() => {
+              fetchDealCount();
+              fetchHealthData();
+            }}
             className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-            title="Refresh count"
+            title="Refresh dashboard data"
           >
             <RefreshCw className="w-5 h-5" />
           </button>
+        </div>
+      </div>
+
+      {/* System Health Summary */}
+      {healthSummary && (
+        <div className={clsx(
+          "grid grid-cols-1 md:grid-cols-4 gap-4 p-4 rounded-xl border-2 transition-colors",
+          healthSummary.overall_status === 'healthy' ? "bg-green-50 border-green-200" : "bg-amber-50 border-amber-200"
+        )}>
+          <div className="flex items-center gap-3">
+            <div className={clsx(
+              "p-2 rounded-lg",
+              healthSummary.overall_status === 'healthy' ? "bg-green-100 text-green-600" : "bg-amber-100 text-amber-600"
+            )}>
+              <Activity className="w-6 h-6" />
+            </div>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">System Status</p>
+              <p className={clsx(
+                "text-lg font-bold",
+                healthSummary.overall_status === 'healthy' ? "text-green-700" : "text-amber-700"
+              )}>
+                {healthSummary.overall_status.toUpperCase()}
+              </p>
+            </div>
+          </div>
+
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">Success Rate</p>
+            <p className="text-2xl font-bold text-gray-900">{healthSummary.overall_success_rate}%</p>
+          </div>
+
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">Active Scrapers</p>
+            <p className="text-2xl font-bold text-gray-900">{healthSummary.healthy_scrapers} / {healthSummary.total_scrapers}</p>
+          </div>
+
+          <div className="flex items-center justify-end">
+            <p className="text-xs text-gray-400 italic">
+              Last check: {new Date(healthSummary.timestamp).toLocaleTimeString()}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Scraper Reliability & Metrics */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-gray-900">Scraper Reliability & Metrics</h2>
+          <button
+            onClick={fetchHealthData}
+            className="text-primary-600 hover:text-primary-700 text-sm font-medium flex items-center gap-1"
+          >
+            {isLoadingHealth ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+            Refresh Metrics
+          </button>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider">
+              <tr>
+                <th className="px-6 py-3 font-semibold">Store</th>
+                <th className="px-6 py-3 font-semibold">Status</th>
+                <th className="px-6 py-3 font-semibold">Success Rate</th>
+                <th className="px-6 py-3 font-semibold">Avg. Duration</th>
+                <th className="px-6 py-3 font-semibold">Items (7d)</th>
+                <th className="px-6 py-3 font-semibold">Last Error</th>
+                <th className="px-6 py-3 font-semibold text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {healthMetrics.length === 0 ? (
+                <tr>
+                  <td colSpan="7" className="px-6 py-8 text-center text-gray-500 italic">
+                    {isLoadingHealth ? "Loading metrics..." : "No health data available yet."}
+                  </td>
+                </tr>
+              ) : healthMetrics.map((metric) => (
+                <tr key={metric.store_name} className="hover:bg-gray-50 transition-colors">
+                  <td className="px-6 py-4">
+                    <p className="font-semibold text-gray-900 capitalize">{metric.store_name}</p>
+                    <p className="text-xs text-gray-400">Runs: {metric.total_runs}</p>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-1.5">
+                      {metric.status === 'healthy' ? (
+                        <CheckCircle className="w-4 h-4 text-green-500" />
+                      ) : metric.status === 'critical' ? (
+                        <ShieldAlert className="w-4 h-4 text-red-500" />
+                      ) : (
+                        <AlertTriangle className="w-4 h-4 text-amber-500" />
+                      )}
+                      <span className={clsx(
+                        "text-xs font-bold uppercase",
+                        metric.status === 'healthy' ? "text-green-600" :
+                        metric.status === 'critical' ? "text-red-600" : "text-amber-600"
+                      )}>
+                        {metric.status}
+                      </span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="w-full bg-gray-100 rounded-full h-1.5 mb-1 max-w-[80px]">
+                      <div
+                        className={clsx(
+                          "h-1.5 rounded-full",
+                          metric.success_rate > 90 ? "bg-green-500" :
+                          metric.success_rate > 70 ? "bg-amber-500" : "bg-red-500"
+                        )}
+                        style={{ width: `${metric.success_rate}%` }}
+                      ></div>
+                    </div>
+                    <span className="text-sm font-medium text-gray-700">{metric.success_rate}%</span>
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-600">
+                    {metric.avg_duration_seconds}s
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-600">
+                    {metric.total_items_scraped}
+                  </td>
+                  <td className="px-6 py-4">
+                    {metric.last_error ? (
+                      <div className="max-w-[150px]">
+                         <p className="text-xs text-red-500 truncate" title={metric.last_error}>
+                           {metric.last_error}
+                         </p>
+                         <p className="text-[10px] text-gray-400">
+                           {new Date(metric.last_run).toLocaleDateString()}
+                         </p>
+                      </div>
+                    ) : (
+                      <span className="text-xs text-gray-400">—</span>
+                    )}
+                  </td>
+                  <td className="px-6 py-4 text-right">
+                    {(metric.status === 'critical' || metric.status === 'degraded') && (
+                      <button
+                        onClick={() => resetCircuitBreaker(metric.store_name)}
+                        className="p-1.5 bg-amber-50 text-amber-600 hover:bg-amber-100 rounded-lg transition-colors"
+                        title="Reset Circuit Breaker"
+                      >
+                        <RefreshCw className="w-4 h-4" />
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
 

@@ -106,7 +106,16 @@ class ScraperAgent:
 
         # Log all results sequentially using the agent's session
         for store_name, deals, status, duration, error, s_type, proxy in results:
-            await self._log_scrape(store_name, status, len(deals), duration, error, s_type, proxy)
+            await self._log_scrape(
+                store_name,
+                status,
+                len(deals),
+                duration,
+                error,
+                s_type,
+                proxy,
+                self.postal_code,
+            )
 
         await self.session.commit()
 
@@ -381,6 +390,7 @@ class ScraperAgent:
         error_message: Optional[str] = None,
         scraper_type: str = "direct",
         proxy_used: Optional[str] = None,
+        postal_code: Optional[str] = None,
     ):
         """Records a scrape attempt in the ScraperLog table. Note: does not commit."""
         try:
@@ -392,6 +402,7 @@ class ScraperAgent:
                 items_scraped=items_scraped,
                 duration_seconds=round(duration, 2),
                 error_message=error_message,
+                postal_code=postal_code,
             )
             self.session.add(log)
             await self.session.flush()
