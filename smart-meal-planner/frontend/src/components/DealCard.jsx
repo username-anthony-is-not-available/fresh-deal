@@ -3,11 +3,11 @@ import { useTranslation } from 'react-i18next';
 import SavingsBadge from './SavingsBadge';
 import LoyaltyBadge from './LoyaltyBadge';
 import QualityBadge from './QualityBadge';
-import { Tag, AlertTriangle } from 'lucide-react';
+import { Tag, AlertTriangle, MapPin } from 'lucide-react';
 
 const DealCard = ({ deal }) => {
   const { t } = useTranslation();
-  const { product, store, loyalty_program, loyalty_points, effective_price, quality_level, quality_score, image_url, sale_info } = deal;
+  const { product, store, loyalty_program, loyalty_points, effective_price, quality_level, quality_score, image_url, sale_info, distance } = deal;
 
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow flex flex-col h-full">
@@ -32,8 +32,13 @@ const DealCard = ({ deal }) => {
           <div className="flex-1">
             <span className="text-xs text-gray-500 uppercase tracking-wider font-semibold">{product.category}</span>
             <h3 className="text-lg font-medium text-gray-900 mt-1">{product.name}</h3>
-            <div className="text-sm text-gray-500 mt-1">
+            <div className="text-sm text-gray-500 mt-1 flex items-center gap-1">
               <span className="font-medium text-gray-700">{store.name}</span>
+              {distance !== null && distance !== undefined && (
+                <span className="flex items-center text-xs text-gray-400">
+                  • <MapPin className="w-3 h-3 ml-1 mr-0.5" /> {distance}km
+                </span>
+              )}
             </div>
           </div>
           {deal.discount_pct > 0 && (

@@ -10,11 +10,13 @@ const DealsPage = () => {
   const [sortBy, setSortBy] = useState('');
   const [loyaltyFilter, setLoyaltyFilter] = useState('');
   const [qualityFilter, setQualityFilter] = useState('');
+  const [postalCode, setPostalCode] = useState(localStorage.getItem('user_postal_code') || 'H4T1V6');
 
   const fetchDeals = React.useCallback(async () => {
     try {
       const params = new URLSearchParams({
         sort_by: sortBy,
+        postal_code: postalCode,
       }).toString();
       const data = await api.get(`/deals?${params}`);
       setDeals(data);
@@ -28,7 +30,7 @@ const DealsPage = () => {
 
   useEffect(() => {
     fetchDeals();
-  }, [fetchDeals]);
+  }, [fetchDeals, postalCode]);
 
   const seedData = async () => {
     try {
@@ -66,12 +68,22 @@ const DealsPage = () => {
                  onChange={(e) => setFilter(e.target.value)}
               />
            </div>
+           <div className="relative">
+              <input
+                 type="text"
+                 placeholder="Postal Code"
+                 className="pl-4 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none w-32"
+                 value={postalCode}
+                 onChange={(e) => setPostalCode(e.target.value.toUpperCase())}
+              />
+           </div>
            <select
              value={sortBy}
              onChange={(e) => setSortBy(e.target.value)}
              className="px-4 py-2 border border-gray-300 rounded-lg bg-white hover:bg-gray-50 text-gray-700"
            >
              <option value="">Sort by</option>
+             <option value="distance">Proximity</option>
              <option value="effective_discount">Effective Discount</option>
              <option value="discount_pct">Discount %</option>
              <option value="category">Category</option>
