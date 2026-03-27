@@ -11,6 +11,7 @@ from app.models.all_models import Product, Deal, Store, User, Recipe, RecipeRati
 from app.services.llm_service import LLMService
 from app.services.recipe_service import RecipeService
 from app.services.seasonal_service import SeasonalService
+from app.services.ingredient_matching_service import ingredient_matching_service
 
 logger = logging.getLogger(__name__)
 
@@ -19,6 +20,7 @@ class MealPlannerAgent:
         self.session = session
         self.llm_service = LLMService()
         self.seasonal_service = SeasonalService()
+        self.ingredient_matcher = ingredient_matching_service
         self.recipes = self._load_recipes_from_db()
 
     def _load_recipes_from_db(self) -> List[Dict]:
@@ -279,10 +281,9 @@ class MealPlannerAgent:
                 if not ing_name:
                     continue
 
-                # Simple matching: check if any on-sale product name is in the ingredient name
-                # or if the ingredient name is in any on-sale product name.
+                # Standardized matching using IngredientMatchingService
                 for sale_prod, quality in product_quality_map.items():
-                    if sale_prod in ing_name or ing_name in sale_prod:
+                    if self.ingredient_matcher.is_match(ing_name, sale_prod):
                         matching_ingredients.append(ing_name)
                         # Weighted score: Excellent deals (score 80+) contribute more
                         weight = quality / 100.0
