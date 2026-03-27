@@ -11,10 +11,10 @@ class MockScraperAgent:
         """Generates mock deals for stores and products."""
         stores_data = [
             {"name": "Walmart", "chain": "Walmart", "postal_code": "H4T1V6"},
-            {"name": "Provigo", "chain": "Provigo", "postal_code": "H4B2T8"},
-            {"name": "IGA", "chain": "IGA", "postal_code": "H4B1W3"},
-            {"name": "Metro", "chain": "Metro", "postal_code": "H4B1W3"},
-            {"name": "Maxi", "chain": "Maxi", "postal_code": "H4B1W3"},
+            {"name": "Provigo", "chain": "Provigo", "postal_code": "H4E2G9"}, # ~4km from H4T
+            {"name": "IGA", "chain": "IGA", "postal_code": "H3G1V3"}, # ~6km from H4T
+            {"name": "Metro", "chain": "Metro", "postal_code": "H3Z1T5"}, # ~4.5km from H4T
+            {"name": "Maxi", "chain": "Maxi", "postal_code": "H1A1A1"}, # ~20km from H4T
         ]
 
         products_data = [

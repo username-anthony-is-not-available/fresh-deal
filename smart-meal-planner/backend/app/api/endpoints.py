@@ -44,6 +44,7 @@ from app.models.all_models import PantryItem
 from app.services.pantry_service import PantryService
 from app.services.substitution_service import substitution_service
 from app.services.scraper_health_service import ScraperHealthService
+from app.services.geospatial_service import GeospatialService
 
 router = APIRouter()
 
@@ -505,13 +506,15 @@ async def reset_scraper_circuit_breaker(
 @router.get("/deals")
 async def list_deals(
     sort_by: Optional[str] = Query(
-        None, enum=["category", "effective_discount", "discount_pct"]
+        None, enum=["category", "effective_discount", "discount_pct", "distance"]
     ),
+    postal_code: Optional[str] = None,
     session: AsyncSession = Depends(get_async_session),
 ):
     """
     List all active deals with product and store info.
-    Sort by 'category', 'effective_discount' (price after points), or 'discount_pct'.
+    Sort by 'category', 'effective_discount', 'discount_pct', or 'distance'.
+    Filter by proximity if postal_code is provided.
     """
     statement = select(Deal, Product, Store).join(Product).join(Store)
 
@@ -524,6 +527,15 @@ async def list_deals(
 
     deals_data = []
     for deal, product, store in results:
+        distance = None
+        if postal_code:
+            distance = GeospatialService.get_distance_between_postal_codes(
+                postal_code, store.postal_code
+            )
+            # Filter by 5km radius if distance calculation was successful
+            if distance is not None and distance > 5.0:
+                continue
+
         deal_item = {
             "id": deal.id,
             "product": product,
@@ -537,6 +549,7 @@ async def list_deals(
             "is_stale": store.is_stale,
             "image_url": deal.image_url,
             "sale_info": deal.sale_info,
+            "distance": round(distance, 1) if distance is not None else None,
         }
 
         # Calculate effective price for sorting and display
@@ -553,6 +566,8 @@ async def list_deals(
         deals_data.sort(key=lambda x: (x["effective_price"], x["price"]))
     elif sort_by == "discount_pct":
         deals_data.sort(key=lambda x: x.get("discount_pct") or 0, reverse=True)
+    elif sort_by == "distance":
+        deals_data.sort(key=lambda x: x.get("distance") if x.get("distance") is not None else float('inf'))
 
     return deals_data
 
