@@ -3,7 +3,7 @@ import json
 import os
 from typing import List, Dict, Any, Tuple
 from sqlmodel import select
-from app.models.all_models import Product, Deal, Store, User
+from app.models.all_models import Product, Deal, Store, User, PantryItem
 
 class ShoppingListOptimizer:
     def __init__(self, session):
@@ -30,7 +30,12 @@ class ShoppingListOptimizer:
         # 1. Consolidate Ingredients
         consolidated = self._consolidate_ingredients(plan_data, user.household_size)
 
-        # 2. Find Prices for Each Ingredient
+        # 2. Subtract Pantry Items
+        pantry_result = await self.session.execute(select(PantryItem).where(PantryItem.user_id == user.id))
+        pantry_items = pantry_result.scalars().all()
+        self._subtract_pantry(consolidated, pantry_items)
+
+        # 3. Find Prices for Each Ingredient
         priced_items = []
         for key, qty_data in consolidated.items():
             # key is (name, unit)
@@ -56,7 +61,11 @@ class ShoppingListOptimizer:
         # 1. Consolidate Ingredients
         consolidated = self._consolidate_ingredients(plan_data, user.household_size)
 
-        # 2. Find Prices for Each Ingredient
+        # 2. Subtract Pantry Items
+        pantry_items = self.session.exec(select(PantryItem).where(PantryItem.user_id == user.id)).all()
+        self._subtract_pantry(consolidated, pantry_items)
+
+        # 3. Find Prices for Each Ingredient
         priced_items = []
         for key, qty_data in consolidated.items():
             item_name = key[0]
@@ -71,6 +80,40 @@ class ShoppingListOptimizer:
 
         # 3. Optimize based on strategy
         return self._optimize_routes(priced_items, strategy, preferred_stores)
+
+    def _subtract_pantry(self, consolidated: Dict, pantry_items: List[PantryItem]):
+        """
+        Subtracts quantities of items already in the pantry from the consolidated list.
+        """
+        for p_item in pantry_items:
+            name = p_item.name
+            qty = p_item.quantity
+            unit = p_item.unit
+
+            # Check existing keys for this item name
+            existing_keys = [k for k in consolidated.keys() if k[0] == name]
+
+            for k in existing_keys:
+                existing_unit = k[1]
+                if existing_unit == unit:
+                    consolidated[k]["qty"] -= qty
+                    break
+
+                # Simple conversions (same as in _consolidate_ingredients)
+                if existing_unit == "kg" and unit == "lb":
+                    consolidated[k]["qty"] -= qty * 0.453592
+                    break
+                elif existing_unit == "lb" and unit == "kg":
+                    consolidated[k]["qty"] -= qty * 2.20462
+                    break
+                elif existing_unit == "L" and unit == "ml":
+                    consolidated[k]["qty"] -= qty / 1000.0
+                    break
+
+        # Remove items with zero or negative quantity
+        keys_to_remove = [k for k, v in consolidated.items() if v["qty"] <= 0.001] # Use small epsilon
+        for k in keys_to_remove:
+            del consolidated[k]
 
     def _consolidate_ingredients(self, plan_data: Dict, household_size: int) -> Dict[Tuple[str, str], Dict]:
         """
