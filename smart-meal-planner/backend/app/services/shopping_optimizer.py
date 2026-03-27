@@ -2,13 +2,15 @@
 import json
 import os
 from typing import List, Dict, Any, Tuple
-from sqlmodel import select
+from sqlmodel import select, or_, col
 from app.models.all_models import Product, Deal, Store, User, PantryItem
+from app.services.ingredient_matching_service import ingredient_matching_service
 
 class ShoppingListOptimizer:
     def __init__(self, session):
         self.session = session # Can be AsyncSession or Sync Session
         self.recipes = self._load_recipes()
+        self.ingredient_matcher = ingredient_matching_service
 
     def _load_recipes(self) -> List[Dict]:
         try:
@@ -200,42 +202,87 @@ class ShoppingListOptimizer:
 
     async def _find_prices_for_ingredient_async(self, ingredient_name: str, required_unit: str) -> List[Dict]:
         """
-        Async: Returns a list of price options. Handles unit conversion vs store pricing.
+        Async: Returns a list of price options using fuzzy matching.
         """
-        # Execute query asynchronously
-        # Use execute() and scalars() or all() instead of exec() which is sqlmodel wrapper helper
-        # but here we are using standard sqlalchemy AsyncSession (or mix)
-
-        # Use scalars().first() for single result
-        result = await self.session.execute(select(Product).where(Product.name == ingredient_name))
-        product = result.scalars().first()
-
-        if not product:
+        normalized_name = self.ingredient_matcher.normalize(ingredient_name)
+        if not normalized_name:
             return []
 
-        deals_result = await self.session.execute(select(Deal).where(Deal.product_id == product.id))
+        # Broad DB filter: find products containing any word from the normalized name
+        words = normalized_name.split()
+        filters = [col(Product.name).ilike(f"%{w}%") for w in words if len(w) > 2]
+
+        if not filters:
+            # Fallback to exact-ish match if no long words
+            stmt = select(Product).where(Product.name.ilike(f"%{normalized_name}%"))
+        else:
+            stmt = select(Product).where(or_(*filters))
+
+        result = await self.session.execute(stmt)
+        candidate_products = result.scalars().all()
+
+        # Refine with fuzzy matching
+        best_product = None
+        best_score = 0
+
+        for p in candidate_products:
+            if self.ingredient_matcher.is_match(ingredient_name, p.name):
+                # Calculate a score to pick the best if multiple match
+                from thefuzz import fuzz
+                score = fuzz.token_set_ratio(normalized_name, self.ingredient_matcher.normalize(p.name))
+                if score > best_score:
+                    best_score = score
+                    best_product = p
+
+        if not best_product:
+            return []
+
+        deals_result = await self.session.execute(select(Deal).where(Deal.product_id == best_product.id))
         deals = deals_result.scalars().all()
 
         stores_result = await self.session.execute(select(Store))
         stores = stores_result.scalars().all()
         store_map = {s.id: s for s in stores}
 
-        return self._calculate_options(deals, store_map, product, required_unit)
+        return self._calculate_options(deals, store_map, best_product, required_unit)
 
     def _find_prices_for_ingredient_sync(self, ingredient_name: str, required_unit: str) -> List[Dict]:
         """
-        Sync: Returns a list of price options. Handles unit conversion vs store pricing.
+        Sync: Returns a list of price options using fuzzy matching.
         """
-        product = self.session.exec(select(Product).where(Product.name == ingredient_name)).first()
-
-        if not product:
+        normalized_name = self.ingredient_matcher.normalize(ingredient_name)
+        if not normalized_name:
             return []
 
-        deals = self.session.exec(select(Deal).where(Deal.product_id == product.id)).all()
+        words = normalized_name.split()
+        filters = [col(Product.name).ilike(f"%{w}%") for w in words if len(w) > 2]
+
+        if not filters:
+            stmt = select(Product).where(Product.name.ilike(f"%{normalized_name}%"))
+        else:
+            stmt = select(Product).where(or_(*filters))
+
+        candidate_products = self.session.exec(stmt).all()
+
+        best_product = None
+        best_score = 0
+
+        for p in candidate_products:
+            if self.ingredient_matcher.is_match(ingredient_name, p.name):
+                from thefuzz import fuzz
+                score = fuzz.token_set_ratio(normalized_name, self.ingredient_matcher.normalize(p.name))
+                if score > best_score:
+                    best_score = score
+                    best_product = p
+
+        if not best_product:
+            return []
+
+        deals = self.session.exec(select(Deal).where(Deal.product_id == best_product.id)).all()
         stores = self.session.exec(select(Store)).all()
         store_map = {s.id: s for s in stores}
 
-        return self._calculate_options(deals, store_map, product, required_unit)
+        return self._calculate_options(deals, store_map, best_product, required_unit)
 
     def _calculate_options(self, deals, store_map, product, required_unit):
         options = []

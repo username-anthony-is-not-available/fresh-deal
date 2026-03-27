@@ -1,11 +1,13 @@
 
 from typing import List, Dict
-from sqlmodel import Session, select, func, col
+from sqlmodel import Session, select, func, col, or_
 from app.models.all_models import Recipe, RecipeIngredient
+from app.services.ingredient_matching_service import ingredient_matching_service
 
 class RecipeMatcher:
     def __init__(self, session: Session):
         self.session = session
+        self.ingredient_matcher = ingredient_matching_service
 
     def find_recipes_by_deals(self, deals: List[Dict], limit: int = 50) -> List[Recipe]:
         """
@@ -38,50 +40,25 @@ class RecipeMatcher:
             return self.session.exec(statement).all()
 
         # SQL Logic:
-        # SELECT recipe_id, COUNT(*) as match_count
-        # FROM recipeingredient
-        # WHERE name LIKE any(deal_terms)
-        # GROUP BY recipe_id
-        # ORDER BY match_count DESC
+        # Use robust matching with a broad initial filter
+        normalized_terms = [self.ingredient_matcher.normalize(t) for t in deal_terms if len(t) > 2]
+        if not normalized_terms:
+            return self.session.exec(select(Recipe).limit(limit)).all()
 
-        # Since SQLite/Postgres 'LIKE ANY' syntax differs, we iterate construction of OR clause
-        # or use exact matching on 'name' if we trust normalization.
-        # Let's try to match partials.
+        # Build OR clause for partial matches
+        filters = [col(RecipeIngredient.name).ilike(f"%{t}%") for t in normalized_terms]
 
-        # Optimized approach: Filter RecipeIngredients that contain any deal term
-        # Then aggregate.
-
-        # We construct a list of like clauses
-        # But for 64k recipes, this might be slow if deal_terms is large (e.g. 50 deals * 2 terms = 100 terms).
-        # Better: use 'IN' clause on exact normalized matches if possible.
-        # But "chicken breast" deal vs "chicken" ingredient.
-        # Let's try exact match on single words first.
+        # We also want to match if the ingredient name is a substring of the deal term
+        # But that's harder in SQL for many terms.
+        # Let's stick to 'ingredient name contains deal term' as primary filter.
 
         statement = (
             select(RecipeIngredient.recipe_id, func.count(RecipeIngredient.id).label("score"))
-            .where(col(RecipeIngredient.name).in_(deal_terms))
+            .where(or_(*filters))
             .group_by(RecipeIngredient.recipe_id)
             .order_by(func.count(RecipeIngredient.id).desc())
-            .limit(limit)
+            .limit(limit * 2) # Get more to refine in Python if needed
         )
-
-        # Improved: We really want LIKE matches.
-        # "chicken" deal should match "chicken breast" ingredient.
-        # AND "chicken breast" deal should match "chicken" ingredient.
-
-        # Let's keep it simple:
-        # Find all recipe IDs that have at least one matching ingredient.
-        # We will do this in Python for flexibility if the dataset size allows (64k recipes * 10 ings = 640k rows - OK for in-memory set intersection if needed, but DB is better).
-
-        # Hybrid Approach:
-        # Fetch all RecipeIngredients. (It's lightweight: id, recipe_id, name).
-        # Filter in Python.
-
-        # For MVP/PoC:
-        # Let's try a direct LIKE query construction for top terms.
-
-        # Let's do a simple exact match on words in the DB for now.
-        # If deal is "Chicken Breast", we look for ingredients named "chicken" or "breast".
 
         results = self.session.exec(statement).all()
 
