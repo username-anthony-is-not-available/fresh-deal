@@ -100,6 +100,10 @@ _Access the application at `http://localhost:5173`_
 
 **That's it! No Docker or database setup required for local development.**
 
+## Documentation
+
+- [Scraper Contribution Guide](backend/docs/SCRAPER_CONTRIBUTION.md) - Learn how to add new grocery store scrapers.
+
 ## Running Tests
 
 ### Backend Tests
