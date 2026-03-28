@@ -1,5 +1,4 @@
 // src/context/__tests__/AuthContext.test.tsx
-import React from 'react';
 import {renderHook, act} from '@testing-library/react-native';
 import {AuthProvider, useAuth} from '../AuthContext';
 import * as authService from '../../services/auth';

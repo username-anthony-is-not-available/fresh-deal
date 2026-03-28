@@ -4,10 +4,11 @@ import {
   View,
   Text,
   TextInput,
-  Button,
   StyleSheet,
   Alert,
   ActivityIndicator,
+  SafeAreaView,
+  TouchableOpacity,
 } from 'react-native';
 import {useAuth} from '../context/AuthContext';
 
@@ -26,7 +27,7 @@ const LoginScreen = () => {
     try {
       await login(email, password);
       // Navigation will happen automatically from AppNavigator
-    } catch (error) {
+    } catch {
       Alert.alert(
         'Login Failed',
         'Invalid email or password. Please try again.',
@@ -37,54 +38,77 @@ const LoginScreen = () => {
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Welcome Back!</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Email"
-        value={email}
-        onChangeText={setEmail}
-        keyboardType="email-address"
-        autoCapitalize="none"
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Password"
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry
-      />
-      {loading ? (
-        <ActivityIndicator size="large" />
-      ) : (
-        <Button title="Login" onPress={handleLogin} />
-      )}
-    </View>
+    <SafeAreaView style={styles.container}>
+      <View style={styles.innerContainer}>
+        <Text style={styles.title}>Welcome Back!</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="Email"
+          value={email}
+          onChangeText={setEmail}
+          keyboardType="email-address"
+          autoCapitalize="none"
+        />
+        <TextInput
+          style={styles.input}
+          placeholder="Password"
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry
+        />
+        {loading ? (
+          <ActivityIndicator size="large" color="#2ecc71" />
+        ) : (
+          <TouchableOpacity style={styles.button} onPress={handleLogin}>
+            <Text style={styles.buttonText}>Login</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#f5f5f5',
+  },
+  innerContainer: {
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
-    backgroundColor: '#f5f5f5',
   },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    marginBottom: 24,
+    marginBottom: 32,
+    color: '#333',
   },
   input: {
     width: '100%',
-    height: 44,
+    height: 50,
     backgroundColor: 'white',
     borderColor: '#ddd',
     borderWidth: 1,
     borderRadius: 8,
     marginBottom: 16,
-    paddingHorizontal: 12,
+    paddingHorizontal: 16,
+    fontSize: 16,
+  },
+  button: {
+    width: '100%',
+    height: 50,
+    backgroundColor: '#2ecc71',
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 16,
+  },
+  buttonText: {
+    color: 'white',
+    fontSize: 18,
+    fontWeight: 'bold',
   },
 });
 
