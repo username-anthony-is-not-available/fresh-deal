@@ -9,100 +9,63 @@ import {
   RefreshControl,
   SafeAreaView,
 } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import {getLatestMealPlan} from '../services/api';
 import MealCard from '../components/MealCard';
 import {useAuth} from '../context/AuthContext';
 
+// Define a more specific type for the meal plan data
 interface Meal {
-  recipe_id: number;
-  recipe_name: string;
-  reason: string;
-  image?: string;
-  servings?: number;
+  name: string;
+  recipe: string;
 }
 
 interface DailyPlan {
-  day: number;
-  day_name: string;
-  date: string;
-  breakfast: Meal;
-  lunch: Meal;
-  dinner: Meal;
+  Breakfast: Meal;
+  Lunch: Meal;
+  Dinner: Meal;
 }
 
-interface MealPlanResponse {
-  meal_plan: DailyPlan[];
-  id?: number;
+interface MealPlan {
+  [day: string]: DailyPlan;
 }
-
-const CACHE_KEY = 'cached_meal_plan';
-const TIMESTAMP_KEY = 'meal_plan_timestamp';
 
 const MealPlanScreen = () => {
-  const [mealPlan, setMealPlan] = useState<DailyPlan[] | null>(null);
-  const [lastUpdated, setLastUpdated] = useState<string | null>(null);
+  const [mealPlan, setMealPlan] = useState<MealPlan | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const {user} = useAuth();
 
-  const loadCache = useCallback(async () => {
-    try {
-      const cachedData = await AsyncStorage.getItem(CACHE_KEY);
-      const timestamp = await AsyncStorage.getItem(TIMESTAMP_KEY);
-      if (cachedData) {
-        setMealPlan(JSON.parse(cachedData));
-        setLastUpdated(timestamp);
-      }
-    } catch (e) {
-      console.error('Failed to load meal plan cache', e);
-    }
-  }, []);
-
-  const fetchMealPlan = useCallback(async (showLoading = true) => {
+  const fetchMealPlan = useCallback(async () => {
     if (!user) {
       setError('You must be logged in to see your meal plan.');
       setLoading(false);
       return;
     }
-    if (showLoading) {setLoading(true);}
     try {
-      setError(null);
-      const data: MealPlanResponse | null = await getLatestMealPlan(user.id);
-      if (data && data.meal_plan) {
-        setMealPlan(data.meal_plan);
-        const now = new Date().toLocaleString();
-        setLastUpdated(now);
-        await AsyncStorage.setItem(CACHE_KEY, JSON.stringify(data.meal_plan));
-        await AsyncStorage.setItem(TIMESTAMP_KEY, now);
-      } else {
-        setMealPlan(null);
-      }
+      setError(null); // Clear previous errors
+      const data = await getLatestMealPlan(user.id);
+      setMealPlan(data?.meal_plan || null);
     } catch (e) {
-      setError('Failed to load meal plan. Showing cached data if available.');
+      setError('Failed to load meal plan. Please try again later.');
       console.error(e);
-      await loadCache();
     } finally {
       setLoading(false);
     }
-  }, [user, loadCache]);
+  }, [user]);
 
   useEffect(() => {
-    const init = async () => {
-      await loadCache();
-      fetchMealPlan(false);
-    };
-    init();
-  }, [fetchMealPlan, loadCache]);
+    setLoading(true);
+    fetchMealPlan();
+  }, [fetchMealPlan]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await fetchMealPlan(false);
+    await fetchMealPlan();
     setRefreshing(false);
   }, [fetchMealPlan]);
 
-  if (loading && !mealPlan) {
+  if (loading) {
     return (
       <View style={styles.centered}>
         <ActivityIndicator size="large" />
@@ -111,6 +74,7 @@ const MealPlanScreen = () => {
   }
 
   if (error && !mealPlan) {
+    // Show error only if there's no data to display
     return (
       <View style={styles.centered}>
         <Text style={styles.errorText}>{error}</Text>
@@ -118,29 +82,22 @@ const MealPlanScreen = () => {
     );
   }
 
-  const structuredMealPlan = (mealPlan || []).flatMap(dayPlan => [
-    {
-      ...dayPlan.breakfast,
-      day: dayPlan.day_name,
-      date: dayPlan.date,
-      type: 'Breakfast' as const,
-      id: `${dayPlan.date}-breakfast`,
-    },
-    {
-      ...dayPlan.lunch,
-      day: dayPlan.day_name,
-      date: dayPlan.date,
-      type: 'Lunch' as const,
-      id: `${dayPlan.date}-lunch`,
-    },
-    {
-      ...dayPlan.dinner,
-      day: dayPlan.day_name,
-      date: dayPlan.date,
-      type: 'Dinner' as const,
-      id: `${dayPlan.date}-dinner`,
-    },
-  ]);
+  if (!mealPlan) {
+    return (
+      <View style={styles.centered}>
+        <Text>No meal plan found. Go generate one on the website!</Text>
+      </View>
+    );
+  }
+
+  const structuredMealPlan = Object.entries(mealPlan).flatMap(([day, meals]) =>
+    Object.entries(meals).map(([mealType, meal]) => ({
+      day,
+      mealType,
+      meal,
+      id: `${day}-${mealType}`,
+    })),
+  );
 
   return (
     <SafeAreaView style={styles.container}>
@@ -149,12 +106,9 @@ const MealPlanScreen = () => {
         keyExtractor={item => item.id}
         renderItem={({item}) => (
           <MealCard
-            day={`${item.day} (${item.date})`}
-            mealType={item.type}
-            meal={{
-              name: item.recipe_name,
-              recipe: item.reason,
-            }}
+            day={item.day}
+            mealType={item.mealType as 'Breakfast' | 'Lunch' | 'Dinner'}
+            meal={item.meal}
           />
         )}
         contentContainerStyle={styles.list}
@@ -162,15 +116,7 @@ const MealPlanScreen = () => {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
         ListHeaderComponent={
-          <View style={styles.headerContainer}>
-            <Text style={styles.header}>Your Weekly Meal Plan</Text>
-            {lastUpdated && (
-              <Text style={styles.timestamp}>Last updated: {lastUpdated}</Text>
-            )}
-            {!mealPlan && !loading && (
-               <Text style={styles.emptyText}>No meal plan found. Go generate one on the website!</Text>
-            )}
-          </View>
+          <Text style={styles.header}>Your Weekly Meal Plan</Text>
         }
       />
     </SafeAreaView>
@@ -191,30 +137,15 @@ const styles = StyleSheet.create({
   errorText: {
     color: 'red',
     textAlign: 'center',
-    marginBottom: 10,
   },
   list: {
     paddingBottom: 16,
   },
-  headerContainer: {
-    backgroundColor: 'white',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-  },
   header: {
     fontSize: 24,
     fontWeight: 'bold',
-  },
-  timestamp: {
-    fontSize: 12,
-    color: '#666',
-    marginTop: 4,
-  },
-  emptyText: {
-    marginTop: 20,
-    textAlign: 'center',
-    color: '#666',
+    padding: 16,
+    backgroundColor: 'white',
   },
 });
 

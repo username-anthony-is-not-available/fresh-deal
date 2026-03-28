@@ -19,7 +19,7 @@ export const AuthProvider = ({children}: {children: ReactNode}) => {
   const user: User = {id: 1};
   const token = 'mock-token';
 
-  const login = async (_email, _password) => {};
+  const login = async (email, password) => {};
   const logout = () => {};
 
   return (
