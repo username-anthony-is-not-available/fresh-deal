@@ -164,6 +164,9 @@ def generate_meal_plan_task(user_id: int, model_type: Optional[str] = None):
                 nutrition_agent = NutritionAgent(session=session)
                 loop = _get_or_create_event_loop()
                 plan_data = loop.run_until_complete(nutrition_agent.validate_plan(plan_data))
+
+                # Persist DailyNutrition records
+                loop.run_until_complete(nutrition_agent.persist_daily_nutrition_from_plan(user_id, plan_data))
             except Exception as e:
                 from celery.utils.log import get_task_logger
                 logger = get_task_logger(__name__)

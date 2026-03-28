@@ -15,6 +15,7 @@ const Layout = () => {
     { name: t('deals'), path: '/deals', icon: Tag },
     { name: t('recipes'), path: '/recipes', icon: BookOpen },
     { name: t('meal_plan'), path: '/plan', icon: Calendar },
+    { name: t('nutrition', 'Nutrition'), path: '/nutrition', icon: Activity },
     { name: t('shopping_list'), path: '/list', icon: ShoppingCart },
     { name: t('pantry'), path: '/pantry', icon: Package },
     { name: t('favorites', 'My Favorites'), path: '/favorites', icon: Heart },
