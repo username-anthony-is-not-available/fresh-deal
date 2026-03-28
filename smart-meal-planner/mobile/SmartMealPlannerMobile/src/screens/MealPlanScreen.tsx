@@ -34,6 +34,8 @@ const MealPlanScreen = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState<number | null>(null);
+  const [isOffline, setIsOffline] = useState(false);
   const {user} = useAuth();
 
   const fetchMealPlan = useCallback(async () => {
@@ -44,8 +46,10 @@ const MealPlanScreen = () => {
     }
     try {
       setError(null); // Clear previous errors
-      const data = await getLatestMealPlan(user.id);
-      setMealPlan(data?.meal_plan || null);
+      const result = await getLatestMealPlan(user.id);
+      setMealPlan(result.data || null);
+      setLastUpdated(result.timestamp);
+      setIsOffline(result.isOffline);
     } catch (e) {
       setError('Failed to load meal plan. Please try again later.');
       console.error(e);
@@ -101,6 +105,11 @@ const MealPlanScreen = () => {
 
   return (
     <SafeAreaView style={styles.container}>
+      {isOffline && (
+        <View style={styles.offlineBanner}>
+          <Text style={styles.offlineText}>Viewing offline version</Text>
+        </View>
+      )}
       <FlatList
         data={structuredMealPlan}
         keyExtractor={item => item.id}
@@ -116,7 +125,14 @@ const MealPlanScreen = () => {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
         ListHeaderComponent={
-          <Text style={styles.header}>Your Weekly Meal Plan</Text>
+          <View>
+            <Text style={styles.header}>Your Weekly Meal Plan</Text>
+            {lastUpdated && (
+              <Text style={styles.lastUpdatedText}>
+                Last updated: {new Date(lastUpdated).toLocaleString()}
+              </Text>
+            )}
+          </View>
         }
       />
     </SafeAreaView>
@@ -145,7 +161,24 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     padding: 16,
+    paddingBottom: 4,
     backgroundColor: 'white',
+  },
+  lastUpdatedText: {
+    fontSize: 12,
+    color: '#666',
+    paddingHorizontal: 16,
+    paddingBottom: 8,
+    backgroundColor: 'white',
+  },
+  offlineBanner: {
+    backgroundColor: '#ffcc00',
+    padding: 8,
+    alignItems: 'center',
+  },
+  offlineText: {
+    color: '#000',
+    fontWeight: 'bold',
   },
 });
 

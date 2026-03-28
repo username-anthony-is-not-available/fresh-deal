@@ -24,10 +24,18 @@ jest.mock('../../src/context/AuthContext', () => ({
 
 test('renders the initial screen and can navigate to other tabs', async () => {
   // Provide mock implementations for the API calls to simulate no data
-  mockedApi.getLatestMealPlan.mockResolvedValue(null);
-  mockedApi.getShoppingList.mockResolvedValue({min_cost_stores: null});
+  mockedApi.getLatestMealPlan.mockResolvedValue({
+    data: null,
+    timestamp: Date.now(),
+    isOffline: false,
+  });
+  mockedApi.getShoppingList.mockResolvedValue({
+    data: {min_cost_stores: null},
+    timestamp: Date.now(),
+    isOffline: false,
+  });
 
-  render(
+  const {getByText} = render(
     <NavigationContainer>
       <AppNavigator />
     </NavigationContainer>,
@@ -36,21 +44,21 @@ test('renders the initial screen and can navigate to other tabs', async () => {
   // 1. Verify the initial screen is rendered
   await waitFor(() =>
     expect(
-      screen.getByText('No meal plan found. Go generate one on the website!'),
+      getByText('No meal plan found. Go generate one on the website!'),
     ).toBeTruthy(),
   );
 
   // 2. Navigate to Shopping List
-  fireEvent.press(screen.getByText('Shopping List'));
+  fireEvent.press(getByText('Shopping List'));
   await waitFor(() =>
     expect(
-      screen.getByText('No shopping list found. Generate a meal plan first!'),
+      getByText('No shopping list found. Generate a meal plan first!'),
     ).toBeTruthy(),
   );
 
   // 3. Navigate to Notifications
-  fireEvent.press(screen.getByText('Notifications'));
+  fireEvent.press(getByText('Notifications'));
   await waitFor(() =>
-    expect(screen.getByText('This feature is coming soon!')).toBeTruthy(),
+    expect(getByText('This feature is coming soon!')).toBeTruthy(),
   );
 });
