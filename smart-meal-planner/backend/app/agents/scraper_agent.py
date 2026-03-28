@@ -92,20 +92,32 @@ class ScraperAgent:
                 start_time = time.time()
                 try:
                     skip_direct = skip_direct_map.get(store_name, False)
-                    deals, scraper_type, proxy_used = await self._scrape_store(
+                    deals, scraper_type, proxy_used, screenshot, html, last_error = await self._scrape_store(
                         store_name, limit_per_store, skip_direct=skip_direct
                     )
                     duration = time.time() - start_time
-                    return store_name, deals, "success", duration, None, scraper_type, proxy_used
+
+                    # If we got no deals from any source, mark as failure for audit purposes
+                    status = "success" if deals else "failure"
+                    error_msg = last_error or (None if deals else "No deals found from any source")
+
+                    return store_name, deals, status, duration, error_msg, scraper_type, proxy_used, screenshot, html
                 except Exception as e:
                     duration = time.time() - start_time
-                    return store_name, [], "failure", duration, str(e), "unknown", None
+                    # Try to retrieve artifacts from the scraper object if it was a direct scrape
+                    screenshot, html = None, None
+                    scraper = self.scrapers.get(store_name.lower())
+                    if scraper:
+                        screenshot = getattr(scraper, 'last_screenshot', None)
+                        html = getattr(scraper, 'last_html', None)
+
+                    return store_name, [], "failure", duration, str(e), "unknown", None, screenshot, html
 
         tasks = [protected_scrape(store_name) for store_name in stores]
         results = await asyncio.gather(*tasks)
 
         # Log all results sequentially using the agent's session
-        for store_name, deals, status, duration, error, s_type, proxy in results:
+        for store_name, deals, status, duration, error, s_type, proxy, screenshot, html in results:
             await self._log_scrape(
                 store_name,
                 status,
@@ -115,6 +127,8 @@ class ScraperAgent:
                 s_type,
                 proxy,
                 self.postal_code,
+                screenshot_path=screenshot,
+                html_path=html,
             )
 
         await self.session.commit()
@@ -123,15 +137,21 @@ class ScraperAgent:
 
     async def _scrape_store(
         self, store_name: str, limit: int, skip_direct: bool = False
-    ) -> tuple[List[Dict[str, Any]], str, Optional[str]]:
+    ) -> tuple[List[Dict[str, Any]], str, Optional[str], Optional[str], Optional[str], Optional[str]]:
         """
         Scrapes a single store, handling the fallback from a direct scraper to the Flipp API,
         and finally to circulaire-en-ligne.ca if both fail.
         Includes a retry mechanism for direct browser-based scrapers.
+        Returns (deals, scraper_type, proxy_used, screenshot_path, html_path, last_error).
         """
         scraper = self.scrapers.get(store_name.lower())
+        last_error = None
 
         if scraper and not skip_direct:
+            # Clear last artifacts
+            scraper.last_screenshot = None
+            scraper.last_html = None
+
             max_retries = 3
             for attempt in range(max_retries):
                 try:
@@ -139,21 +159,27 @@ class ScraperAgent:
                         f"Attempting direct scrape for {store_name} (Attempt {attempt + 1}/{max_retries})..."
                     )
                     # The scraper itself manages proxy rotation and returns deals
-                    # We'll update the scraper to return the proxy used alongside deals
+                    # Updated return type: (deals, proxy, screenshot, html)
                     result = await scraper.scrape(limit=limit)
 
                     # Support both old and new return types during transition
-                    if isinstance(result, tuple):
+                    if len(result) == 4:
+                        deals, proxy_used, screenshot, html = result
+                    elif len(result) == 2:
                         deals, proxy_used = result
+                        screenshot, html = None, None
                     else:
-                        deals, proxy_used = result, getattr(scraper.proxy_manager, 'last_proxy', None)
+                        deals = result
+                        proxy_used = getattr(scraper.proxy_manager, 'last_proxy', None)
+                        screenshot, html = None, None
 
                     if deals:
                         logging.info(
                             f"Direct scrape for {store_name} successful, found {len(deals)} deals."
                         )
-                        return deals, "direct", proxy_used
+                        return deals, "direct", proxy_used, screenshot, html, None
                 except Exception as e:
+                    last_error = str(e)
                     logging.error(
                         f"Direct scrape for {store_name} attempt {attempt + 1} failed: {e}."
                     )
@@ -173,11 +199,20 @@ class ScraperAgent:
         # Fallback to Flipp API
         deals = await self._scrape_with_flipp(store_name, limit)
         if deals:
-            return deals, "flipp", None
+            return deals, "flipp", None, None, None, None
 
         # Final fallback: circulaire-en-ligne.ca
         deals = await self._scrape_with_circulaire_en_ligne(store_name, limit)
-        return deals, "fallback", None
+
+        # Try to retrieve artifacts from the direct scraper even if we used fallbacks,
+        # so they can be logged if the fallbacks also failed.
+        screenshot, html = None, None
+        if scraper:
+            screenshot = getattr(scraper, 'last_screenshot', None)
+            html = getattr(scraper, 'last_html', None)
+
+        # Carry forward the error if no deals were found
+        return deals, "fallback", None, screenshot, html, (last_error if not deals else None)
 
     async def _scrape_with_flipp(
         self, store_name: str, limit: int
@@ -391,6 +426,8 @@ class ScraperAgent:
         scraper_type: str = "direct",
         proxy_used: Optional[str] = None,
         postal_code: Optional[str] = None,
+        screenshot_path: Optional[str] = None,
+        html_path: Optional[str] = None,
     ):
         """Records a scrape attempt in the ScraperLog table. Note: does not commit."""
         try:
@@ -403,6 +440,8 @@ class ScraperAgent:
                 duration_seconds=round(duration, 2),
                 error_message=error_message,
                 postal_code=postal_code,
+                screenshot_path=screenshot_path,
+                html_path=html_path,
             )
             self.session.add(log)
             await self.session.flush()

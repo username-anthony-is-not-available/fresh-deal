@@ -242,6 +242,8 @@ class ScraperLog(SQLModel, table=True):
     duration_seconds: float = Field(default=0.0)
     error_message: Optional[str] = None
     postal_code: Optional[str] = Field(default=None)
+    screenshot_path: Optional[str] = None
+    html_path: Optional[str] = None
     timestamp: datetime = Field(default_factory=utc_now)
 
 

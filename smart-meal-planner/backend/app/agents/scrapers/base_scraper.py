@@ -3,6 +3,7 @@ import asyncio
 import random
 import os
 import re
+import logging
 from playwright.async_api import async_playwright, Playwright, Page
 from datetime import date, datetime
 from bs4 import BeautifulSoup
@@ -46,6 +47,8 @@ class BaseScraper(ABC):
             storage_path, f"browser_storage_state_{self.__class__.__name__}.json"
         )
         self.user_agents = USER_AGENTS
+        self.last_screenshot: Optional[str] = None
+        self.last_html: Optional[str] = None
 
     @abstractmethod
     async def _scrape_page(self, page: Page, limit: int) -> List[Dict[str, Any]]:
@@ -55,13 +58,15 @@ class BaseScraper(ABC):
         """
         pass
 
-    async def scrape(self, limit: int = 50) -> tuple[List[Dict[str, Any]], Optional[str]]:
+    async def scrape(self, limit: int = 50) -> tuple[List[Dict[str, Any]], Optional[str], Optional[str], Optional[str]]:
         """
         The main method that handles browser setup, teardown, and proxy rotation.
         It calls the _scrape_page method where the actual scraping logic resides.
-        Returns a tuple of (deals, proxy_used).
+        Returns a tuple of (deals, proxy_used, screenshot_path, html_path).
         """
         proxy = self.proxy_manager.get_proxy()
+        screenshot_path = None
+        html_path = None
 
         async with async_playwright() as p:
             browser = None
@@ -79,13 +84,23 @@ class BaseScraper(ABC):
 
                 # Check if it was blocked at any point
                 if await self._check_incapsula_block(page):
+                    screenshot_path, html_path = await self._save_debug_artifacts(page, f"{self.__class__.__name__}_blocked")
                     raise Exception("Anti-bot detection triggered (Incapsula)")
 
                 await context.storage_state(path=self.storage_state_path)
-                return deals, proxy
+                return deals, proxy, None, None
             except Exception as e:
                 error_msg = str(e)
-                print(f"Scraping failed with proxy {proxy}: {error_msg}")
+                logging.error(f"Scraping failed with proxy {proxy}: {error_msg}")
+
+                # Save debug artifacts on failure
+                try:
+                    # We might not have 'page' if it failed before page creation,
+                    # but usually it fails during _scrape_page
+                    if 'page' in locals():
+                        screenshot_path, html_path = await self._save_debug_artifacts(page, f"{self.__class__.__name__}_failure")
+                except Exception as artifact_error:
+                    logging.error(f"Failed to save artifacts during exception handling: {artifact_error}")
 
                 if "Incapsula" in error_msg or "Anti-bot" in error_msg:
                     # Specific handling for bot detection - blacklist proxy longer if possible
@@ -97,6 +112,13 @@ class BaseScraper(ABC):
                     # General failure, still blacklist proxy but might be structure change
                     self.proxy_manager.blacklist_proxy(proxy)
 
+                # Re-raise with the same type but we want to carry the artifact paths if possible.
+                # Since the caller expects these, we'll return them in the catch block if we decide to NOT re-raise,
+                # but ScraperAgent expects an exception to handle the failure flow.
+                # For now, we'll let ScraperAgent handle the exception and we'll need a way to pass artifacts.
+                # Actually, the easiest way is to let ScraperAgent call a method or have BaseScraper store them.
+                self.last_screenshot = screenshot_path
+                self.last_html = html_path
                 raise e
             finally:
                 if browser:
@@ -211,23 +233,27 @@ class BaseScraper(ABC):
                 break
             last_height = new_height
 
-    async def _save_debug_artifacts(self, page: Page, name: str):
+    async def _save_debug_artifacts(self, page: Page, name: str) -> Tuple[Optional[str], Optional[str]]:
         """
         Saves a screenshot and HTML content for debugging.
+        Returns a tuple of (screenshot_path, html_path).
         """
         try:
-            timestamp = date.today().isoformat()
-            screenshot_path = os.path.join(
-                self.storage_path, f"{name}_{timestamp}.png"
-            )
-            html_path = os.path.join(self.storage_path, f"{name}_{timestamp}.html")
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            screenshot_filename = f"{name}_{timestamp}.png"
+            html_filename = f"{name}_{timestamp}.html"
+            screenshot_path = os.path.join(self.storage_path, screenshot_filename)
+            html_path = os.path.join(self.storage_path, html_filename)
 
             await page.screenshot(path=screenshot_path)
+            content = await page.content()
             with open(html_path, "w", encoding="utf-8") as f:
-                f.write(await page.content())
-            print(f"Debug artifacts saved: {screenshot_path}, {html_path}")
+                f.write(content)
+            logging.info(f"Debug artifacts saved: {screenshot_path}, {html_path}")
+            return screenshot_path, html_path
         except Exception as e:
-            print(f"Failed to save debug artifacts: {e}")
+            logging.error(f"Failed to save debug artifacts: {e}")
+            return None, None
 
     async def _check_incapsula_block(self, page: Page) -> bool:
         """
@@ -236,7 +262,7 @@ class BaseScraper(ABC):
         try:
             content = await page.content()
             if "Incapsula incident ID" in content or "Request unsuccessful. Incapsula incident ID" in content:
-                print(f"Anti-bot detection triggered (Incapsula) on {page.url}")
+                logging.warning(f"Anti-bot detection triggered (Incapsula) on {page.url}")
                 return True
         except Exception:
             pass
@@ -263,7 +289,7 @@ class BaseScraper(ABC):
             soup = BeautifulSoup(frame_content, 'html.parser')
             return soup.select(tile_selector)
         except Exception as e:
-            print(f"Flipp flyer frame not found or timed out on {page.url}: {e}")
+            logging.error(f"Flipp flyer frame not found or timed out on {page.url}: {e}")
             return []
 
     def _parse_flyer_dates(
