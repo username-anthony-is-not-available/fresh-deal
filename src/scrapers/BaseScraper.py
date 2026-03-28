@@ -79,13 +79,13 @@ class BaseScraper(ABC):
                 page = await self._get_page(context)
 
                 await self._simulate_mouse_movement(page)
-                deals = await self.fetch_deals(page, limit)
 
                 # Check for Incapsula block
                 if await self._check_incapsula_block(page):
                     self.last_screenshot, self.last_html = await self._save_debug_artifacts(page, f"{self.__class__.__name__}_blocked")
                     raise Exception("[BOT_BLOCK] Anti-bot detection triggered (Incapsula)")
 
+                deals = await self.fetch_deals(page, limit)
                 return deals
 
             except Exception as e:
@@ -267,6 +267,34 @@ class BaseScraper(ABC):
             date_text = date_text.replace(fr, en)
 
         try:
+            # Pattern 1: du 1 au 7 janv. 2024 / from 1 to 7 Jan. 2024
+            match = re.search(
+                r"(?:from|du)\s+(?P<sd>\d+)\s+(?:to|au)\s+(?P<ed>\d+)\s+(?P<m>\w+)\.?\s+(?P<y>\d{4})",
+                date_text, re.IGNORECASE
+            )
+            if match:
+                for fmt in ["%d %b %Y", "%d %B %Y"]:
+                    try:
+                        start = datetime.strptime(f"{match.group('sd')} {match.group('m')} {match.group('y')}", fmt).date()
+                        end = datetime.strptime(f"{match.group('ed')} {match.group('m')} {match.group('y')}", fmt).date()
+                        return start, end
+                    except ValueError: continue
+
+            # Pattern 2: du 1 janv. 2024 au 7 janv. 2024
+            match = re.search(
+                r"(?:from|du)\s+(?P<sd>\d+)\s+(?P<sm>\w+)\.?\s+(?P<y1>\d{4})?\s*(?:to|au)\s+(?P<ed>\d+)\s+(?P<em>\w+)\.?\s+(?P<y>\d{4})",
+                date_text, re.IGNORECASE
+            )
+            if match:
+                year = match.group('y')
+                for fmt in ["%d %b %Y", "%d %B %Y"]:
+                    try:
+                        start = datetime.strptime(f"{match.group('sd')} {match.group('sm')} {year}", fmt).date()
+                        end = datetime.strptime(f"{match.group('ed')} {match.group('em')} {year}", fmt).date()
+                        return start, end
+                    except ValueError: continue
+
+            # Pattern 3: from Jan 1 to Jan 7, 2024
             match = re.search(
                 r"(?:from|du)\s+(?P<sm>\w+)\.?\s+(?P<sd>\d+)\s+(?:to|au)\s+(?P<em>\w+)\.?\s+(?P<ed>\d+),?\s+(?P<y>\d{4})",
                 date_text, re.IGNORECASE
@@ -276,42 +304,6 @@ class BaseScraper(ABC):
                     try:
                         start = datetime.strptime(f"{match.group('sd')} {match.group('sm')} {match.group('y')}", fmt).date()
                         end = datetime.strptime(f"{match.group('ed')} {match.group('em')} {match.group('y')}", fmt).date()
-                        return start, end
-                    except ValueError: continue
-
-            match = re.search(
-                r"(?:du|from)\s+(?P<sd>\d+)\s+(?P<sm>\w+)\.?\s+(?:au|to)\s+(?P<ed>\d+)\s+(?P<em>\w+)\.?\s+(?P<y>\d{4})",
-                date_text, re.IGNORECASE
-            )
-            if match:
-                for fmt in ["%d %b %Y", "%d %B %Y"]:
-                    try:
-                        start = datetime.strptime(f"{match.group('sd')} {match.group('sm')} {match.group('y')}", fmt).date()
-                        end = datetime.strptime(f"{match.group('ed')} {match.group('em')} {match.group('y')}", fmt).date()
-                        return start, end
-                    except ValueError: continue
-
-            match = re.search(
-                r"(?:from|du)\s+(?P<m>\w+)\.?\s+(?P<sd>\d+)\s+(?:to|au)\s+(?P<ed>\d+),?\s+(?P<y>\d{4})",
-                date_text, re.IGNORECASE
-            )
-            if match:
-                for fmt in ["%d %b %Y", "%d %B %Y"]:
-                    try:
-                        start = datetime.strptime(f"{match.group('sd')} {match.group('m')} {match.group('y')}", fmt).date()
-                        end = datetime.strptime(f"{match.group('ed')} {match.group('m')} {match.group('y')}", fmt).date()
-                        return start, end
-                    except ValueError: continue
-
-            match = re.search(
-                r"(?:du|from)\s+(?P<sd>\d+)\s+(?:au|to)\s+(?P<ed>\d+)\s+(?P<m>\w+)\.?\s+(?P<y>\d{4})",
-                date_text, re.IGNORECASE
-            )
-            if match:
-                for fmt in ["%d %b %Y", "%d %B %Y"]:
-                    try:
-                        start = datetime.strptime(f"{match.group('sd')} {match.group('m')} {match.group('y')}", fmt).date()
-                        end = datetime.strptime(f"{match.group('ed')} {match.group('m')} {match.group('y')}", fmt).date()
                         return start, end
                     except ValueError: continue
         except Exception: pass
@@ -375,10 +367,10 @@ class BaseScraper(ABC):
         if re.search(r"(?:\d+|\b)kg\b|/kg\b|\bpar kg\b|\bkilo", text_lower): return "kg"
         elif re.search(r"(?:\d+|\b)lb\b|/lb\b|\bpar lb\b|\bpound", text_lower): return "lb"
         elif re.search(r"100\s*g\b|/100\s*g\b", text_lower): return "100g"
-        elif re.search(r"\bml\b", text_lower): return "ml"
-        elif re.search(r"(?:\d+)\s*g\b|\bgramme", text_lower): return "g"
-        elif re.search(r"(?:\d+)\s*l\b|\blitre", text_lower): return "L"
-        elif re.search(r"\bsac\b|\bbte\b|\bboîte\b|\bbox\b", text_lower): return "sac/box"
+        elif re.search(r"(?:\d+|\b)ml\b", text_lower): return "ml"
+        elif re.search(r"(?:\d+|\b)g\b|\bgramme", text_lower): return "g"
+        elif re.search(r"(?:\d+|\b)l\b|\blitre", text_lower): return "L"
+        elif re.search(r"\bsac\b|\bbte\b|\bboîte\b|\bbox\b|\bbag\b", text_lower): return "sac/box"
         elif re.search(r"\bpqt\b|\bpaquet\b|\bpack\b", text_lower): return "pack"
         elif re.search(r"\bcaisse\b|\bcase\b", text_lower): return "case"
         else: return "each"
@@ -430,6 +422,6 @@ class BaseScraper(ABC):
             "Personal Care": ["shampoing", "shampoo", "dentifrice", "toothpaste", "brosse à dents", "toothbrush", "déodorant", "deodorant", "soin", "care"],
         }
         for category, keywords in categories.items():
-            if any(kw in name_lower for kw in keywords):
+            if any(re.search(r'\b' + re.escape(kw) + r'\b', name_lower) for kw in keywords):
                 return category
         return "Grocery"
