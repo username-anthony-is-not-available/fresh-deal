@@ -1,9 +1,8 @@
-
 import asyncio
 import logging
-from app.agents.scrapers.provigo_scraper import ProvigoScraper
-from app.agents.scrapers.metro_scraper import MetroScraper
+from src.scrapers.provigo_scraper import ProvigoScraper
 import os
+import json
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -11,24 +10,26 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(level
 async def run_scraper(scraper_class, name):
     print(f"\n--- Running {name} Scraper ---")
     scraper = scraper_class(headless=True)
-    deals = await scraper.scrape(limit=10)
-    print(f"Found {len(deals)} deals for {name}")
-    for i, deal in enumerate(deals[:3]):
-        print(f"  {i+1}. {deal['name']} - {deal['price']} ({deal['unit']})")
+    try:
+        deals = await scraper.scrape(limit=10)
+        print(f"Found {len(deals)} deals for {name}")
+        for i, deal in enumerate(deals[:3]):
+            print(f"  {i+1}. {deal.name} - ${deal.price:.2f} ({deal.unit})")
 
-    if not deals:
-        print(f"FAILED to find deals for {name}. Check debug artifacts in /tmp")
+        if not deals:
+            print(f"FAILED to find deals for {name}. Check debug artifacts in /tmp/scrapers")
+    except Exception as e:
+        print(f"ERROR running scraper {name}: {e}")
 
 async def main():
-    # Ensure /tmp exists
-    if not os.path.exists("/tmp"):
-        os.makedirs("/tmp")
+    # Scrapers to run
+    scrapers = [
+        (ProvigoScraper, "Provigo"),
+        # Add more scrapers here as they are refactored
+    ]
 
-    # We'll temporarily monkeypatch the scrapers to use domcontentloaded for this test
-    # so we can get better HTML artifacts if they were timing out.
-
-    await run_scraper(ProvigoScraper, "Provigo")
-    await run_scraper(MetroScraper, "Metro")
+    for scraper_class, name in scrapers:
+        await run_scraper(scraper_class, name)
 
 if __name__ == "__main__":
     asyncio.run(main())
