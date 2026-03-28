@@ -48,27 +48,123 @@ class ScraperAgent:
     async def run_daily_scrape(self):
         """
         A scheduled job to scrape all supported stores.
+        Note: This is the sequential version. For parallel execution, use Celery tasks.
         """
         all_stores = list(self.scrapers.keys())
         logging.info(f"Running daily scrape for stores: {all_stores}")
-        scraped_data = await self.scrape(stores=all_stores)
-        for store_name, deals in scraped_data.items():
-            if deals:
-                await self.persist_deals(deals)
-            else:
-                await self.mark_store_as_scraped(store_name)
+        for store_name in all_stores:
+            await self.scrape_and_persist_single_store(store_name)
 
         # Also run scrapers from the root framework
         root_stores = list(ScraperBridgeService.SCRAPER_MAP.keys())
         if root_stores:
             logging.info(f"Running root framework scrapers for: {root_stores}")
-            root_scraped_data = await self.scrape_with_root_framework(stores=root_stores)
-            for store_name, deals in root_scraped_data.items():
+            for store_name in root_stores:
+                await self.scrape_and_persist_single_store(store_name, scraper_type="root_framework")
+
+        logging.info("Daily scrape finished.")
+
+    async def scrape_and_persist_single_store(
+        self, store_name: str, limit: int = 50, scraper_type: str = "default"
+    ) -> Dict[str, Any]:
+        """
+        Scrapes a single store and persists the results to the database.
+        This method encapsulates the full lifecycle for one store and is designed
+        to be called by a granular Celery task.
+        """
+        start_time = time.time()
+        logging.info(f"Starting scrape and persist for {store_name} (type: {scraper_type})")
+
+        try:
+            if scraper_type == "root_framework":
+                deals = await ScraperBridgeService.run_root_scraper(
+                    store_name, postal_code=self.postal_code, limit=limit, headless=self.headless
+                )
+                duration = time.time() - start_time
+                status = "success" if deals else "failure"
+                error_msg = None if deals else "No deals found"
+
+                await self._log_scrape(
+                    store_name,
+                    status,
+                    len(deals),
+                    duration,
+                    error_msg,
+                    scraper_type="root_framework",
+                    postal_code=self.postal_code
+                )
                 if deals:
                     await self.persist_deals(deals)
+                else:
+                    await self.mark_store_as_scraped(store_name)
 
-        await self.session.commit()
-        logging.info("Daily scrape finished.")
+                await self.session.commit()
+                return {"store": store_name, "status": status, "count": len(deals)}
+
+            else:
+                health_service = ScraperHealthService(self.session)
+                skip_direct = await health_service.should_skip_direct_scrape(store_name)
+                if skip_direct:
+                    logging.warning(f"Circuit breaker active for {store_name}. Skipping direct scrape.")
+
+                deals, s_type, proxy, screenshot, html, last_error = await self._scrape_store(
+                    store_name, limit, skip_direct=skip_direct
+                )
+                duration = time.time() - start_time
+                status = "success" if deals else "failure"
+                error_msg = last_error or (None if deals else "No deals found from any source")
+
+                await self._log_scrape(
+                    store_name,
+                    status,
+                    len(deals),
+                    duration,
+                    error_msg,
+                    s_type,
+                    proxy,
+                    self.postal_code,
+                    screenshot_path=screenshot,
+                    html_path=html,
+                )
+
+                if deals:
+                    await self.persist_deals(deals)
+                else:
+                    await self.mark_store_as_scraped(store_name)
+
+                await self.session.commit()
+                return {
+                    "store": store_name,
+                    "status": status,
+                    "count": len(deals),
+                    "scraper_type": s_type
+                }
+
+        except Exception as e:
+            duration = time.time() - start_time
+            logging.error(f"Failed to scrape and persist store {store_name}: {e}")
+
+            # Retrieve artifacts if possible
+            screenshot, html = None, None
+            scraper = self.scrapers.get(store_name.lower())
+            if scraper:
+                screenshot = getattr(scraper, 'last_screenshot', None)
+                html = getattr(scraper, 'last_html', None)
+
+            await self._log_scrape(
+                store_name,
+                "failure",
+                0,
+                duration,
+                str(e),
+                "unknown",
+                None,
+                self.postal_code,
+                screenshot_path=screenshot,
+                html_path=html,
+            )
+            await self.session.commit()
+            return {"store": store_name, "status": "failure", "error": str(e)}
 
     async def scrape_with_root_framework(
         self, stores: List[str], limit_per_store: int = 50

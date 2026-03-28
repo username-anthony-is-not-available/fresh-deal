@@ -1,5 +1,4 @@
-from app.core.db import get_async_session
-from app.agents.scraper_agent import ScraperAgent
+from app.tasks import scrape_task, sync_root_scrapers_task
 import logging
 from app.core.config import settings
 from app.services.notification_service import NotificationService
@@ -9,19 +8,21 @@ logger = logging.getLogger(__name__)
 async def run_scheduled_scrape():
     """
     Called by the scheduler to run the scraping process for all supported stores.
-    Uses the ScraperAgent to orchestrate the process and handle persistence.
+    Dispatches Celery tasks to parallelize the process across workers.
     """
-    logger.info("Starting scheduled scrape job.")
+    logger.info("Starting scheduled parallel scrape job.")
     try:
-        async with get_async_session() as session:
-            scraper_agent = ScraperAgent(session, settings.DEFAULT_POSTAL_CODE)
-            await scraper_agent.run_daily_scrape()
+        # Dispatch main scrapers
+        scrape_task.delay(postal_code=settings.DEFAULT_POSTAL_CODE)
 
-            success_message = "Scheduled scrape job finished successfully."
-            logger.info(success_message)
-            await NotificationService.send_notification(f"Scrape job finished: {success_message}")
+        # Dispatch root framework scrapers
+        sync_root_scrapers_task.delay(postal_code=settings.DEFAULT_POSTAL_CODE)
+
+        success_message = "Scheduled parallel scrape jobs dispatched successfully."
+        logger.info(success_message)
+        await NotificationService.send_notification(f"Scrape job dispatched: {success_message}")
 
     except Exception as e:
-        error_message = f"An error occurred during the scheduled scrape: {e}"
+        error_message = f"An error occurred while dispatching the scheduled scrape: {e}"
         logger.error(error_message, exc_info=True)
-        await NotificationService.send_notification(f"Scrape job failed: {error_message}")
+        await NotificationService.send_notification(f"Scrape job dispatch failed: {error_message}")
