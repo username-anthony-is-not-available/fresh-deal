@@ -19,6 +19,7 @@ from .scrapers.circulaire_en_ligne_scraper import CirculaireEnLigneScraper
 from app.services.notification_service import NotificationService
 from app.services.deal_quality_service import deal_quality_service, DealQuality
 from app.services.scraper_health_service import ScraperHealthService
+from app.services.scraper_bridge_service import ScraperBridgeService
 import logging
 
 
@@ -57,8 +58,60 @@ class ScraperAgent:
             else:
                 await self.mark_store_as_scraped(store_name)
 
+        # Also run scrapers from the root framework
+        root_stores = list(ScraperBridgeService.SCRAPER_MAP.keys())
+        if root_stores:
+            logging.info(f"Running root framework scrapers for: {root_stores}")
+            root_scraped_data = await self.scrape_with_root_framework(stores=root_stores)
+            for store_name, deals in root_scraped_data.items():
+                if deals:
+                    await self.persist_deals(deals)
+
         await self.session.commit()
         logging.info("Daily scrape finished.")
+
+    async def scrape_with_root_framework(
+        self, stores: List[str], limit_per_store: int = 50
+    ) -> Dict[str, List[Dict[str, Any]]]:
+        """
+        Runs scrapers from the root-level framework.
+        """
+        results = {}
+        for store_name in stores:
+            start_time = time.time()
+            try:
+                deals = await ScraperBridgeService.run_root_scraper(
+                    store_name, postal_code=self.postal_code, limit=limit_per_store, headless=self.headless
+                )
+                duration = time.time() - start_time
+                status = "success" if deals else "failure"
+                error_msg = None if deals else "No deals found"
+
+                await self._log_scrape(
+                    store_name,
+                    status,
+                    len(deals),
+                    duration,
+                    error_msg,
+                    scraper_type="root_framework",
+                    postal_code=self.postal_code
+                )
+                results[store_name] = deals
+            except Exception as e:
+                duration = time.time() - start_time
+                logging.error(f"Root scraper {store_name} failed: {e}")
+                await self._log_scrape(
+                    store_name,
+                    "failure",
+                    0,
+                    duration,
+                    str(e),
+                    scraper_type="root_framework",
+                    postal_code=self.postal_code
+                )
+                results[store_name] = []
+
+        return results
 
     async def scrape(
         self, stores: List[str], limit_per_store: int = 50, user_id: Optional[int] = None
@@ -163,11 +216,16 @@ class ScraperAgent:
                     result = await scraper.scrape(limit=limit)
 
                     # Support both old and new return types during transition
-                    if len(result) == 4:
-                        deals, proxy_used, screenshot, html = result
-                    elif len(result) == 2:
-                        deals, proxy_used = result
-                        screenshot, html = None, None
+                    if isinstance(result, tuple):
+                        if len(result) == 4:
+                            deals, proxy_used, screenshot, html = result
+                        elif len(result) == 2:
+                            deals, proxy_used = result
+                            screenshot, html = None, None
+                        else:
+                            deals = result
+                            proxy_used = getattr(scraper.proxy_manager, 'last_proxy', None)
+                            screenshot, html = None, None
                     else:
                         deals = result
                         proxy_used = getattr(scraper.proxy_manager, 'last_proxy', None)

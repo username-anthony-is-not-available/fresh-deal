@@ -26,11 +26,12 @@ async def test_scraper_agent_notifies_on_direct_failure():
                 # We need to reduce retries and sleep time for faster test
                 with patch('asyncio.sleep', new_callable=AsyncMock):
                     # Act
-                    deals = await agent._scrape_store("walmart", limit=1)
+                    deals, scraper_type, _, _, _, _ = await agent._scrape_store("walmart", limit=1)
 
                     # Assert
                     assert len(deals) == 1
                     assert deals[0]["name"] == "Fallback Product"
+                    assert scraper_type == "flipp"
 
                     # Check that alert was sent
                     mock_alert.assert_called_once()
