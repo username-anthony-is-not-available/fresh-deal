@@ -37,12 +37,15 @@ class BaseScraper(ABC):
         postal_code: str = "H4T1V6",
         headless: bool = True,
         proxy_manager: Optional[ProxyManager] = None,
-        storage_path: str = "/tmp",
+        storage_path: str = "/tmp/scrapers",
     ):
         self.postal_code = postal_code
         self.headless = headless
         self.proxy_manager = proxy_manager or ProxyManager()
         self.storage_path = storage_path
+        if not os.path.exists(self.storage_path):
+            os.makedirs(self.storage_path, exist_ok=True)
+
         self.storage_state_path = os.path.join(
             storage_path, f"browser_storage_state_{self.__class__.__name__}.json"
         )
@@ -84,8 +87,8 @@ class BaseScraper(ABC):
 
                 # Check if it was blocked at any point
                 if await self._check_incapsula_block(page):
-                    screenshot_path, html_path = await self._save_debug_artifacts(page, f"{self.__class__.__name__}_blocked")
-                    raise Exception("Anti-bot detection triggered (Incapsula)")
+                    self.last_screenshot, self.last_html = await self._save_debug_artifacts(page, f"{self.__class__.__name__}_blocked")
+                    raise Exception("[BOT_BLOCK] Anti-bot detection triggered (Incapsula)")
 
                 await context.storage_state(path=self.storage_state_path)
                 return deals, proxy, None, None
@@ -93,32 +96,35 @@ class BaseScraper(ABC):
                 error_msg = str(e)
                 logging.error(f"Scraping failed with proxy {proxy}: {error_msg}")
 
-                # Save debug artifacts on failure
-                try:
-                    # We might not have 'page' if it failed before page creation,
-                    # but usually it fails during _scrape_page
-                    if 'page' in locals():
-                        screenshot_path, html_path = await self._save_debug_artifacts(page, f"{self.__class__.__name__}_failure")
-                except Exception as artifact_error:
-                    logging.error(f"Failed to save artifacts during exception handling: {artifact_error}")
+                # Save debug artifacts on failure if not already saved (e.g. by _check_incapsula_block)
+                if not self.last_screenshot:
+                    try:
+                        # We might not have 'page' if it failed before page creation,
+                        # but usually it fails during _scrape_page
+                        if 'page' in locals():
+                            self.last_screenshot, self.last_html = await self._save_debug_artifacts(page, f"{self.__class__.__name__}_failure")
+                    except Exception as artifact_error:
+                        logging.error(f"Failed to save artifacts during exception handling: {artifact_error}")
 
                 if "Incapsula" in error_msg or "Anti-bot" in error_msg:
                     # Specific handling for bot detection - blacklist proxy longer if possible
                     if proxy:
                         self.proxy_manager.blacklist_proxy(proxy)
-                    raise Exception(f"Bot detection triggered: {error_msg}")
+                    if "[BOT_BLOCK]" not in error_msg:
+                        error_msg = f"[BOT_BLOCK] {error_msg}"
+                    raise Exception(error_msg)
+
+                if "Timeout" in error_msg or "timeout" in error_msg:
+                    if "[TIMEOUT]" not in error_msg:
+                        error_msg = f"[TIMEOUT] {error_msg}"
+                    raise Exception(error_msg)
 
                 if proxy:
                     # General failure, still blacklist proxy but might be structure change
                     self.proxy_manager.blacklist_proxy(proxy)
 
-                # Re-raise with the same type but we want to carry the artifact paths if possible.
-                # Since the caller expects these, we'll return them in the catch block if we decide to NOT re-raise,
-                # but ScraperAgent expects an exception to handle the failure flow.
-                # For now, we'll let ScraperAgent handle the exception and we'll need a way to pass artifacts.
-                # Actually, the easiest way is to let ScraperAgent call a method or have BaseScraper store them.
-                self.last_screenshot = screenshot_path
-                self.last_html = html_path
+                # Re-raise with the same type.
+                # Artifact paths are now stored in self.last_screenshot and self.last_html
                 raise e
             finally:
                 if browser:

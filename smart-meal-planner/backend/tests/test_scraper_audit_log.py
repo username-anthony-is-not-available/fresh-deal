@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, patch
 from sqlmodel import select
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlmodel import SQLModel
-from app.models.all_models import ScraperLog
+from app.models.all_models import ScraperLog, User
 from app.agents.scraper_agent import ScraperAgent
 from app.agents.scrapers.base_scraper import BaseScraper
 from playwright.async_api import Page
@@ -111,7 +111,7 @@ async def test_api_get_logs(async_session):
     await async_session.commit()
 
     # Act
-    logs = await get_scraper_logs(session=async_session)
+    logs = await get_scraper_logs(session=async_session, current_user=User(id=1, email="a@b.com"))
 
     # Assert
     assert len(logs) == 2
@@ -121,6 +121,48 @@ async def test_api_get_logs(async_session):
     assert logs[1].store_name == "Store1"
 
     # Test filtering
-    filtered_logs = await get_scraper_logs(status="failure", session=async_session)
+    filtered_logs = await get_scraper_logs(status="failure", session=async_session, current_user=User(id=1, email="a@b.com"))
     assert len(filtered_logs) == 1
     assert filtered_logs[0].store_name == "Store2"
+
+@pytest.mark.asyncio
+async def test_api_get_log_artifacts(async_session):
+    """Verifies the GET /admin/scrapers/logs/{log_id}/screenshot and html endpoints."""
+    from app.api.endpoints import get_scraper_log_screenshot, get_scraper_log_html
+    import os
+
+    # Create dummy files within allowed directory
+    os.makedirs("/tmp/scrapers", exist_ok=True)
+    screenshot_path = "/tmp/scrapers/test_s.png"
+    html_path = "/tmp/scrapers/test_h.html"
+    with open(screenshot_path, "wb") as f: f.write(b"fake image")
+    with open(html_path, "w") as f: f.write("<html></html>")
+
+    try:
+        # Arrange
+        log = ScraperLog(
+            store_name="Store1",
+            status="failure",
+            screenshot_path=screenshot_path,
+            html_path=html_path,
+            timestamp=datetime.now(timezone.utc)
+        )
+        async_session.add(log)
+        await async_session.commit()
+        await async_session.refresh(log)
+
+        # Act
+        screenshot_response = await get_scraper_log_screenshot(log_id=log.id, session=async_session, current_user=User(id=1, email="a@b.com"))
+        html_response = await get_scraper_log_html(log_id=log.id, session=async_session, current_user=User(id=1, email="a@b.com"))
+
+        # Assert
+        assert screenshot_response.path == screenshot_path
+        assert screenshot_response.media_type == "image/png"
+        assert html_response.path == html_path
+        assert html_response.media_type == "text/html"
+    finally:
+        # Cleanup
+        if os.path.exists(screenshot_path):
+            os.remove(screenshot_path)
+        if os.path.exists(html_path):
+            os.remove(html_path)

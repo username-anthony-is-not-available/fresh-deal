@@ -28,7 +28,13 @@ const ScrapingDashboardPage = () => {
   const [healthMetrics, setHealthMetrics] = useState([]);
   const [healthSummary, setHealthSummary] = useState(null);
   const [isLoadingHealth, setIsLoadingHealth] = useState(true);
-  
+  const [scraperLogs, setScraperLogs] = useState([]);
+  const [isLoadingLogs, setIsLoadingLogs] = useState(false);
+  const [logsOffset, setLogsOffset] = useState(0);
+  const [hasMoreLogs, setHasMoreLogs] = useState(true);
+  const [selectedLog, setSelectedLog] = useState(null);
+  const [isLogModalOpen, setIsLogModalOpen] = useState(false);
+
   // Flipp scraper options
   const [selectedStores, setSelectedStores] = useState(['metro', 'maxi', 'walmart', 'super_c']);
   const [postalCode, setPostalCode] = useState('H4T1V6');
@@ -49,7 +55,31 @@ const ScrapingDashboardPage = () => {
   useEffect(() => {
     fetchDealCount();
     fetchHealthData();
+    fetchScraperLogs(0, true);
   }, []);
+
+  const fetchScraperLogs = async (offset = 0, reset = false) => {
+    setIsLoadingLogs(true);
+    try {
+      const data = await api.get(`/admin/scrapers/logs?limit=50&offset=${offset}`);
+      if (reset) {
+        setScraperLogs(data);
+      } else {
+        setScraperLogs(prev => [...prev, ...data]);
+      }
+      setHasMoreLogs(data.length === 50);
+      setLogsOffset(offset);
+    } catch (e) {
+      console.error('Failed to fetch scraper logs', e);
+      toast.error('Failed to load scraper logs');
+    } finally {
+      setIsLoadingLogs(false);
+    }
+  };
+
+  const loadMoreLogs = () => {
+    fetchScraperLogs(logsOffset + 50);
+  };
 
   const fetchHealthData = async () => {
     setIsLoadingHealth(true);
@@ -101,6 +131,7 @@ const ScrapingDashboardPage = () => {
       if (data.status === 'SUCCESS' || data.status === 'FAILURE') {
         fetchDealCount();
         fetchHealthData();
+        fetchScraperLogs(0, true);
       }
     } catch (e) {
       console.error('Failed to poll task', e);
@@ -122,7 +153,7 @@ const ScrapingDashboardPage = () => {
       };
       setTasks(prev => [newTask, ...prev]);
     } catch (e) {
-      console.error('Failed to trigger scrape', e);
+      console.error('Failed to trigger scraper', e);
     } finally {
       setIsScraping(prev => ({ ...prev, [scraper.id]: false }));
     }
@@ -630,8 +661,6 @@ const ScrapingDashboardPage = () => {
               </button>
             </div>
           ))}
-
-          {/* No more placeholder - we have all stores via Flipp! */}
         </div>
       </div>
 
@@ -699,6 +728,103 @@ const ScrapingDashboardPage = () => {
         )}
       </div>
 
+      {/* Scraper Audit Logs */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-gray-900">Scraper Audit Logs</h2>
+          <button
+            onClick={() => fetchScraperLogs(0, true)}
+            className="text-primary-600 hover:text-primary-700 text-sm font-medium flex items-center gap-1"
+          >
+            {isLoadingLogs && logsOffset === 0 ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+            Refresh Logs
+          </button>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider">
+              <tr>
+                <th className="px-6 py-3 font-semibold">Store</th>
+                <th className="px-6 py-3 font-semibold">Status</th>
+                <th className="px-6 py-3 font-semibold">Type</th>
+                <th className="px-6 py-3 font-semibold">Duration</th>
+                <th className="px-6 py-3 font-semibold">Items</th>
+                <th className="px-6 py-3 font-semibold">Timestamp</th>
+                <th className="px-6 py-3 font-semibold text-right">Details</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {scraperLogs.length === 0 ? (
+                <tr>
+                  <td colSpan="7" className="px-6 py-8 text-center text-gray-500 italic">
+                    {isLoadingLogs ? "Loading logs..." : "No logs available."}
+                  </td>
+                </tr>
+              ) : scraperLogs.map((log) => (
+                <tr key={log.id} className="hover:bg-gray-50 transition-colors">
+                  <td className="px-6 py-4">
+                    <p className="font-semibold text-gray-900 capitalize">{log.store_name}</p>
+                    <p className="text-xs text-gray-400">{log.postal_code || 'No PC'}</p>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-1.5">
+                      {log.status === 'success' ? (
+                        <CheckCircle className="w-4 h-4 text-green-500" />
+                      ) : (
+                        <XCircle className="w-4 h-4 text-red-500" />
+                      )}
+                      <span className={clsx(
+                        "text-xs font-bold uppercase",
+                        log.status === 'success' ? "text-green-600" : "text-red-600"
+                      )}>
+                        {log.status}
+                      </span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className="px-2 py-0.5 bg-gray-100 text-gray-600 text-[10px] font-bold uppercase rounded">
+                      {log.scraper_type}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-600">
+                    {log.duration_seconds}s
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-600 font-medium">
+                    {log.items_scraped}
+                  </td>
+                  <td className="px-6 py-4 text-xs text-gray-500">
+                    {new Date(log.timestamp).toLocaleString()}
+                  </td>
+                  <td className="px-6 py-4 text-right">
+                    <button
+                      onClick={() => {
+                        setSelectedLog(log);
+                        setIsLogModalOpen(true);
+                      }}
+                      className="text-primary-600 hover:text-primary-800 text-sm font-medium"
+                    >
+                      View
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {hasMoreLogs && (
+          <div className="p-4 border-t border-gray-100 text-center">
+            <button
+              onClick={loadMoreLogs}
+              disabled={isLoadingLogs}
+              className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 disabled:opacity-50"
+            >
+              {isLoadingLogs ? "Loading..." : "Load More Logs"}
+            </button>
+          </div>
+        )}
+      </div>
+
       {/* Info Box */}
       <div className="bg-green-50 border border-green-200 rounded-lg p-4">
         <h3 className="font-medium text-green-800 mb-2">🚀 About Flipp API Scraper</h3>
@@ -718,6 +844,129 @@ const ScrapingDashboardPage = () => {
           <li>• Background tasks require Redis and Celery workers to be running.</li>
         </ul>
       </div>
+
+      {/* Log Details Modal */}
+      {isLogModalOpen && selectedLog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+              <div>
+                <h3 className="text-xl font-bold text-gray-900 capitalize">
+                  {selectedLog.store_name} Log Details
+                </h3>
+                <p className="text-sm text-gray-500">
+                  {new Date(selectedLog.timestamp).toLocaleString()}
+                </p>
+              </div>
+              <button
+                onClick={() => setIsLogModalOpen(false)}
+                className="p-2 hover:bg-gray-200 rounded-full transition-colors"
+              >
+                <XCircle className="w-6 h-6 text-gray-400" />
+              </button>
+            </div>
+
+            <div className="p-6 overflow-y-auto space-y-6">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-3 bg-gray-50 rounded-xl">
+                  <p className="text-xs text-gray-500 uppercase font-bold tracking-wider mb-1">Status</p>
+                  <div className="flex items-center gap-2">
+                    {selectedLog.status === 'success' ? (
+                      <CheckCircle className="w-5 h-5 text-green-500" />
+                    ) : (
+                      <XCircle className="w-5 h-5 text-red-500" />
+                    )}
+                    <span className={clsx(
+                      "font-bold",
+                      selectedLog.status === 'success' ? "text-green-700" : "text-red-700"
+                    )}>
+                      {selectedLog.status.toUpperCase()}
+                    </span>
+                  </div>
+                </div>
+                <div className="p-3 bg-gray-50 rounded-xl">
+                  <p className="text-xs text-gray-500 uppercase font-bold tracking-wider mb-1">Scraper Type</p>
+                  <p className="font-bold text-gray-900 capitalize">{selectedLog.scraper_type}</p>
+                </div>
+                <div className="p-3 bg-gray-50 rounded-xl">
+                  <p className="text-xs text-gray-500 uppercase font-bold tracking-wider mb-1">Duration</p>
+                  <p className="font-bold text-gray-900">{selectedLog.duration_seconds}s</p>
+                </div>
+                <div className="p-3 bg-gray-50 rounded-xl">
+                  <p className="text-xs text-gray-500 uppercase font-bold tracking-wider mb-1">Items Scraped</p>
+                  <p className="font-bold text-gray-900">{selectedLog.items_scraped}</p>
+                </div>
+              </div>
+
+              {selectedLog.error_message && (
+                <div className="p-4 bg-red-50 border border-red-100 rounded-xl">
+                  <p className="text-xs text-red-600 uppercase font-bold tracking-wider mb-2">Error Message</p>
+                  <pre className="text-sm text-red-800 whitespace-pre-wrap font-mono bg-white/50 p-3 rounded-lg border border-red-200">
+                    {selectedLog.error_message}
+                  </pre>
+                </div>
+              )}
+
+              {selectedLog.proxy_used && (
+                <div>
+                  <p className="text-xs text-gray-500 uppercase font-bold tracking-wider mb-1">Proxy Used</p>
+                  <p className="text-sm font-mono text-gray-700 bg-gray-100 px-2 py-1 rounded inline-block">
+                    {selectedLog.proxy_used}
+                  </p>
+                </div>
+              )}
+
+              <div className="pt-4 border-t border-gray-100">
+                <p className="text-xs text-gray-500 uppercase font-bold tracking-wider mb-3">Debug Artifacts</p>
+                <div className="flex flex-wrap gap-3">
+                  {selectedLog.screenshot_path ? (
+                    <a
+                      href={`${api.defaults.baseURL}/admin/scrapers/logs/${selectedLog.id}/screenshot`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-lg font-medium transition-colors"
+                    >
+                      <Globe className="w-4 h-4" />
+                      View Screenshot
+                    </a>
+                  ) : (
+                    <button disabled className="flex items-center gap-2 px-4 py-2 bg-gray-50 text-gray-400 rounded-lg font-medium cursor-not-allowed">
+                      <Globe className="w-4 h-4" />
+                      No Screenshot
+                    </button>
+                  )}
+
+                  {selectedLog.html_path ? (
+                    <a
+                      href={`${api.defaults.baseURL}/admin/scrapers/logs/${selectedLog.id}/html`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-lg font-medium transition-colors"
+                    >
+                      <Database className="w-4 h-4" />
+                      View HTML Snapshot
+                    </a>
+                  ) : (
+                    <button disabled className="flex items-center gap-2 px-4 py-2 bg-gray-50 text-gray-400 rounded-lg font-medium cursor-not-allowed">
+                      <Database className="w-4 h-4" />
+                      No HTML Snapshot
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 flex justify-end">
+              <button
+                onClick={() => setIsLogModalOpen(false)}
+                className="px-6 py-2 bg-gray-900 text-white rounded-xl font-bold hover:bg-black transition-all shadow-lg"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
