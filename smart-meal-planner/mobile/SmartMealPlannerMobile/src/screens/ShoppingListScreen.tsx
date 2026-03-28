@@ -38,6 +38,8 @@ const ShoppingListScreen = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState<number | null>(null);
+  const [isOffline, setIsOffline] = useState(false);
   const {user} = useAuth();
 
   const fetchShoppingList = useCallback(async () => {
@@ -48,8 +50,10 @@ const ShoppingListScreen = () => {
     }
     try {
       setError(null);
-      const data = await getShoppingList(user.id);
-      setShoppingList(data.min_cost_stores || null);
+      const result = await getShoppingList(user.id);
+      setShoppingList(result.data?.min_cost_stores || null);
+      setLastUpdated(result.timestamp);
+      setIsOffline(result.isOffline);
     } catch (e) {
       setError('Failed to load shopping list. Please try again later.');
       console.error(e);
@@ -95,11 +99,23 @@ const ShoppingListScreen = () => {
 
   return (
     <SafeAreaView style={styles.container}>
+      {isOffline && (
+        <View style={styles.offlineBanner}>
+          <Text style={styles.offlineText}>Viewing offline version</Text>
+        </View>
+      )}
       <ScrollView
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }>
-        <Text style={styles.header}>Your Shopping List</Text>
+        <View style={styles.headerContainer}>
+          <Text style={styles.header}>Your Shopping List</Text>
+          {lastUpdated && (
+            <Text style={styles.lastUpdatedText}>
+              Last updated: {new Date(lastUpdated).toLocaleString()}
+            </Text>
+          )}
+        </View>
         {Object.entries(shoppingList).map(([storeName, storeData]) => (
           <StoreCard
             key={storeName}
@@ -136,11 +152,30 @@ const styles = StyleSheet.create({
     color: 'red',
     textAlign: 'center',
   },
+  headerContainer: {
+    backgroundColor: 'white',
+    paddingBottom: 8,
+  },
   header: {
     fontSize: 24,
     fontWeight: 'bold',
     padding: 16,
-    backgroundColor: 'white',
+    paddingBottom: 4,
+  },
+  lastUpdatedText: {
+    fontSize: 12,
+    color: '#666',
+    paddingHorizontal: 16,
+    paddingBottom: 8,
+  },
+  offlineBanner: {
+    backgroundColor: '#ffcc00',
+    padding: 8,
+    alignItems: 'center',
+  },
+  offlineText: {
+    color: '#000',
+    fontWeight: 'bold',
   },
 });
 
