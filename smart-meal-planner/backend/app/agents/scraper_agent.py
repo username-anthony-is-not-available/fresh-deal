@@ -199,7 +199,12 @@ class ScraperAgent:
         # Fallback to Flipp API
         deals = await self._scrape_with_flipp(store_name, limit)
         if deals:
-            return deals, "flipp", None, None, None, None
+            # Try to retrieve artifacts from the direct scraper if it failed earlier
+            screenshot, html = None, None
+            if scraper:
+                screenshot = getattr(scraper, 'last_screenshot', None)
+                html = getattr(scraper, 'last_html', None)
+            return deals, "flipp", None, screenshot, html, None
 
         # Final fallback: circulaire-en-ligne.ca
         deals = await self._scrape_with_circulaire_en_ligne(store_name, limit)

@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import FileResponse
 from sqlmodel import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.db import get_async_session, get_session
@@ -25,6 +26,8 @@ from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 from celery.result import AsyncResult
 import json
+import os
+import logging
 from app.tasks import generate_meal_plan_task, scrape_task
 from app.services.user_service import UserService
 from app.services.llm_service import LLMService
@@ -379,7 +382,10 @@ class ScrapeRequest(BaseModel):
 
 
 @router.post("/admin/scrape")
-async def trigger_scrape(request: ScrapeRequest):
+async def trigger_scrape(
+    request: ScrapeRequest,
+    current_user: User = Depends(get_current_user)
+):
     """
     Triggers the background task to scrape grocery deals from the specified stores.
 
@@ -400,18 +406,22 @@ async def trigger_scrape(request: ScrapeRequest):
 
 
 @router.post("/admin/scrape/flipp")
-async def trigger_flipp_scrape(request: ScrapeRequest):
+async def trigger_flipp_scrape(
+    request: ScrapeRequest,
+    current_user: User = Depends(get_current_user)
+):
     """
     Dedicated endpoint for Flipp API scraping, as expected by the frontend.
     """
-    return await trigger_scrape(request)
+    return await trigger_scrape(request, current_user=current_user)
 
 
 @router.post("/admin/scrape/{store_name}")
 async def trigger_specific_scrape(
     store_name: str,
     postal_code: str = "H4T1V6",
-    limit: int = 50
+    limit: int = 50,
+    current_user: User = Depends(get_current_user)
 ):
     """
     Triggers a scrape for a specific store. Matches 'Legacy' buttons in the frontend.
@@ -430,7 +440,7 @@ async def trigger_specific_scrape(
 
 
 @router.get("/admin/scrapers")
-async def list_scrapers():
+async def list_scrapers(current_user: User = Depends(get_current_user)):
     """
     List available scrapers and their configurations.
     """
@@ -451,7 +461,10 @@ async def list_scrapers():
 
 
 @router.get("/admin/status/scrapers")
-async def get_scraper_status(session: AsyncSession = Depends(get_async_session)):
+async def get_scraper_status(
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_async_session)
+):
     """
     Returns the last scraped timestamp for each store.
     """
@@ -472,7 +485,9 @@ async def get_scraper_status(session: AsyncSession = Depends(get_async_session))
 
 @router.get("/admin/scrapers/health")
 async def get_scrapers_health(
-    days: int = 7, session: AsyncSession = Depends(get_async_session)
+    days: int = 7,
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_async_session)
 ):
     """
     Provides detailed health metrics for all scrapers based on logs.
@@ -483,6 +498,7 @@ async def get_scrapers_health(
 
 @router.get("/admin/scrapers/health/summary")
 async def get_scrapers_health_summary(
+    current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session)
 ):
     """
@@ -498,6 +514,7 @@ async def get_scraper_logs(
     status: Optional[str] = None,
     limit: int = 50,
     offset: int = 0,
+    current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session),
 ):
     """
@@ -513,9 +530,61 @@ async def get_scraper_logs(
     return result.scalars().all()
 
 
+@router.get("/admin/scrapers/logs/{log_id}/screenshot")
+async def get_scraper_log_screenshot(
+    log_id: int,
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_async_session)
+):
+    """
+    Returns the screenshot associated with a scraper log.
+    """
+    log = await session.get(ScraperLog, log_id)
+    if not log or not log.screenshot_path:
+        raise HTTPException(status_code=404, detail="Screenshot not found for this log")
+
+    # Path validation: must be within /tmp/scrapers
+    abs_path = os.path.abspath(log.screenshot_path)
+    if not abs_path.startswith("/tmp/scrapers"):
+        logging.warning(f"Unauthorized path access attempt: {abs_path}")
+        raise HTTPException(status_code=403, detail="Unauthorized access to this path")
+
+    if not os.path.exists(abs_path):
+        raise HTTPException(status_code=404, detail="Screenshot file does not exist on disk")
+
+    return FileResponse(abs_path, media_type="image/png")
+
+
+@router.get("/admin/scrapers/logs/{log_id}/html")
+async def get_scraper_log_html(
+    log_id: int,
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_async_session)
+):
+    """
+    Returns the HTML snapshot associated with a scraper log.
+    """
+    log = await session.get(ScraperLog, log_id)
+    if not log or not log.html_path:
+        raise HTTPException(status_code=404, detail="HTML snapshot not found for this log")
+
+    # Path validation: must be within /tmp/scrapers
+    abs_path = os.path.abspath(log.html_path)
+    if not abs_path.startswith("/tmp/scrapers"):
+        logging.warning(f"Unauthorized path access attempt: {abs_path}")
+        raise HTTPException(status_code=403, detail="Unauthorized access to this path")
+
+    if not os.path.exists(abs_path):
+        raise HTTPException(status_code=404, detail="HTML file does not exist on disk")
+
+    return FileResponse(abs_path, media_type="text/html")
+
+
 @router.post("/admin/scrapers/{store_name}/reset")
 async def reset_scraper_circuit_breaker(
-    store_name: str, session: AsyncSession = Depends(get_async_session)
+    store_name: str,
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_async_session)
 ):
     """
     Resets the circuit breaker for a specific store.
