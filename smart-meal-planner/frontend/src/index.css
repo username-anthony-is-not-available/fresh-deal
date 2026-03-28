@@ -4,9 +4,15 @@
 
 @layer base {
   body {
-    @apply bg-white text-gray-800;
+    @apply bg-white text-gray-800 transition-colors duration-200;
   }
   .dark body {
-    @apply bg-gray-900 text-gray-200;
+    @apply bg-gray-900 text-gray-100;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    @apply text-gray-900;
+  }
+  .dark h1, .dark h2, .dark h3, .dark h4, .dark h5, .dark h6 {
+    @apply text-white;
   }
 }

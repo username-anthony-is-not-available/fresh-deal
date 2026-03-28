@@ -10,12 +10,14 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import {useAuth} from '../context/AuthContext';
+import {useTheme} from '../context/ThemeContext';
 
 const LoginScreen = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const {login} = useAuth();
+  const {colors} = useTheme();
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -37,27 +39,29 @@ const LoginScreen = () => {
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Welcome Back!</Text>
+    <View style={[styles.container, {backgroundColor: colors.background}]}>
+      <Text style={[styles.title, {color: colors.text}]}>Welcome Back!</Text>
       <TextInput
-        style={styles.input}
+        style={[styles.input, {backgroundColor: colors.surface, borderColor: colors.border, color: colors.text}]}
         placeholder="Email"
+        placeholderTextColor={colors.textSecondary}
         value={email}
         onChangeText={setEmail}
         keyboardType="email-address"
         autoCapitalize="none"
       />
       <TextInput
-        style={styles.input}
+        style={[styles.input, {backgroundColor: colors.surface, borderColor: colors.border, color: colors.text}]}
         placeholder="Password"
+        placeholderTextColor={colors.textSecondary}
         value={password}
         onChangeText={setPassword}
         secureTextEntry
       />
       {loading ? (
-        <ActivityIndicator size="large" />
+        <ActivityIndicator size="large" color={colors.primary} />
       ) : (
-        <Button title="Login" onPress={handleLogin} />
+        <Button title="Login" onPress={handleLogin} color={colors.primary} />
       )}
     </View>
   );
@@ -69,7 +73,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
-    backgroundColor: '#f5f5f5',
   },
   title: {
     fontSize: 28,
@@ -79,8 +82,6 @@ const styles = StyleSheet.create({
   input: {
     width: '100%',
     height: 44,
-    backgroundColor: 'white',
-    borderColor: '#ddd',
     borderWidth: 1,
     borderRadius: 8,
     marginBottom: 16,

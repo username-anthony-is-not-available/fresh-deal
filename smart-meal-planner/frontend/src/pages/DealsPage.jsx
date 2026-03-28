@@ -53,17 +53,17 @@ const DealsPage = () => {
     <div>
       <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
         <div>
-           <h1 className="text-3xl font-bold text-gray-900">Weekly Flyers & Deals</h1>
-           <p className="text-gray-500 mt-1">Found {deals.length} active deals near you</p>
+           <h1 className="text-3xl font-bold text-gray-900 dark:text-white transition-colors">Weekly Flyers & Deals</h1>
+           <p className="text-gray-500 dark:text-gray-400 mt-1 transition-colors">Found {deals.length} active deals near you</p>
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
            <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
               <input
                  type="text"
                  placeholder="Search deals..."
-                 className="pl-9 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
+                 className="pl-9 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none bg-white dark:bg-gray-800 dark:text-white transition-colors"
                  value={filter}
                  onChange={(e) => setFilter(e.target.value)}
               />
@@ -72,7 +72,7 @@ const DealsPage = () => {
               <input
                  type="text"
                  placeholder="Postal Code"
-                 className="pl-4 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none w-32"
+                 className="pl-4 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none w-32 bg-white dark:bg-gray-800 dark:text-white transition-colors"
                  value={postalCode}
                  onChange={(e) => setPostalCode(e.target.value.toUpperCase())}
               />
@@ -80,7 +80,7 @@ const DealsPage = () => {
            <select
              value={sortBy}
              onChange={(e) => setSortBy(e.target.value)}
-             className="px-4 py-2 border border-gray-300 rounded-lg bg-white hover:bg-gray-50 text-gray-700"
+             className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 transition-colors"
            >
              <option value="">Sort by</option>
              <option value="distance">Proximity</option>
@@ -91,7 +91,7 @@ const DealsPage = () => {
            <select
              value={loyaltyFilter}
              onChange={(e) => setLoyaltyFilter(e.target.value)}
-             className="px-4 py-2 border border-gray-300 rounded-lg bg-white hover:bg-gray-50 text-gray-700"
+             className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 transition-colors"
              aria-label="Filter by loyalty program"
            >
              <option value="">All Loyalty Programs</option>
@@ -103,7 +103,7 @@ const DealsPage = () => {
            <select
              value={qualityFilter}
              onChange={(e) => setQualityFilter(e.target.value)}
-             className="px-4 py-2 border border-gray-300 rounded-lg bg-white hover:bg-gray-50 text-gray-700"
+             className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 transition-colors"
              aria-label="Filter by deal quality"
            >
              <option value="">All Qualities</option>
@@ -117,7 +117,7 @@ const DealsPage = () => {
       {loading ? (
         <div className="text-center py-12">
            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
-           <p className="text-gray-500">Loading deals...</p>
+           <p className="text-gray-500 dark:text-gray-400">Loading deals...</p>
         </div>
       ) : filteredDeals.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -129,11 +129,11 @@ const DealsPage = () => {
           ))}
         </div>
       ) : (
-        <div className="text-center py-12 bg-white rounded-lg border border-dashed border-gray-300">
-           <p className="text-gray-500">No deals found. Try seeding the database first.</p>
+        <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-lg border border-dashed border-gray-300 dark:border-gray-600 transition-colors">
+           <p className="text-gray-500 dark:text-gray-400">No deals found. Try seeding the database first.</p>
            <button
              onClick={seedData}
-             className="mt-4 text-primary-600 font-medium hover:underline"
+             className="mt-4 text-primary-600 dark:text-primary-400 font-medium hover:underline"
            >
              Seed Mock Data
            </button>

@@ -31,7 +31,7 @@ const StarRating = ({ recipeId, initialRating = 0, onRatingSubmit }) => {
           key={star}
           className={cn(
             'h-6 w-6 cursor-pointer',
-            (hoverRating || rating) >= star ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'
+            (hoverRating || rating) >= star ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300 dark:text-gray-600'
           )}
           onMouseEnter={() => setHoverRating(star)}
           onMouseLeave={() => setHoverRating(0)}

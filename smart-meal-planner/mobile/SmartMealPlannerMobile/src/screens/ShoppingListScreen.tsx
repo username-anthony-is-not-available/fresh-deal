@@ -13,6 +13,7 @@ import {getShoppingList} from '../services/api';
 import StoreCard from '../components/StoreCard';
 import IngredientItem from '../components/IngredientItem';
 import {useAuth} from '../context/AuthContext';
+import {useTheme} from '../context/ThemeContext';
 
 // Define types for the shopping list data
 interface ShoppingItem {
@@ -41,6 +42,7 @@ const ShoppingListScreen = () => {
   const [lastUpdated, setLastUpdated] = useState<number | null>(null);
   const [isOffline, setIsOffline] = useState(false);
   const {user} = useAuth();
+  const {colors} = useTheme();
 
   const fetchShoppingList = useCallback(async () => {
     if (!user) {
@@ -75,43 +77,43 @@ const ShoppingListScreen = () => {
 
   if (loading) {
     return (
-      <View style={styles.centered}>
-        <ActivityIndicator size="large" />
+      <View style={[styles.centered, {backgroundColor: colors.background}]}>
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
 
   if (error && !shoppingList) {
     return (
-      <View style={styles.centered}>
-        <Text style={styles.errorText}>{error}</Text>
+      <View style={[styles.centered, {backgroundColor: colors.background}]}>
+        <Text style={[styles.errorText, {color: colors.error}]}>{error}</Text>
       </View>
     );
   }
 
   if (!shoppingList) {
     return (
-      <View style={styles.centered}>
-        <Text>No shopping list found. Generate a meal plan first!</Text>
+      <View style={[styles.centered, {backgroundColor: colors.background}]}>
+        <Text style={{color: colors.text}}>No shopping list found. Generate a meal plan first!</Text>
       </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, {backgroundColor: colors.background}]}>
       {isOffline && (
-        <View style={styles.offlineBanner}>
+        <View style={[styles.offlineBanner, {backgroundColor: colors.accent}]}>
           <Text style={styles.offlineText}>Viewing offline version</Text>
         </View>
       )}
       <ScrollView
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
         }>
-        <View style={styles.headerContainer}>
-          <Text style={styles.header}>Your Shopping List</Text>
+        <View style={[styles.headerContainer, {backgroundColor: colors.surface}]}>
+          <Text style={[styles.header, {color: colors.text}]}>Your Shopping List</Text>
           {lastUpdated && (
-            <Text style={styles.lastUpdatedText}>
+            <Text style={[styles.lastUpdatedText, {color: colors.textSecondary}]}>
               Last updated: {new Date(lastUpdated).toLocaleString()}
             </Text>
           )}
@@ -140,7 +142,6 @@ const ShoppingListScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
   },
   centered: {
     flex: 1,
@@ -149,11 +150,9 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   errorText: {
-    color: 'red',
     textAlign: 'center',
   },
   headerContainer: {
-    backgroundColor: 'white',
     paddingBottom: 8,
   },
   header: {
@@ -164,12 +163,10 @@ const styles = StyleSheet.create({
   },
   lastUpdatedText: {
     fontSize: 12,
-    color: '#666',
     paddingHorizontal: 16,
     paddingBottom: 8,
   },
   offlineBanner: {
-    backgroundColor: '#ffcc00',
     padding: 8,
     alignItems: 'center',
   },

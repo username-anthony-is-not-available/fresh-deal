@@ -40,45 +40,45 @@ const RegisterPage = () => {
 
     return (
         <div className="max-w-md mx-auto">
-            <h1 className="text-2xl font-bold mb-4">Register</h1>
+            <h1 className="text-2xl font-bold mb-4 dark:text-white">Register</h1>
             {error && <p className="text-red-500 mb-4">{error}</p>}
             <form onSubmit={handleSubmit}>
                 <div className="mb-4">
-                    <label className="block text-sm font-medium text-gray-700">Email</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Email</label>
                     <input
                         type="email"
                         value={formData.email}
                         onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+                        className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white shadow-sm focus:border-primary-300 focus:ring focus:ring-primary-200 focus:ring-opacity-50 transition-colors"
                         required
                     />
                 </div>
                 <div className="mb-4">
-                    <label className="block text-sm font-medium text-gray-700">Password</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Password</label>
                     <input
                         type="password"
                         value={formData.password}
                         onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+                        className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white shadow-sm focus:border-primary-300 focus:ring focus:ring-primary-200 focus:ring-opacity-50 transition-colors"
                         required
                     />
                 </div>
                 <div className="mb-4">
-                    <label className="block text-sm font-medium text-gray-700">Postal Code</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Postal Code</label>
                     <input
                         type="text"
                         value={formData.postal_code}
                         onChange={(e) => setFormData({ ...formData, postal_code: e.target.value })}
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+                        className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white shadow-sm focus:border-primary-300 focus:ring focus:ring-primary-200 focus:ring-opacity-50 transition-colors"
                         required
                     />
                 </div>
                 <div className="mb-4">
-                    <label className="block text-sm font-medium text-gray-700">Household Size</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Household Size</label>
                     <select
                         value={formData.household_size}
                         onChange={(e) => setFormData({ ...formData, household_size: parseInt(e.target.value) })}
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+                        className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white shadow-sm focus:border-primary-300 focus:ring focus:ring-primary-200 focus:ring-opacity-50 transition-colors"
                     >
                         <option value="1">1 Person</option>
                         <option value="2">2 People</option>
@@ -88,11 +88,11 @@ const RegisterPage = () => {
                     </select>
                 </div>
                 <div className="mb-4">
-                    <label className="block text-sm font-medium text-gray-700">Dietary Preferences</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Dietary Preferences</label>
                     <select
                         value={formData.dietary_preferences}
                         onChange={(e) => setFormData({ ...formData, dietary_preferences: e.target.value })}
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+                        className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white shadow-sm focus:border-primary-300 focus:ring focus:ring-primary-200 focus:ring-opacity-50 transition-colors"
                     >
                         <option value="None">No Restrictions</option>
                         <option value="Vegetarian">Vegetarian</option>
