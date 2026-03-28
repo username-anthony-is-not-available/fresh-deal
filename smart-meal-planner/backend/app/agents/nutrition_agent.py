@@ -198,6 +198,8 @@ class NutritionAgent:
         for day in days:
             day_cals = 0
             day_protein = 0
+            day_carbs = 0
+            day_fat = 0
 
             day_meals = []
             if "meals" in day:
@@ -207,15 +209,23 @@ class NutritionAgent:
 
             for meal in day_meals:
                 nutrition = meal.get("nutrition", {})
+                # Support both 'fat' and 'fats'
+                fats = nutrition.get("fat") if nutrition.get("fat") is not None else nutrition.get("fats", 0)
+
                 day_cals += nutrition.get("calories", 0)
                 day_protein += nutrition.get("protein", 0)
+                day_carbs += nutrition.get("carbs", 0)
+                day_fat += fats
+
                 total_weekly_protein += nutrition.get("protein", 0)
                 total_weekly_carbs += nutrition.get("carbs", 0)
-                total_weekly_fat += nutrition.get("fat", 0)
+                total_weekly_fat += fats
 
             day["daily_summary"] = {
-                "calories": day_cals,
-                "protein": day_protein
+                "calories": int(day_cals),
+                "protein": int(day_protein),
+                "carbs": int(day_carbs),
+                "fat": int(day_fat)
             }
             total_weekly_cals += day_cals
 
@@ -231,3 +241,63 @@ class NutritionAgent:
         }
 
         return plan_json
+
+    async def persist_daily_nutrition_from_plan(self, user_id: int, plan_json: Dict[str, Any]):
+        """
+        Populates the DailyNutrition table with the data from the generated meal plan.
+        """
+        from app.models.all_models import DailyNutrition
+        from sqlmodel import select
+        from datetime import datetime, timezone
+
+        meal_plan = plan_json.get("meal_plan") or plan_json.get("days")
+        if not meal_plan or not isinstance(meal_plan, list):
+            return
+
+        if not self.session:
+            logger.error("No database session provided to NutritionAgent. Persistence skipped.")
+            return
+
+        for day in meal_plan:
+            day_date_str = day.get("date")
+            if not day_date_str:
+                continue
+
+            try:
+                day_date = datetime.strptime(day_date_str, "%Y-%m-%d").date()
+            except ValueError:
+                continue
+
+            summary = day.get("daily_summary", {})
+
+            # Check for existing record for this user and date
+            statement = select(DailyNutrition).where(
+                DailyNutrition.user_id == user_id,
+                DailyNutrition.date == day_date
+            )
+
+            # Using exec because self.session is likely a sync Session in generate_meal_plan_task
+            try:
+                existing = self.session.exec(statement).first()
+
+                if existing:
+                    existing.calories = summary.get("calories", 0)
+                    existing.protein = summary.get("protein", 0)
+                    existing.carbs = summary.get("carbs", 0)
+                    existing.fats = summary.get("fat", 0)
+                    existing.updated_at = datetime.now(timezone.utc)
+                    self.session.add(existing)
+                else:
+                    new_daily = DailyNutrition(
+                        user_id=user_id,
+                        date=day_date,
+                        calories=summary.get("calories", 0),
+                        protein=summary.get("protein", 0),
+                        carbs=summary.get("carbs", 0),
+                        fats=summary.get("fat", 0),
+                    )
+                    self.session.add(new_daily)
+            except Exception as e:
+                logger.error(f"Failed to persist DailyNutrition for date {day_date}: {e}")
+
+        # Note: We rely on the caller to commit the session.
