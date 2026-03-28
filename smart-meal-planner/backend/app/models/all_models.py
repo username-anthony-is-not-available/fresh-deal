@@ -14,6 +14,7 @@ class User(SQLModel, table=True):
     email: str = Field(unique=True, index=True)
     hashed_password: str
     is_active: bool = Field(default=True)
+    email_digest_enabled: bool = Field(default=False)
     postal_code: str = Field(sa_type=EncryptedString)
     household_size: int = Field(sa_type=EncryptedInt)
     dietary_preferences_json: Optional[str] = Field(default="[]", sa_type=EncryptedString)

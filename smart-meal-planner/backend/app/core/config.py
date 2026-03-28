@@ -64,6 +64,15 @@ class Settings(BaseSettings):
     ]
     WEBHOOK_URL: str | None = None
 
+    # Email
+    SMTP_HOST: str | None = None
+    SMTP_PORT: int = 587
+    SMTP_USER: str | None = None
+    SMTP_PASSWORD: str | None = None
+    EMAILS_FROM_EMAIL: str = "no-reply@smartmealplanner.com"
+    EMAILS_FROM_NAME: str = "Smart Meal Planner"
+    EMAILS_ENABLED: bool = False
+
     model_config = SettingsConfigDict(env_file=".env", case_sensitive=True)
 
     @model_validator(mode='after')

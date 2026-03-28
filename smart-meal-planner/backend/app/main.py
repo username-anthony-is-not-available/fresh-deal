@@ -20,7 +20,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from app.scheduled_jobs import run_scheduled_scrape
-from app.tasks import cleanup_old_data_task
+from app.tasks import cleanup_old_data_task, send_daily_digests_task
 import os
 
 
@@ -65,6 +65,9 @@ async def lifespan(app: FastAPI):
 
     # Also add the weekly cleanup task
     scheduler.add_job(cleanup_old_data_task, "cron", day_of_week="sun", hour=0, minute=0)
+
+    # Daily Email Digest
+    scheduler.add_job(send_daily_digests_task, "cron", hour=8, minute=0)
 
     scheduler.start()
 
