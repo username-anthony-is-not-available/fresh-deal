@@ -59,7 +59,13 @@ class ProvigoScraper(BaseScraper):
         # Native tiles
         product_tiles = soup.select('[data-testid="product-grid-component"]')
         if not product_tiles:
-            product_tiles = soup.select('div[class*="product-tile"]')
+            # Try to find specific tile containers first
+            product_tiles = soup.select('div[data-testid="product-tile"]')
+        if not product_tiles:
+            # Fallback for when data-testid is on a div that IS the tile (redundant but safe)
+            product_tiles = soup.find_all('div', attrs={"data-testid": "product-tile"})
+        if not product_tiles:
+            product_tiles = soup.select('div[class*="product-tile"]:not([class*="package-size"])')
 
         logger.info(f"Found {len(product_tiles)} potential product tiles")
 
@@ -70,6 +76,8 @@ class ProvigoScraper(BaseScraper):
                 name = name_el.get_text(strip=True)
 
                 price_el = tile.select_one('[data-testid="price-product-tile"]') or tile.select_one('.price__value')
+                if not price_el:
+                    price_el = tile.select_one('[class*="price__value"]')
                 if not price_el: continue
                 price_text = price_el.get_text(separator=" ", strip=True)
                 price = self._parse_price(price_text)
