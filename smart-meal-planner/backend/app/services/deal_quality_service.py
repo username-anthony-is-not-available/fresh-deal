@@ -136,9 +136,9 @@ class DealQualityService:
         original_price = deal.get("original_price", price)
         discount_pct = deal.get("discount_pct", 0)
         category = deal.get("category", "grocery").lower()
-        sale_info = deal.get("sale_info", "").lower()
-        loyalty_points = deal.get("loyalty_points", 0)
-        loyalty_program = deal.get("loyalty_program", "")
+        sale_info = (deal.get("sale_info") or "").lower()
+        loyalty_points = deal.get("loyalty_points") or 0
+        loyalty_program = deal.get("loyalty_program") or ""
 
         # 1. Base discount scoring
         if discount_pct:

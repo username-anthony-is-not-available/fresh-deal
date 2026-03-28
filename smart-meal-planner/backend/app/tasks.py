@@ -65,6 +65,54 @@ def scrape_task(
     return loop.run_until_complete(run_scrape())
 
 
+@shared_task(rate_limit="5/m")
+def sync_root_scrapers_task(
+    stores: list = None, postal_code: str = "H4T1V6", limit_per_store: int = 50
+):
+    """
+    Background task to scrape grocery deals using the root-level scraper framework.
+    """
+    loop = _get_or_create_event_loop()
+
+    async def run_sync():
+        async with AsyncSession(async_engine) as session:
+            try:
+                scraper_agent = ScraperAgent(session, postal_code)
+
+                if not stores:
+                    from app.services.scraper_bridge_service import ScraperBridgeService
+                    target_stores = list(ScraperBridgeService.SCRAPER_MAP.keys())
+                else:
+                    target_stores = stores
+
+                if not target_stores:
+                    return {"status": "No root scrapers configured", "count": 0}
+
+                deals_by_store = await scraper_agent.scrape_with_root_framework(
+                    target_stores, limit_per_store
+                )
+
+                total_deals = 0
+                for store_name, store_deals in deals_by_store.items():
+                    if store_deals:
+                        await scraper_agent.persist_deals(store_deals)
+                        total_deals += len(store_deals)
+
+                await session.commit()
+
+                return {
+                    "status": "Success",
+                    "scraped_items": total_deals,
+                    "stores": target_stores
+                }
+            except Exception as e:
+                import traceback
+                traceback.print_exc()
+                return {"error": str(e)}
+
+    return loop.run_until_complete(run_sync())
+
+
 @shared_task
 def cleanup_old_data_task():
     """
