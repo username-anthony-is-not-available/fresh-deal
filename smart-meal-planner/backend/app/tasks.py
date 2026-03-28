@@ -8,6 +8,8 @@ from app.models.all_models import User, MealPlan, Store, Deal, ScraperLog, Price
 from app.agents.planner_agent import MealPlannerAgent
 from app.agents.scraper_agent import ScraperAgent
 from app.services.pantry_service import PantryService
+from app.services.deal_service import DealService
+from app.services.notification_service import NotificationService
 from app.core.config import settings
 from datetime import datetime, timedelta, date, timezone
 from typing import Optional
@@ -243,3 +245,62 @@ def generate_meal_plan_task(user_id: int, model_type: Optional[str] = None):
 
             traceback.print_exc()
             return {"error": str(e)}
+
+
+@shared_task
+def send_daily_digests_task():
+    """
+    Orchestrator task that finds all users who have opted in for the daily digest
+    and dispatches individual email tasks for each user.
+    """
+    loop = _get_or_create_event_loop()
+
+    async def dispatch_digests():
+        async with AsyncSession(async_engine) as session:
+            try:
+                # Fetch only IDs to minimize memory overhead
+                statement = select(User.id).where(User.email_digest_enabled == True)
+                result = await session.execute(statement)
+                user_ids = result.scalars().all()
+
+                if not user_ids:
+                    return {"status": "No users to notify"}
+
+                for user_id in user_ids:
+                    send_user_digest_email_task.delay(user_id)
+
+                return {"status": "Dispatched", "count": len(user_ids)}
+            except Exception as e:
+                return {"error": str(e)}
+
+    return loop.run_until_complete(dispatch_digests())
+
+
+@shared_task
+def send_user_digest_email_task(user_id: int):
+    """
+    Task to send a personalized deals digest email to a single user.
+    """
+    loop = _get_or_create_event_loop()
+
+    async def run_digest():
+        async with AsyncSession(async_engine) as session:
+            try:
+                user = await session.get(User, user_id)
+                if not user or not user.email_digest_enabled:
+                    return {"status": "User not found or opted out"}
+
+                deal_service = DealService(session)
+                deals = await deal_service.get_top_deals(limit=10, postal_code=user.postal_code)
+
+                if deals:
+                    await NotificationService.send_daily_deals_digest(user, deals)
+                    return {"status": "Email sent", "email": user.email}
+
+                return {"status": "No deals found", "email": user.email}
+            except Exception as e:
+                import traceback
+                traceback.print_exc()
+                return {"error": str(e)}
+
+    return loop.run_until_complete(run_digest())
