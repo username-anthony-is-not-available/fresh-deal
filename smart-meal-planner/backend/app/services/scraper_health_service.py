@@ -1,5 +1,5 @@
-from typing import List, Dict, Any, Optional
-from sqlmodel import select, func, desc
+from typing import List, Dict, Any
+from sqlmodel import select, desc
 from sqlalchemy import delete
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.all_models import ScraperLog
@@ -40,19 +40,19 @@ class ScraperHealthService:
                 continue
 
             total_runs = len(logs)
-            success_runs = len([l for l in logs if l.status == "success"])
+            success_runs = len([log_item for log_item in logs if log_item.status == "success"])
             success_rate = (success_runs / total_runs * 100) if total_runs > 0 else 0
 
-            avg_duration = sum(l.duration_seconds for l in logs) / total_runs
-            total_items = sum(l.items_scraped for l in logs)
+            avg_duration = sum(log_item.duration_seconds for log_item in logs) / total_runs
+            total_items = sum(log_item.items_scraped for log_item in logs)
 
             # Determine consecutive failures and categorize them
             consecutive_failures = 0
             error_categories = {}
-            for l in logs:
-                if l.status == "failure":
+            for log_item in logs:
+                if log_item.status == "failure":
                     consecutive_failures += 1
-                    msg = l.error_message or ""
+                    msg = log_item.error_message or ""
                     if "[TIMEOUT]" in msg:
                         cat = "Timeout"
                     elif "[BOT_BLOCK]" in msg:

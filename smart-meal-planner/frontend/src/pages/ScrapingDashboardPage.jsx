@@ -288,7 +288,7 @@ const ScrapingDashboardPage = () => {
       await api.post(`/admin/scrapers/${storeName}/reset`);
       toast.success(`Circuit breaker for ${storeName} reset`);
       fetchHealthData();
-    } catch (e) {
+    } catch {
       toast.error(`Failed to reset circuit breaker for ${storeName}`);
     }
   };

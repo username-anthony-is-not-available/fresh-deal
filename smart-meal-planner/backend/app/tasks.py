@@ -1,14 +1,14 @@
 import json
 from celery import shared_task
 from sqlmodel import Session, select
-from sqlalchemy import func
+from sqlalchemy import func, delete
 from app.core.db import engine, async_engine
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.all_models import User, MealPlan, Store, Deal, ScraperLog, PriceRecord
 from app.agents.planner_agent import MealPlannerAgent
 from app.agents.scraper_agent import ScraperAgent
 from app.services.pantry_service import PantryService
-from datetime import datetime, timedelta, date
+from datetime import datetime, timedelta, date, timezone
 from typing import Optional
 import asyncio
 
@@ -64,8 +64,6 @@ def scrape_task(
 
     return loop.run_until_complete(run_scrape())
 
-
-from sqlalchemy import delete
 
 @shared_task
 def cleanup_old_data_task():
