@@ -1,6 +1,7 @@
 // src/screens/NotificationsScreen.tsx
 import React from 'react';
 import {View, Text, StyleSheet, FlatList, SafeAreaView} from 'react-native';
+import {useTheme} from '../context/ThemeContext';
 
 interface Notification {
   id: string;
@@ -36,23 +37,29 @@ const MOCK_NOTIFICATIONS: Notification[] = [
   },
 ];
 
-const NotificationItem = ({item}: {item: Notification}) => (
-  <View style={styles.itemContainer}>
-    <Text style={styles.itemTitle}>{item.title}</Text>
-    <Text style={styles.itemMessage}>{item.message}</Text>
-    <Text style={styles.itemTimestamp}>{item.timestamp}</Text>
-  </View>
-);
+const NotificationItem = ({item}: {item: Notification}) => {
+  const {colors} = useTheme();
+  return (
+    <View style={[styles.itemContainer, {backgroundColor: colors.surface, borderBottomColor: colors.border}]}>
+      <Text style={[styles.itemTitle, {color: colors.text}]}>{item.title}</Text>
+      <Text style={[styles.itemMessage, {color: colors.textSecondary}]}>{item.message}</Text>
+      <Text style={[styles.itemTimestamp, {color: colors.textSecondary}]}>{item.timestamp}</Text>
+    </View>
+  );
+};
 
 const NotificationsScreen = () => {
+  const {colors} = useTheme();
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, {backgroundColor: colors.background}]}>
       <FlatList
         data={MOCK_NOTIFICATIONS}
         renderItem={({item}) => <NotificationItem item={item} />}
         keyExtractor={item => item.id}
         ListHeaderComponent={
-          <Text style={styles.header}>Notifications</Text>
+          <View style={{backgroundColor: colors.surface}}>
+            <Text style={[styles.header, {color: colors.text}]}>Notifications</Text>
+          </View>
         }
       />
     </SafeAreaView>
@@ -62,19 +69,15 @@ const NotificationsScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
   },
   header: {
     fontSize: 24,
     fontWeight: 'bold',
     padding: 16,
-    backgroundColor: 'white',
   },
   itemContainer: {
-    backgroundColor: 'white',
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
   },
   itemTitle: {
     fontSize: 16,
@@ -82,12 +85,10 @@ const styles = StyleSheet.create({
   },
   itemMessage: {
     fontSize: 14,
-    color: '#333',
     marginTop: 4,
   },
   itemTimestamp: {
     fontSize: 12,
-    color: '#999',
     marginTop: 8,
     textAlign: 'right',
   },

@@ -77,32 +77,32 @@ const SettingsPage = () => {
 
   return (
     <div className="max-w-2xl mx-auto">
-      <h1 className="text-3xl font-bold text-gray-900 mb-8">{t('settings_title')}</h1>
+      <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-8 transition-colors">{t('settings_title')}</h1>
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden transition-colors">
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
              <div>
-                <label htmlFor="postal_code" className="block text-sm font-medium text-gray-700 mb-1">{t('postal_code')}</label>
+                <label htmlFor="postal_code" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('postal_code')}</label>
                 <input
                   id="postal_code"
                   type="text"
                   name="postal_code"
                   value={formData.postal_code}
                   onChange={handleChange}
-                  className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm p-2.5 border"
+                  className="block w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-white shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm p-2.5 border transition-colors"
                 />
              </div>
 
              <div>
-                <label htmlFor="household_size" className="block text-sm font-medium text-gray-700 mb-1">{t('household_size')}</label>
+                <label htmlFor="household_size" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('household_size')}</label>
                 <select
                    id="household_size"
                    name="household_size"
                    value={formData.household_size}
                    onChange={handleChange}
-                   className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm p-2.5 border"
+                   className="block w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-white shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm p-2.5 border transition-colors"
                 >
                   <option value="1">{t('person_one')}</option>
                   <option value="2">{t('people_two')}</option>
@@ -114,7 +114,7 @@ const SettingsPage = () => {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">{t('dietary_preferences')}</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('dietary_preferences')}</label>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               {dietaryOptions.map(option => (
                 <label key={option} className="flex items-center space-x-3">
@@ -124,16 +124,16 @@ const SettingsPage = () => {
                     value={option}
                     checked={formData.dietary_preferences.includes(option)}
                     onChange={handleDietaryChange}
-                    className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                    className="h-4 w-4 rounded border-gray-300 dark:border-gray-600 dark:bg-gray-900 text-primary-600 focus:ring-primary-500 transition-colors"
                   />
-                  <span className="text-sm text-gray-700">{t(option)}</span>
+                  <span className="text-sm text-gray-700 dark:text-gray-300">{t(option)}</span>
                 </label>
               ))}
             </div>
           </div>
 
           <div>
-             <label htmlFor="allergies" className="block text-sm font-medium text-gray-700 mb-1">{t('excluded_ingredients')}</label>
+             <label htmlFor="allergies" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('excluded_ingredients')}</label>
              <input
                 id="allergies"
                 type="text"
@@ -147,15 +147,15 @@ const SettingsPage = () => {
                     }));
                 }}
                 placeholder="e.g. peanuts, cilantro, shellfish"
-                className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm p-2.5 border"
+                className="block w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-white shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm p-2.5 border transition-colors"
              />
           </div>
 
           <div>
-             <label htmlFor="budget_limit" className="block text-sm font-medium text-gray-700 mb-1">{t('weekly_budget')}</label>
+             <label htmlFor="budget_limit" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('weekly_budget')}</label>
              <div className="relative rounded-md shadow-sm">
                 <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                   <span className="text-gray-500 sm:text-sm">$</span>
+                   <span className="text-gray-500 dark:text-gray-400 sm:text-sm">$</span>
                 </div>
                 <input
                    id="budget_limit"
@@ -163,26 +163,26 @@ const SettingsPage = () => {
                    name="budget_limit"
                    value={formData.budget_limit}
                    onChange={handleChange}
-                   className="block w-full rounded-lg border-gray-300 pl-7 pr-12 focus:border-primary-500 focus:ring-primary-500 sm:text-sm p-2.5 border"
+                   className="block w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-white pl-7 pr-12 focus:border-primary-500 focus:ring-primary-500 sm:text-sm p-2.5 border transition-colors"
                 />
              </div>
           </div>
 
           <div>
-            <label htmlFor="language" className="block text-sm font-medium text-gray-700 mb-1">{t('language')}</label>
+            <label htmlFor="language" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('language')}</label>
             <select
               id="language"
               name="language"
               value={i18n.language}
               onChange={(e) => i18n.changeLanguage(e.target.value)}
-              className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm p-2.5 border"
+              className="block w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-white shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm p-2.5 border transition-colors"
             >
               <option value="en">English</option>
               <option value="fr">Français</option>
             </select>
           </div>
 
-          <div className="pt-4 border-t border-gray-100 flex justify-end">
+          <div className="pt-4 border-t border-gray-100 dark:border-gray-700 flex justify-end">
              <button
                 type="submit"
                 className="flex items-center gap-2 bg-primary-600 text-white px-6 py-2.5 rounded-lg font-medium hover:bg-primary-700 shadow-sm"

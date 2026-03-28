@@ -1,6 +1,7 @@
 // src/components/MealCard.tsx
 import React from 'react';
 import {View, Text, StyleSheet} from 'react-native';
+import {useTheme} from '../context/ThemeContext';
 
 interface Meal {
   name: string;
@@ -14,26 +15,28 @@ interface MealCardProps {
 }
 
 const MealCard: React.FC<MealCardProps> = ({day, mealType, meal}) => {
+  const {colors} = useTheme();
+
   if (!meal) {
     return null;
   }
 
   return (
-    <View style={styles.card}>
-      <Text style={styles.day}>{day}</Text>
-      <Text style={styles.mealType}>{mealType}</Text>
-      <Text style={styles.mealName}>{meal.name}</Text>
+    <View style={[styles.card, {backgroundColor: colors.surface, borderColor: colors.border}]}>
+      <Text style={[styles.day, {color: colors.text}]}>{day}</Text>
+      <Text style={[styles.mealType, {color: colors.textSecondary}]}>{mealType}</Text>
+      <Text style={[styles.mealName, {color: colors.text}]}>{meal.name}</Text>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: 'white',
     borderRadius: 8,
     padding: 16,
     marginVertical: 8,
     marginHorizontal: 16,
+    borderWidth: 1,
     shadowColor: '#000',
     shadowOffset: {width: 0, height: 2},
     shadowOpacity: 0.1,
@@ -47,7 +50,6 @@ const styles = StyleSheet.create({
   },
   mealType: {
     fontSize: 16,
-    color: '#666',
     marginBottom: 8,
   },
   mealName: {

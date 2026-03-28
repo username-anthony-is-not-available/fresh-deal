@@ -12,8 +12,8 @@ import {
 import {getLatestMealPlan} from '../services/api';
 import MealCard from '../components/MealCard';
 import {useAuth} from '../context/AuthContext';
+import {useTheme} from '../context/ThemeContext';
 
-// Define a more specific type for the meal plan data
 interface Meal {
   name: string;
   recipe: string;
@@ -37,6 +37,7 @@ const MealPlanScreen = () => {
   const [lastUpdated, setLastUpdated] = useState<number | null>(null);
   const [isOffline, setIsOffline] = useState(false);
   const {user} = useAuth();
+  const {colors} = useTheme();
 
   const fetchMealPlan = useCallback(async () => {
     if (!user) {
@@ -45,7 +46,7 @@ const MealPlanScreen = () => {
       return;
     }
     try {
-      setError(null); // Clear previous errors
+      setError(null);
       const result = await getLatestMealPlan(user.id);
       setMealPlan(result.data || null);
       setLastUpdated(result.timestamp);
@@ -71,25 +72,24 @@ const MealPlanScreen = () => {
 
   if (loading) {
     return (
-      <View style={styles.centered}>
-        <ActivityIndicator size="large" />
+      <View style={[styles.centered, {backgroundColor: colors.background}]}>
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
 
   if (error && !mealPlan) {
-    // Show error only if there's no data to display
     return (
-      <View style={styles.centered}>
-        <Text style={styles.errorText}>{error}</Text>
+      <View style={[styles.centered, {backgroundColor: colors.background}]}>
+        <Text style={[styles.errorText, {color: colors.error}]}>{error}</Text>
       </View>
     );
   }
 
   if (!mealPlan) {
     return (
-      <View style={styles.centered}>
-        <Text>No meal plan found. Go generate one on the website!</Text>
+      <View style={[styles.centered, {backgroundColor: colors.background}]}>
+        <Text style={{color: colors.text}}>No meal plan found. Go generate one on the website!</Text>
       </View>
     );
   }
@@ -104,9 +104,9 @@ const MealPlanScreen = () => {
   );
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, {backgroundColor: colors.background}]}>
       {isOffline && (
-        <View style={styles.offlineBanner}>
+        <View style={[styles.offlineBanner, {backgroundColor: colors.accent}]}>
           <Text style={styles.offlineText}>Viewing offline version</Text>
         </View>
       )}
@@ -122,13 +122,13 @@ const MealPlanScreen = () => {
         )}
         contentContainerStyle={styles.list}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
         }
         ListHeaderComponent={
-          <View>
-            <Text style={styles.header}>Your Weekly Meal Plan</Text>
+          <View style={{backgroundColor: colors.surface}}>
+            <Text style={[styles.header, {color: colors.text}]}>Your Weekly Meal Plan</Text>
             {lastUpdated && (
-              <Text style={styles.lastUpdatedText}>
+              <Text style={[styles.lastUpdatedText, {color: colors.textSecondary}]}>
                 Last updated: {new Date(lastUpdated).toLocaleString()}
               </Text>
             )}
@@ -142,7 +142,6 @@ const MealPlanScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
   },
   centered: {
     flex: 1,
@@ -151,7 +150,6 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   errorText: {
-    color: 'red',
     textAlign: 'center',
   },
   list: {
@@ -162,17 +160,13 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     padding: 16,
     paddingBottom: 4,
-    backgroundColor: 'white',
   },
   lastUpdatedText: {
     fontSize: 12,
-    color: '#666',
     paddingHorizontal: 16,
     paddingBottom: 8,
-    backgroundColor: 'white',
   },
   offlineBanner: {
-    backgroundColor: '#ffcc00',
     padding: 8,
     alignItems: 'center',
   },

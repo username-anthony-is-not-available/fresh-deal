@@ -7,18 +7,35 @@ import ShoppingListScreen from '../screens/ShoppingListScreen';
 import NotificationsScreen from '../screens/NotificationsScreen';
 import LoginScreen from '../screens/LoginScreen';
 import {useAuth} from '../context/AuthContext';
-import {ActivityIndicator, View} from 'react-native';
+import {ActivityIndicator, View, Button} from 'react-native';
+import {useTheme} from '../context/ThemeContext';
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
 
-const MainAppTabs = () => (
-  <Tab.Navigator>
-    <Tab.Screen name="Meal Plan" component={MealPlanScreen} />
-    <Tab.Screen name="Shopping List" component={ShoppingListScreen} />
-    <Tab.Screen name="Notifications" component={NotificationsScreen} />
-  </Tab.Navigator>
-);
+const MainAppTabs = () => {
+  const {toggleTheme, isDark, colors} = useTheme();
+
+  return (
+    <Tab.Navigator
+      screenOptions={{
+        headerRight: () => (
+          <View style={{marginRight: 10}}>
+            <Button
+              title={isDark ? "Light" : "Dark"}
+              onPress={toggleTheme}
+              color={colors.primary}
+            />
+          </View>
+        ),
+      }}
+    >
+      <Tab.Screen name="Meal Plan" component={MealPlanScreen} />
+      <Tab.Screen name="Shopping List" component={ShoppingListScreen} />
+      <Tab.Screen name="Notifications" component={NotificationsScreen} />
+    </Tab.Navigator>
+  );
+};
 
 const AuthStack = () => (
   <Stack.Navigator>
@@ -32,11 +49,12 @@ const AuthStack = () => (
 
 const AppNavigator = () => {
   const {user, isLoading} = useAuth();
+  const {colors} = useTheme();
 
   if (isLoading) {
     return (
-      <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
-        <ActivityIndicator size="large" />
+      <View style={{flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background}}>
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }

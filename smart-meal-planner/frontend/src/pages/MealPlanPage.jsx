@@ -23,8 +23,8 @@ const MealPlanSkeleton = () => (
     <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
       <div className="lg:col-span-3 space-y-8">
         {[...Array(3)].map((_, i) => (
-          <div key={i} className="bg-white rounded-xl shadow-sm border border-gray-200">
-            <div className="bg-gray-50 px-6 py-3 border-b border-gray-200">
+          <div key={i} className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
+            <div className="bg-gray-50 dark:bg-gray-900/50 px-6 py-3 border-b border-gray-200 dark:border-gray-700">
               <SkeletonLoader className="h-6 w-1/3" />
             </div>
             <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -181,24 +181,24 @@ const MealPlanPage = () => {
 
   if (!plan && !generating) {
     return (
-      <div className="text-center py-20 bg-white rounded-xl border border-dashed border-gray-300">
-        <div className="mx-auto w-16 h-16 bg-primary-100 rounded-full flex items-center justify-center mb-4">
+      <div className="text-center py-20 bg-white dark:bg-gray-800 rounded-xl border border-dashed border-gray-300 dark:border-gray-600 transition-colors">
+        <div className="mx-auto w-16 h-16 bg-primary-100 dark:bg-primary-900/20 rounded-full flex items-center justify-center mb-4">
           <CalendarIcon className="w-8 h-8 text-primary-600" />
         </div>
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">No Meal Plan Yet</h2>
-        <p className="text-gray-500 mb-8 max-w-md mx-auto">
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">No Meal Plan Yet</h2>
+        <p className="text-gray-500 dark:text-gray-400 mb-8 max-w-md mx-auto">
           Generate your first 7-day meal plan based on this week's best grocery deals.
         </p>
 
-        <div className="max-w-md mx-auto mb-8 space-y-6">
+        <div className="max-w-md mx-auto mb-8 space-y-6 text-left">
           <DietaryFilters selected={dietaryPreferences} onChange={handleDietaryChange} initialOpen={true} />
 
           <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-700">Recipe Generation Model</label>
+            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Recipe Generation Model</label>
             <select
               value={selectedModel}
               onChange={(e) => setSelectedModel(e.target.value)}
-              className="w-full bg-white border border-gray-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all"
+              className="w-full bg-white dark:bg-gray-800 dark:text-white border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all"
             >
               {modelOptions.map(opt => (
                 <option key={opt.id} value={opt.id}>{opt.name}</option>
@@ -221,9 +221,9 @@ const MealPlanPage = () => {
     return (
       <div className="text-center py-32">
         <div className="animate-spin rounded-full h-16 w-16 border-4 border-primary-200 border-t-primary-600 mx-auto mb-6"></div>
-        <h2 className="text-xl font-bold text-gray-900">AI is crafting your menu...</h2>
-        <p className="text-gray-500 mt-2">Analyzing 60+ recipes and 100+ deals...</p>
-        <p className="text-sm text-gray-400 mt-4">This might take up to 30 seconds.</p>
+        <h2 className="text-xl font-bold text-gray-900 dark:text-white">AI is crafting your menu...</h2>
+        <p className="text-gray-500 dark:text-gray-400 mt-2">Analyzing 60+ recipes and 100+ deals...</p>
+        <p className="text-sm text-gray-400 dark:text-gray-500 mt-4">This might take up to 30 seconds.</p>
       </div>
     );
   }
@@ -385,14 +385,14 @@ const MealPlanPage = () => {
       <div>
         <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Weekly Meal Plan</h1>
-            <p className="text-gray-500 text-sm sm:text-base">{dateRange}</p>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white transition-colors">Weekly Meal Plan</h1>
+            <p className="text-gray-500 dark:text-gray-400 text-sm sm:text-base transition-colors">{dateRange}</p>
           </div>
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
             <select
               value={selectedModel}
               onChange={(e) => setSelectedModel(e.target.value)}
-              className="bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm font-medium focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all"
+              className="bg-white dark:bg-gray-800 dark:text-white border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm font-medium focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all"
             >
               {modelOptions.map(opt => (
                 <option key={opt.id} value={opt.id}>{opt.name}</option>
@@ -402,7 +402,7 @@ const MealPlanPage = () => {
               <button
                 onClick={() => handleExport('ical')}
                 disabled={exporting === 'ical'}
-                className="flex items-center justify-center gap-2 text-gray-700 bg-white border border-gray-200 px-3 py-2 rounded-lg hover:bg-gray-50 font-medium disabled:opacity-50 shadow-sm transition-colors"
+                className="flex items-center justify-center gap-2 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 px-3 py-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 font-medium disabled:opacity-50 shadow-sm transition-colors"
                 title="Export to Calendar (iCal)"
               >
                 <CalendarIcon className="w-4 h-4" />
@@ -411,7 +411,7 @@ const MealPlanPage = () => {
               <button
                 onClick={() => handleExport('pdf')}
                 disabled={exporting === 'pdf'}
-                className="flex items-center justify-center gap-2 text-gray-700 bg-white border border-gray-200 px-3 py-2 rounded-lg hover:bg-gray-50 font-medium disabled:opacity-50 shadow-sm transition-colors"
+                className="flex items-center justify-center gap-2 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 px-3 py-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 font-medium disabled:opacity-50 shadow-sm transition-colors"
                 title="Export as PDF"
               >
                 <FileText className="w-4 h-4" />
@@ -420,7 +420,7 @@ const MealPlanPage = () => {
               <button
                 onClick={generatePlan}
                 disabled={generating}
-                className="flex items-center justify-center gap-2 text-primary-700 bg-primary-50 px-4 py-2.5 rounded-lg hover:bg-primary-100 font-semibold disabled:opacity-50 shadow-sm transition-colors"
+                className="flex items-center justify-center gap-2 text-primary-700 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/20 px-4 py-2.5 rounded-lg hover:bg-primary-100 dark:hover:bg-primary-900/30 font-semibold disabled:opacity-50 shadow-sm transition-colors"
               >
                 <RefreshCw className={`w-4 h-4 ${generating ? 'animate-spin' : ''}`} />
                 <span>{generating ? 'Generating...' : 'Regenerate Plan'}</span>
@@ -438,7 +438,7 @@ const MealPlanPage = () => {
               placeholder="Search recipes or ingredients (e.g., 'chicken')..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-12 pr-12 py-3 bg-white border border-gray-200 rounded-xl shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all"
+              className="w-full pl-12 pr-12 py-3 bg-white dark:bg-gray-800 dark:text-white border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all"
             />
             {searchTerm && (
               <button
@@ -451,7 +451,7 @@ const MealPlanPage = () => {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-sm font-medium text-gray-500 mr-2">Quick filters:</span>
+            <span className="text-sm font-medium text-gray-500 dark:text-gray-400 mr-2 transition-colors">Quick filters:</span>
             {quickFilters.map((ingredient) => (
               <button
                 key={ingredient}
@@ -459,7 +459,7 @@ const MealPlanPage = () => {
                 className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all border ${
                   searchTerm.toLowerCase() === ingredient.toLowerCase()
                     ? 'bg-primary-600 text-white border-primary-600 shadow-md'
-                    : 'bg-white text-gray-700 border-gray-200 hover:border-primary-300 hover:bg-primary-50'
+                    : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:border-primary-300 dark:hover:border-primary-500 hover:bg-primary-50 dark:hover:bg-primary-900/20'
                 }`}
               >
                 {ingredient}
@@ -523,10 +523,10 @@ const MealPlanPage = () => {
             const meals = day.meals;
 
             return (
-              <div key={day.day} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                <div className="bg-gray-50 px-6 py-3 border-b border-gray-200 flex justify-between items-center">
-                  <h3 className="font-bold text-gray-900">
-                    {day.day_name || `Day ${day.day}`} <span className="text-gray-400 font-normal text-sm ml-2">{day.display_date || day.date}</span>
+              <div key={day.day} className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden transition-colors">
+                <div className="bg-gray-50 dark:bg-gray-900/50 px-6 py-3 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+                  <h3 className="font-bold text-gray-900 dark:text-white">
+                    {day.day_name || `Day ${day.day}`} <span className="text-gray-400 dark:text-gray-500 font-normal text-sm ml-2">{day.display_date || day.date}</span>
                   </h3>
                 </div>
                 <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -542,7 +542,7 @@ const MealPlanPage = () => {
                         isRegenerating={isRegenerating}
                         />
                       {meal.reason && (
-                        <div className="mt-2 text-xs text-blue-600 bg-blue-50 p-2 rounded flex gap-2 items-start">
+                        <div className="mt-2 text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 p-2 rounded flex gap-2 items-start">
                           <Lightbulb className="w-3 h-3 mt-0.5 flex-shrink-0" />
                           <span>{meal.reason}</span>
                         </div>
@@ -559,46 +559,46 @@ const MealPlanPage = () => {
         <div className="space-y-6">
           <div className="sticky top-24">
             {plan.weekly_overview && (
-              <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-100 mb-6">
-                <h4 className="font-semibold text-indigo-900 mb-2 text-sm uppercase tracking-wide">Weekly Focus</h4>
-                <p className="text-sm text-indigo-800 leading-relaxed">
+              <div className="bg-indigo-50 dark:bg-indigo-900/20 p-4 rounded-lg border border-indigo-100 dark:border-indigo-800 mb-6 transition-colors">
+                <h4 className="font-semibold text-indigo-900 dark:text-indigo-400 mb-2 text-sm uppercase tracking-wide">Weekly Focus</h4>
+                <p className="text-sm text-indigo-800 dark:text-indigo-300 leading-relaxed">
                   {plan.weekly_overview}
                 </p>
               </div>
             )}
 
             <div className="hidden lg:block">
-              <h3 className="font-semibold text-gray-900 mb-4">Estimated Savings</h3>
-              <div className="bg-green-50 p-4 rounded-lg border border-green-100 mb-6">
-                <div className="text-3xl font-bold text-green-700">
+              <h3 className="font-semibold text-gray-900 dark:text-white mb-4 transition-colors">Estimated Savings</h3>
+              <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg border border-green-100 dark:border-green-800 mb-6 transition-colors">
+                <div className="text-3xl font-bold text-green-700 dark:text-green-400">
                   ${plan.shopping_summary?.estimated_savings || "0.00"}
                 </div>
-                <p className="text-xs text-green-600 mt-1">Saved compared to regular prices</p>
+                <p className="text-xs text-green-600 dark:text-green-500 mt-1">Saved compared to regular prices</p>
               </div>
             </div>
 
             {plan.nutritional_summary && (
-              <div className="bg-primary-50 p-4 rounded-lg border border-primary-100 mb-6">
-                <h4 className="font-semibold text-primary-900 mb-3 text-sm uppercase tracking-wide">Nutritional Summary</h4>
+              <div className="bg-primary-50 dark:bg-primary-900/20 p-4 rounded-lg border border-primary-100 dark:border-primary-800 mb-6 transition-colors">
+                <h4 className="font-semibold text-primary-900 dark:text-primary-400 mb-3 text-sm uppercase tracking-wide">Nutritional Summary</h4>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <p className="text-[10px] text-primary-600 uppercase font-bold">Avg. Calories</p>
-                    <p className="text-xl font-black text-primary-900">{plan.nutritional_summary.avg_daily_calories} <span className="text-xs font-normal text-primary-500">kcal</span></p>
+                    <p className="text-[10px] text-primary-600 dark:text-primary-500 uppercase font-bold">Avg. Calories</p>
+                    <p className="text-xl font-black text-primary-900 dark:text-white">{plan.nutritional_summary.avg_daily_calories} <span className="text-xs font-normal text-primary-500">kcal</span></p>
                   </div>
                   <div>
-                    <p className="text-[10px] text-primary-600 uppercase font-bold">Avg. Protein</p>
-                    <p className="text-xl font-black text-primary-900">{plan.nutritional_summary.avg_daily_protein}g</p>
+                    <p className="text-[10px] text-primary-600 dark:text-primary-500 uppercase font-bold">Avg. Protein</p>
+                    <p className="text-xl font-black text-primary-900 dark:text-white">{plan.nutritional_summary.avg_daily_protein}g</p>
                   </div>
                 </div>
-                <p className="text-[10px] text-primary-400 mt-3 italic">
+                <p className="text-[10px] text-primary-400 dark:text-primary-500 mt-3 italic transition-colors">
                   {plan.nutritional_summary.note}
                 </p>
               </div>
             )}
 
-            <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-              <h4 className="font-semibold text-gray-800 mb-2 text-sm">Key Deals Used</h4>
-              <ul className="text-sm text-gray-600 space-y-1">
+            <div className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-lg border border-gray-200 dark:border-gray-700 transition-colors">
+              <h4 className="font-semibold text-gray-800 dark:text-gray-200 mb-2 text-sm">Key Deals Used</h4>
+              <ul className="text-sm text-gray-600 dark:text-gray-400 space-y-1">
                 {plan.shopping_summary?.key_deals_used?.map((deal, i) => (
                   <li key={i} className="flex items-center gap-2">
                     <span className="w-1.5 h-1.5 bg-green-500 rounded-full"></span>
@@ -611,10 +611,10 @@ const MealPlanPage = () => {
         </div>
 
         {/* Meal Plan Feedback Section */}
-        <div className="mt-12 bg-white rounded-xl shadow-sm border border-gray-200 p-8 max-w-3xl mx-auto">
+        <div className="mt-12 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-8 max-w-3xl mx-auto transition-colors">
           <div className="text-center mb-6">
-            <h2 className="text-xl font-bold text-gray-900">How do you like this Meal Plan?</h2>
-            <p className="text-gray-500">Your feedback helps us tailor future plans to your taste.</p>
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white">How do you like this Meal Plan?</h2>
+            <p className="text-gray-500 dark:text-gray-400">Your feedback helps us tailor future plans to your taste.</p>
           </div>
 
           <div className="flex flex-col items-center gap-6">
@@ -629,7 +629,7 @@ const MealPlanPage = () => {
                     size={40}
                     className={clsx(
                       "transition-colors",
-                      (mealPlanFeedback.rating >= star) ? "text-yellow-400 fill-current" : "text-gray-200"
+                      (mealPlanFeedback.rating >= star) ? "text-yellow-400 fill-current" : "text-gray-200 dark:text-gray-700"
                     )}
                   />
                 </button>
@@ -641,7 +641,7 @@ const MealPlanPage = () => {
                 placeholder="Any comments or suggestions for this plan? (e.g., 'Too many pasta dishes', 'Loved the variety!')"
                 value={mealPlanFeedback.comment}
                 onChange={(e) => setMealPlanFeedback({ ...mealPlanFeedback, comment: e.target.value })}
-                className="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all h-32 resize-none"
+                className="w-full p-4 bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all h-32 resize-none dark:text-white"
               />
             </div>
 

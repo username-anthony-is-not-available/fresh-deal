@@ -7,7 +7,7 @@ const SavingsBadge = ({ amount, percentage, className }) => {
 
   return (
     <span className={clsx(
-      "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-accent-100 text-accent-600",
+      "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-accent-100 dark:bg-accent-900/30 text-accent-600 dark:text-accent-400",
       className
     )}>
       <TrendingDown className="w-3 h-3 mr-1" />
