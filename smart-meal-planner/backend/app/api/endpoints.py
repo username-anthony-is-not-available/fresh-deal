@@ -16,6 +16,7 @@ from app.models.all_models import (
     RecipeFeedback,
     RecipeIngredient,
     Feedback,
+    ScraperLog,
 )
 
 from app.agents.mock_scraper import MockScraperAgent
@@ -489,6 +490,27 @@ async def get_scrapers_health_summary(
     """
     health_service = ScraperHealthService(session)
     return await health_service.get_system_health_summary()
+
+
+@router.get("/admin/scrapers/logs", response_model=List[ScraperLog])
+async def get_scraper_logs(
+    store_name: Optional[str] = None,
+    status: Optional[str] = None,
+    limit: int = 50,
+    offset: int = 0,
+    session: AsyncSession = Depends(get_async_session),
+):
+    """
+    Retrieve recent scraper logs with optional filtering.
+    """
+    statement = select(ScraperLog).order_by(ScraperLog.timestamp.desc()).limit(limit).offset(offset)
+    if store_name:
+        statement = statement.where(ScraperLog.store_name == store_name)
+    if status:
+        statement = statement.where(ScraperLog.status == status)
+
+    result = await session.execute(statement)
+    return result.scalars().all()
 
 
 @router.post("/admin/scrapers/{store_name}/reset")
