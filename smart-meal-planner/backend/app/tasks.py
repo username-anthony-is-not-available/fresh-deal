@@ -1,5 +1,5 @@
 import json
-from celery import shared_task
+from celery import shared_task, group
 from sqlmodel import Session, select
 from sqlalchemy import func, delete
 from app.core.db import engine, async_engine
@@ -8,6 +8,7 @@ from app.models.all_models import User, MealPlan, Store, Deal, ScraperLog, Price
 from app.agents.planner_agent import MealPlannerAgent
 from app.agents.scraper_agent import ScraperAgent
 from app.services.pantry_service import PantryService
+from app.core.config import settings
 from datetime import datetime, timedelta, date, timezone
 from typing import Optional
 import asyncio
@@ -25,14 +26,12 @@ def _get_or_create_event_loop():
     return loop
 
 
-@shared_task(rate_limit="10/m")
-def scrape_task(
-    stores: list = None, postal_code: str = "H4T1V6", limit_per_store: int = 50
+@shared_task(bind=True, rate_limit="10/m")
+def scrape_store_task(
+    self, store_name: str, postal_code: str = "H4T1V6", limit_per_store: int = 50, scraper_type: str = "default"
 ):
     """
-    Background task to scrape grocery deals from a list of stores.
-    It uses the ScraperAgent to orchestrate the scraping process, including
-    falling back to the Flipp API if direct scraping fails.
+    Granular task to scrape a single store. This allows for parallelization across workers.
     """
     loop = _get_or_create_event_loop()
 
@@ -40,77 +39,58 @@ def scrape_task(
         async with AsyncSession(async_engine) as session:
             try:
                 scraper_agent = ScraperAgent(session, postal_code)
-                deals_by_store = await scraper_agent.scrape(stores, limit_per_store)
-
-                total_deals = 0
-                for store_name, store_deals in deals_by_store.items():
-                    if store_deals:
-                        await scraper_agent.persist_deals(store_deals)
-                        total_deals += len(store_deals)
-
-                await session.commit()
-
-                if total_deals == 0:
-                    return {"status": "No deals found", "count": 0}
-
-                return {
-                    "status": "Success",
-                    "scraped_items": total_deals,
-                }
+                result = await scraper_agent.scrape_and_persist_single_store(
+                    store_name, limit=limit_per_store, scraper_type=scraper_type
+                )
+                return result
             except Exception as e:
                 import traceback
                 traceback.print_exc()
-                return {"error": str(e)}
+                return {"store": store_name, "error": str(e)}
 
     return loop.run_until_complete(run_scrape())
 
 
-@shared_task(rate_limit="5/m")
+@shared_task
+def scrape_task(
+    stores: list = None, postal_code: str = "H4T1V6", limit_per_store: int = 50
+):
+    """
+    Orchestrator task that parallelizes scraping across multiple stores using Celery group.
+    """
+    if not stores:
+        stores = settings.SUPPORTED_STORES
+
+    job = group(
+        scrape_store_task.s(store, postal_code, limit_per_store)
+        for store in stores
+    )
+    result = job.apply_async()
+    return {"status": "Dispatched", "group_id": result.id, "stores": stores}
+
+
+@shared_task
 def sync_root_scrapers_task(
     stores: list = None, postal_code: str = "H4T1V6", limit_per_store: int = 50
 ):
     """
-    Background task to scrape grocery deals using the root-level scraper framework.
+    Orchestrator task for root framework scrapers, parallelized using Celery group.
     """
-    loop = _get_or_create_event_loop()
+    if not stores:
+        from app.services.scraper_bridge_service import ScraperBridgeService
+        target_stores = list(ScraperBridgeService.SCRAPER_MAP.keys())
+    else:
+        target_stores = stores
 
-    async def run_sync():
-        async with AsyncSession(async_engine) as session:
-            try:
-                scraper_agent = ScraperAgent(session, postal_code)
+    if not target_stores:
+        return {"status": "No root scrapers configured", "count": 0}
 
-                if not stores:
-                    from app.services.scraper_bridge_service import ScraperBridgeService
-                    target_stores = list(ScraperBridgeService.SCRAPER_MAP.keys())
-                else:
-                    target_stores = stores
-
-                if not target_stores:
-                    return {"status": "No root scrapers configured", "count": 0}
-
-                deals_by_store = await scraper_agent.scrape_with_root_framework(
-                    target_stores, limit_per_store
-                )
-
-                total_deals = 0
-                for store_name, store_deals in deals_by_store.items():
-                    if store_deals:
-                        await scraper_agent.persist_deals(store_deals)
-                        total_deals += len(store_deals)
-
-                await session.commit()
-
-                return {
-                    "status": "Success",
-                    "scraped_items": total_deals,
-                    "stores": target_stores
-                }
-            except Exception as e:
-                import traceback
-                traceback.print_exc()
-                return {"error": str(e)}
-
-    return loop.run_until_complete(run_sync())
+    job = group(
+        scrape_store_task.s(store, postal_code, limit_per_store, scraper_type="root_framework")
+        for store in target_stores
+    )
+    result = job.apply_async()
+    return {"status": "Dispatched", "group_id": result.id, "stores": target_stores}
 
 
 @shared_task
