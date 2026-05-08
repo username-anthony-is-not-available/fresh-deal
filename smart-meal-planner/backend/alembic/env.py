@@ -8,7 +8,7 @@ from alembic import context
 
 # Import SQLModel and our models
 from sqlmodel import SQLModel
-from app.models.all_models import * # Import all models to register metadata
+from app.models import all_models  # noqa: F401, E402
 from app.core.config import settings
 
 # this is the Alembic Config object, which provides

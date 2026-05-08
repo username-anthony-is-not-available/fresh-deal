@@ -1,6 +1,5 @@
 import pytest
 import os
-import asyncio
 from unittest.mock import AsyncMock, MagicMock
 from playwright.async_api import Page
 
@@ -136,7 +135,6 @@ async def test_base_scraper_bot_block():
     scraper = MetroScraper()
 
     # We need to mock the context/page creation to return our mock page
-    mock_p = MagicMock()
     mock_browser = AsyncMock()
     mock_context = AsyncMock()
     mock_page = await mock_page_with_content("Incapsula incident ID")
@@ -146,7 +144,6 @@ async def test_base_scraper_bot_block():
     scraper._get_page = AsyncMock(return_value=mock_page)
     scraper._save_debug_artifacts = AsyncMock(return_value=("s.png", "h.html"))
 
-    from playwright.async_api import async_playwright
     # We don't actually want to run async_playwright, so we mock it in the scraper.scrape method context
     # But it's easier to just test _check_incapsula_block directly and then the logic in scrape if possible
 
@@ -216,14 +213,12 @@ async def test_base_scraper_save_debug_artifacts():
     mock_page.screenshot = AsyncMock()
     mock_page.content = AsyncMock(return_value="<html></html>")
 
-    # Mock open and os.path.join if necessary, but we can just let it write to /tmp/scrapers
-    with MagicMock() as mock_open:
-        # Actually it's easier to just let it write and check the return value
-        s_path, h_path = await scraper._save_debug_artifacts(mock_page, "test")
-        assert "/tmp/scrapers/test_" in s_path
-        assert "/tmp/scrapers/test_" in h_path
-        assert s_path.endswith(".png")
-        assert h_path.endswith(".html")
+    # Actually it's easier to just let it write and check the return value
+    s_path, h_path = await scraper._save_debug_artifacts(mock_page, "test")
+    assert "/tmp/scrapers/test_" in s_path
+    assert "/tmp/scrapers/test_" in h_path
+    assert s_path.endswith(".png")
+    assert h_path.endswith(".html")
 
 @pytest.mark.asyncio
 async def test_base_scraper_get_browser_context_page():

@@ -5,7 +5,7 @@ import os
 import re
 import logging
 from datetime import datetime, date
-from typing import List, Dict, Any, Optional, Tuple
+from typing import List, Optional, Tuple
 from playwright.async_api import async_playwright, Playwright, Page, BrowserContext
 from bs4 import BeautifulSoup
 
@@ -278,7 +278,8 @@ class BaseScraper(ABC):
                         start = datetime.strptime(f"{match.group('sd')} {match.group('m')} {match.group('y')}", fmt).date()
                         end = datetime.strptime(f"{match.group('ed')} {match.group('m')} {match.group('y')}", fmt).date()
                         return start, end
-                    except ValueError: continue
+                    except ValueError:
+                        continue
 
             # Pattern 2: du 1 janv. 2024 au 7 janv. 2024
             match = re.search(
@@ -292,7 +293,8 @@ class BaseScraper(ABC):
                         start = datetime.strptime(f"{match.group('sd')} {match.group('sm')} {year}", fmt).date()
                         end = datetime.strptime(f"{match.group('ed')} {match.group('em')} {year}", fmt).date()
                         return start, end
-                    except ValueError: continue
+                    except ValueError:
+                        continue
 
             # Pattern 3: from Jan 1 to Jan 7, 2024
             match = re.search(
@@ -305,13 +307,16 @@ class BaseScraper(ABC):
                         start = datetime.strptime(f"{match.group('sd')} {match.group('sm')} {match.group('y')}", fmt).date()
                         end = datetime.strptime(f"{match.group('ed')} {match.group('em')} {match.group('y')}", fmt).date()
                         return start, end
-                    except ValueError: continue
-        except Exception: pass
+                    except ValueError:
+                        continue
+        except Exception:
+            pass
         return None, None
 
     def _parse_price(self, price_text: str) -> Optional[float]:
         """Parse price from various formats."""
-        if not price_text: return None
+        if not price_text:
+            return None
         price_text = price_text.strip().lower()
         price_text = re.sub(r'\s+', ' ', price_text)
 
@@ -330,7 +335,8 @@ class BaseScraper(ABC):
                 quantity = int(multi_match.group(1))
                 total = float(multi_match.group(2).replace(",", "."))
                 return round(total / quantity, 2)
-            except (ValueError, ZeroDivisionError): pass
+            except (ValueError, ZeroDivisionError):
+                pass
 
         multi_match_reverse = re.search(
             r"[\$]?\s*(\d+[,.]?\d*)\s*\$?\s*(?:/|ea\.|ch\.|l'unité|pour|for)\s*(\d+)", price_text
@@ -340,56 +346,76 @@ class BaseScraper(ABC):
                 total = float(multi_match_reverse.group(1).replace(",", "."))
                 quantity = int(multi_match_reverse.group(2))
                 return round(total / quantity, 2)
-            except (ValueError, ZeroDivisionError): pass
+            except (ValueError, ZeroDivisionError):
+                pass
 
         cent_match = re.search(r"(\d+)\s*(?:¢|c\b)", price_text)
         if cent_match:
-            try: return round(float(cent_match.group(1)) / 100, 2)
-            except ValueError: pass
+            try:
+                return round(float(cent_match.group(1)) / 100, 2)
+            except ValueError:
+                pass
 
         price_match = re.search(r"(\d+[,.]?\d*)\s*\$|\$\s*(\d+[,.]?\d*)", price_text)
         if price_match:
             try:
                 val = price_match.group(1) or price_match.group(2)
                 return float(val.replace(",", "."))
-            except ValueError: pass
+            except ValueError:
+                pass
 
         if "$" not in price_text:
             price_match = re.search(r"(\d+[,.]\d{2})", price_text)
             if price_match:
-                try: return float(price_match.group(1).replace(",", "."))
-                except ValueError: pass
+                try:
+                    return float(price_match.group(1).replace(",", "."))
+                except ValueError:
+                    pass
         return None
 
     def _extract_unit(self, text: str) -> str:
         """Extract unit from product description."""
         text_lower = text.lower()
-        if re.search(r"(?:\d+|\b)kg\b|/kg\b|\bpar kg\b|\bkilo", text_lower): return "kg"
-        elif re.search(r"(?:\d+|\b)lb\b|/lb\b|\bpar lb\b|\bpound", text_lower): return "lb"
-        elif re.search(r"100\s*g\b|/100\s*g\b", text_lower): return "100g"
-        elif re.search(r"(?:\d+|\b)ml\b", text_lower): return "ml"
-        elif re.search(r"(?:\d+|\b)g\b|\bgramme", text_lower): return "g"
-        elif re.search(r"(?:\d+|\b)l\b|\blitre", text_lower): return "L"
-        elif re.search(r"\bsac\b|\bbte\b|\bboîte\b|\bbox\b|\bbag\b", text_lower): return "sac/box"
-        elif re.search(r"\bpqt\b|\bpaquet\b|\bpack\b", text_lower): return "pack"
-        elif re.search(r"\bcaisse\b|\bcase\b", text_lower): return "case"
-        else: return "each"
+        if re.search(r"(?:\d+|\b)kg\b|/kg\b|\bpar kg\b|\bkilo", text_lower):
+            return "kg"
+        elif re.search(r"(?:\d+|\b)lb\b|/lb\b|\bpar lb\b|\bpound", text_lower):
+            return "lb"
+        elif re.search(r"100\s*g\b|/100\s*g\b", text_lower):
+            return "100g"
+        elif re.search(r"(?:\d+|\b)ml\b", text_lower):
+            return "ml"
+        elif re.search(r"(?:\d+|\b)g\b|\bgramme", text_lower):
+            return "g"
+        elif re.search(r"(?:\d+|\b)l\b|\blitre", text_lower):
+            return "L"
+        elif re.search(r"\bsac\b|\bbte\b|\bboîte\b|\bbox\b|\bbag\b", text_lower):
+            return "sac/box"
+        elif re.search(r"\bpqt\b|\bpaquet\b|\bpack\b", text_lower):
+            return "pack"
+        elif re.search(r"\bcaisse\b|\bcase\b", text_lower):
+            return "case"
+        else:
+            return "each"
 
     def _parse_discount(self, text: str) -> Optional[float]:
         """Parse discount percentage from text."""
-        if not text: return None
+        if not text:
+            return None
         pct_match = re.search(r"(\d+)\s*%", text)
         return float(pct_match.group(1)) if pct_match else None
 
     def _calculate_original_price(self, price: Optional[float], discount_pct: Optional[float]) -> float:
         """Calculate original price from discounted price and percentage."""
-        if price is None: return 0.0
-        if discount_pct is None or discount_pct <= 0: return price
+        if price is None:
+            return 0.0
+        if discount_pct is None or discount_pct <= 0:
+            return price
         return round(price / (1 - discount_pct / 100), 2)
 
     def _parse_loyalty_points(self, text: str) -> Optional[Tuple[str, int]]:
         """Parse loyalty points from text."""
-        if not text: return None
+        if not text:
+            return None
         text_lower = text.lower()
         for program, keywords in LOYALTY_PROGRAMS.items():
             for keyword in keywords:
@@ -399,7 +425,8 @@ class BaseScraper(ABC):
                         try:
                             points_str = match.group(1).replace(',', '')
                             return program, int(points_str)
-                        except (ValueError, IndexError): continue
+                        except (ValueError, IndexError):
+                            continue
         return None
 
     def _categorize_product(self, name: str) -> str:

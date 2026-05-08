@@ -49,8 +49,11 @@ from app.services.pantry_service import PantryService
 from app.services.substitution_service import substitution_service
 from app.services.scraper_health_service import ScraperHealthService
 from app.services.geospatial_service import GeospatialService
+from app.services.ai_innovation_service import AIInnovationService
+from src.ai.models import InnovativeMealPlan
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 # Approximate CAD value per point for major loyalty programs
 LOYALTY_POINT_VALUES = {
@@ -592,6 +595,33 @@ async def reset_scraper_circuit_breaker(
     health_service = ScraperHealthService(session)
     await health_service.reset_store_circuit_breaker(store_name)
     return {"message": f"Circuit breaker for {store_name} reset successfully."}
+
+
+@router.post("/innovative-meal-suggestions", response_model=InnovativeMealPlan)
+async def get_innovative_meal_suggestions(
+    user_id: int,
+    num_suggestions: int = 3,
+    session: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Generate innovative meal suggestions based on active deals using the new AI generator.
+    """
+    if current_user.id != user_id:
+        raise HTTPException(status_code=403, detail="Not authorized to get suggestions for another user")
+
+    ai_service = AIInnovationService(session)
+    try:
+        suggestions = await ai_service.get_innovative_meal_suggestions(
+            user_id=user_id,
+            num_suggestions=num_suggestions
+        )
+        return suggestions
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        logger.error(f"Innovation generation failed: {e}")
+        raise HTTPException(status_code=500, detail="Failed to generate innovative suggestions")
 
 
 @router.get("/deals")

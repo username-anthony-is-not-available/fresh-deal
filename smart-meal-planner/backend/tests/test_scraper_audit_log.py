@@ -129,14 +129,15 @@ async def test_api_get_logs(async_session):
 async def test_api_get_log_artifacts(async_session):
     """Verifies the GET /admin/scrapers/logs/{log_id}/screenshot and html endpoints."""
     from app.api.endpoints import get_scraper_log_screenshot, get_scraper_log_html
-    import os
 
     # Create dummy files within allowed directory
     os.makedirs("/tmp/scrapers", exist_ok=True)
     screenshot_path = "/tmp/scrapers/test_s.png"
     html_path = "/tmp/scrapers/test_h.html"
-    with open(screenshot_path, "wb") as f: f.write(b"fake image")
-    with open(html_path, "w") as f: f.write("<html></html>")
+    with open(screenshot_path, "wb") as f:
+        f.write(b"fake image")
+    with open(html_path, "w") as f:
+        f.write("<html></html>")
 
     try:
         # Arrange

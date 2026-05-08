@@ -1,5 +1,4 @@
 
-import pytest
 from app.services.geospatial_service import GeospatialService
 
 def test_get_coordinates_valid():

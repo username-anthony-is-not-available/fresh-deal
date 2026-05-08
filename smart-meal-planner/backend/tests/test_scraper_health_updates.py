@@ -61,15 +61,15 @@ async def test_reset_store_circuit_breaker(async_session):
 
     # Should have 2 logs left: 1 old failure and 1 recent success
     assert len(logs) == 2
-    statuses = [l.status for l in logs]
+    statuses = [log.status for log in logs]
     assert "success" in statuses
     assert "failure" in statuses
-    for l in logs:
-        if l.status == "failure":
+    for log in logs:
+        if log.status == "failure":
             # SQLite might return naive datetimes, but we'll try to check the age
             # If it's aware:
-            if l.timestamp.tzinfo:
-                 assert l.timestamp < now - timedelta(hours=24)
+            if log.timestamp.tzinfo:
+                assert log.timestamp < now - timedelta(hours=24)
 
 @pytest.mark.asyncio
 async def test_refined_error_categorization(async_session):

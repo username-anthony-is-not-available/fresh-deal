@@ -113,20 +113,34 @@ class NutritionAgent:
         for ing in ingredients:
             ing_lower = ing.lower()
             match = None
-            if "chicken" in ing_lower: match = "chicken"
-            elif "beef" in ing_lower or "steak" in ing_lower: match = "beef"
-            elif "pork" in ing_lower or "bacon" in ing_lower: match = "pork"
-            elif "salmon" in ing_lower: match = "salmon"
-            elif "rice" in ing_lower: match = "rice"
-            elif "pasta" in ing_lower: match = "pasta"
-            elif "bread" in ing_lower: match = "bread"
-            elif "oat" in ing_lower: match = "oats"
-            elif "egg" in ing_lower: match = "egg"
-            elif "cheese" in ing_lower: match = "cheese"
-            elif "milk" in ing_lower: match = "milk"
-            elif "oil" in ing_lower or "butter" in ing_lower: match = "oil"
-            elif any(x in ing_lower for x in ["apple", "banana", "fruit"]): match = "fruit"
-            else: match = "vegetable"
+            if "chicken" in ing_lower:
+                match = "chicken"
+            elif "beef" in ing_lower or "steak" in ing_lower:
+                match = "beef"
+            elif "pork" in ing_lower or "bacon" in ing_lower:
+                match = "pork"
+            elif "salmon" in ing_lower:
+                match = "salmon"
+            elif "rice" in ing_lower:
+                match = "rice"
+            elif "pasta" in ing_lower:
+                match = "pasta"
+            elif "bread" in ing_lower:
+                match = "bread"
+            elif "oat" in ing_lower:
+                match = "oats"
+            elif "egg" in ing_lower:
+                match = "egg"
+            elif "cheese" in ing_lower:
+                match = "cheese"
+            elif "milk" in ing_lower:
+                match = "milk"
+            elif "oil" in ing_lower or "butter" in ing_lower:
+                match = "oil"
+            elif any(x in ing_lower for x in ["apple", "banana", "fruit"]):
+                match = "fruit"
+            else:
+                match = "vegetable"
 
             if match:
                 data = self.ingredient_db[match]

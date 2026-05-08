@@ -1,10 +1,15 @@
 from datetime import datetime, timedelta, timezone
 from typing import Any, Union
 
-from jose import jwt
+from jose import jwt, JWTError
 from passlib.context import CryptContext
+from fastapi import Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer
+from sqlmodel import Session
 
 from app.core.config import settings
+from app.core.db import get_session
+from app.models.all_models import User
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -29,14 +34,6 @@ def create_access_token(
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)
 
-
-from fastapi import Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer
-from jose import JWTError
-from sqlmodel import Session
-
-from app.core.db import get_session
-from app.models.all_models import User
 
 def get_password_hash(password: str) -> str:
     return pwd_context.hash(password)
