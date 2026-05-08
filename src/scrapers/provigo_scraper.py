@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from typing import List, Optional
+from typing import List
 from playwright.async_api import Page
 from bs4 import BeautifulSoup
 from src.scrapers.BaseScraper import BaseScraper
@@ -72,17 +72,20 @@ class ProvigoScraper(BaseScraper):
         for tile in product_tiles:
             try:
                 name_el = tile.select_one('[data-testid="product-title"]') or tile.select_one('h3')
-                if not name_el: continue
+                if not name_el:
+                    continue
                 name = name_el.get_text(strip=True)
 
                 price_el = tile.select_one('[data-testid="price-product-tile"]') or tile.select_one('.price__value')
                 if not price_el:
                     price_el = tile.select_one('[class*="price__value"]')
-                if not price_el: continue
+                if not price_el:
+                    continue
                 price_text = price_el.get_text(separator=" ", strip=True)
                 price = self._parse_price(price_text)
 
-                if price is None: continue
+                if price is None:
+                    continue
 
                 unit_el = tile.select_one('[data-testid="product-package-size"]')
                 unit_text = unit_el.get_text(strip=True) if unit_el else ""
@@ -106,7 +109,6 @@ class ProvigoScraper(BaseScraper):
         return deals
 
 if __name__ == "__main__":
-    import sys
     import argparse
     import json
 

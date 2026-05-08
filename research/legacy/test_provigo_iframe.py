@@ -1,7 +1,6 @@
 
 import asyncio
 from playwright.async_api import async_playwright
-from bs4 import BeautifulSoup
 
 async def test_provigo():
     async with async_playwright() as p:

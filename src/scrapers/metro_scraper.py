@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from typing import List, Optional
+from typing import List
 from playwright.async_api import Page
 from bs4 import BeautifulSoup
 from src.scrapers.BaseScraper import BaseScraper
@@ -56,7 +56,7 @@ class MetroScraper(BaseScraper):
 
         if not deals:
             self.last_screenshot, self.last_html = await self._save_debug_artifacts(page, "Metro_NoDeals")
-            logger.warning(f"No deals found on Metro. Artifacts saved.")
+            logger.warning("No deals found on Metro. Artifacts saved.")
 
         return deals[:limit]
 
@@ -86,7 +86,8 @@ class MetroScraper(BaseScraper):
                 else:
                     name = name_element.get_text(strip=True)
 
-                if not name: continue
+                if not name:
+                    continue
 
                 # 2. Extract Brand
                 brand_element = tile.select_one('span.head__brand')
@@ -106,11 +107,13 @@ class MetroScraper(BaseScraper):
                 if not price_element:
                     price_element = tile.select_one('span[class*="price__value"]')
 
-                if not price_element: continue
+                if not price_element:
+                    continue
                 price_text = price_element.get_text(strip=True)
                 price = self._parse_price(price_text)
 
-                if price is None: continue
+                if price is None:
+                    continue
 
                 # 4. Extract Original Price
                 original_price = price
@@ -153,7 +156,6 @@ class MetroScraper(BaseScraper):
         return deals
 
 if __name__ == "__main__":
-    import sys
     import argparse
     import json
 

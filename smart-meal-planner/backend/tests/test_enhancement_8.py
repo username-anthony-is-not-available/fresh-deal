@@ -1,10 +1,9 @@
 import pytest
 import pytest_asyncio
 from app.agents.scraper_agent import ScraperAgent
-from app.models.all_models import Store, Product, Deal, PriceRecord
+from app.models.all_models import Deal, PriceRecord
 from sqlmodel import SQLModel, select
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from datetime import datetime, timezone, timedelta
 from unittest.mock import patch, MagicMock
 
 # In-memory SQLite database for testing

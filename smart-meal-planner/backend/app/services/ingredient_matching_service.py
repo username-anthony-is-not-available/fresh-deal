@@ -3,8 +3,8 @@ import re
 import json
 import os
 import logging
-from typing import List, Dict, Any, Optional, Tuple
-from thefuzz import fuzz, process
+from typing import List, Dict, Optional, Tuple
+from thefuzz import fuzz
 
 logger = logging.getLogger(__name__)
 

@@ -1,5 +1,4 @@
 import sys
-import os
 sys.path.append('smart-meal-planner/backend')
 from app.agents.scrapers.base_scraper import BaseScraper
 

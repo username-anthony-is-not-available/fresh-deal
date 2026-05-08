@@ -1,6 +1,5 @@
 import pytest
 import os
-import asyncio
 from unittest.mock import AsyncMock, MagicMock
 from playwright.async_api import Page
 
@@ -146,7 +145,6 @@ async def test_base_scraper_bot_block():
     scraper._get_page = AsyncMock(return_value=mock_page)
     scraper._save_debug_artifacts = AsyncMock(return_value=("s.png", "h.html"))
 
-    from playwright.async_api import async_playwright
     # We don't actually want to run async_playwright, so we mock it in the scraper.scrape method context
     # But it's easier to just test _check_incapsula_block directly and then the logic in scrape if possible
 

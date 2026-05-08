@@ -259,7 +259,7 @@ def send_daily_digests_task():
         async with AsyncSession(async_engine) as session:
             try:
                 # Fetch only IDs to minimize memory overhead
-                statement = select(User.id).where(User.email_digest_enabled == True)
+                statement = select(User.id).where(User.email_digest_enabled)
                 result = await session.execute(statement)
                 user_ids = result.scalars().all()
 

@@ -7,7 +7,7 @@ from datetime import datetime, timedelta, timezone
 sys.path.append(os.path.join(os.getcwd(), 'smart-meal-planner/backend'))
 
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from sqlmodel import SQLModel, select
+from sqlmodel import SQLModel
 from app.models.all_models import ScraperLog
 from app.services.scraper_health_service import ScraperHealthService
 

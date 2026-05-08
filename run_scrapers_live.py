@@ -1,8 +1,6 @@
 import asyncio
 import logging
 from src.scrapers.provigo_scraper import ProvigoScraper
-import os
-import json
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')

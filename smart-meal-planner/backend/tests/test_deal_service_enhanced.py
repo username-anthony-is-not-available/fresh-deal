@@ -1,6 +1,6 @@
 import pytest
 from datetime import date, timedelta
-from sqlmodel import Session, SQLModel
+from sqlmodel import SQLModel
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 from sqlmodel.pool import StaticPool

@@ -1,9 +1,8 @@
 import asyncio
 import traceback
 from unittest.mock import AsyncMock, patch
-from app.models.all_models import Deal, Store, Product, SQLModel, ScraperLog
-from sqlmodel import select, Session
-from app.core.db import engine, async_engine
+from app.models.all_models import Store, SQLModel
+from app.core.db import async_engine
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.agents.scraper_agent import ScraperAgent
 

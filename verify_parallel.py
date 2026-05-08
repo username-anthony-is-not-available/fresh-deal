@@ -18,7 +18,7 @@ class MockTask:
         print(f"DEBUG: {self.name}.s (signature) created with args={args}, kwargs={kwargs}")
         return self
     def apply_async(self, *args, **kwargs):
-        print(f"DEBUG: Group apply_async called")
+        print("DEBUG: Group apply_async called")
         return self
 
 import app.tasks as tasks
@@ -38,7 +38,6 @@ async def test_orchestrator():
     # Manually call the function to see if it groups correctly
     # Note: We need to use the original function, but it's been wrapped/mocked above for scheduled_jobs
     # Let's reload or just use the logic
-    from app.core.config import settings
     stores = ["metro", "walmart"]
 
     # Simulate the logic in scrape_task

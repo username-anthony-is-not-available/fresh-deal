@@ -1,7 +1,7 @@
 import sys
 import os
 import logging
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any
 
 # Add the project root to sys.path to allow importing from the root 'src' directory
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../../"))

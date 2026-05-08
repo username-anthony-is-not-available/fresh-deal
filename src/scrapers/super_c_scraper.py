@@ -37,9 +37,11 @@ class SuperCScraper(BaseScraper):
                 logger.info(f"Found {len(tiles)} tiles in Flipp iframe for {self.STORE_NAME}")
                 deals = []
                 for tile in tiles:
-                    if len(deals) >= limit: break
+                    if len(deals) >= limit:
+                        break
                     deal = self._parse_tile(tile)
-                    if deal: deals.append(deal)
+                    if deal:
+                        deals.append(deal)
                 return deals
 
             # 2. Fallback to native tiles
@@ -68,7 +70,8 @@ class SuperCScraper(BaseScraper):
 
         for tile in product_tiles:
             deal = self._parse_tile(tile)
-            if deal: deals.append(deal)
+            if deal:
+                deals.append(deal)
 
         return deals
 
@@ -82,7 +85,8 @@ class SuperCScraper(BaseScraper):
             if not name_element:
                 name_element = tile.select_one('h3[class*="product-tile__name"]') # Native
 
-            if not name_element: return None
+            if not name_element:
+                return None
             name = name_element.get_text(strip=True)
 
             # 2. Extract Price
@@ -92,10 +96,12 @@ class SuperCScraper(BaseScraper):
             if not price_element:
                 price_element = tile.select_one('[data-testid="sale-price"]')
 
-            if not price_element: return None
+            if not price_element:
+                return None
             price_text = price_element.get_text(strip=True)
             price = self._parse_price(price_text)
-            if price is None: return None
+            if price is None:
+                return None
 
             # 3. Extract Unit
             unit_element = tile.select_one('.product-tile__package-size') # Flipp
@@ -125,7 +131,6 @@ class SuperCScraper(BaseScraper):
             return None
 
 if __name__ == "__main__":
-    import sys
     import argparse
     import json
 
