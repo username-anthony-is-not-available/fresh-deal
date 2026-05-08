@@ -9,7 +9,8 @@ from app.models.all_models import User
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.limiter import limiter
-from typing import Optional
+from typing import Optional, List
+import json
 
 router = APIRouter()
 
@@ -17,6 +18,14 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/login/access-token")
 
 class TokenData(BaseModel):
     id: Optional[str] = None
+
+class UserCreate(BaseModel):
+    email: str
+    password: str
+    postal_code: str
+    household_size: int
+    dietary_preferences: List[str]
+    allergies: List[str] = []
 
 async def get_current_user(
     token: str = Depends(oauth2_scheme),
@@ -55,18 +64,6 @@ async def get_current_user_optional(
         return user
     except JWTError:
         return None
-
-
-import json
-from typing import List
-
-class UserCreate(BaseModel):
-    email: str
-    password: str
-    postal_code: str
-    household_size: int
-    dietary_preferences: List[str]
-    allergies: List[str] = []
 
 
 @router.post("/register", response_model=User, summary="Register a new user")
