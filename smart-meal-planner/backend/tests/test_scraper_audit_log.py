@@ -134,8 +134,10 @@ async def test_api_get_log_artifacts(async_session):
     os.makedirs("/tmp/scrapers", exist_ok=True)
     screenshot_path = "/tmp/scrapers/test_s.png"
     html_path = "/tmp/scrapers/test_h.html"
-    with open(screenshot_path, "wb") as f: f.write(b"fake image")
-    with open(html_path, "w") as f: f.write("<html></html>")
+    with open(screenshot_path, "wb") as f:
+        f.write(b"fake image")
+    with open(html_path, "w") as f:
+        f.write("<html></html>")
 
     try:
         # Arrange

@@ -22,6 +22,7 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from app.scheduled_jobs import run_scheduled_scrape
 from app.tasks import cleanup_old_data_task, send_daily_digests_task
 import os
+import re
 
 
 settings = Settings()
@@ -84,9 +85,6 @@ app = FastAPI(
     openapi_url=f"{settings.API_V1_STR}/openapi.json",
     lifespan=lifespan,
 )
-
-
-import re
 
 
 def _rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded):
