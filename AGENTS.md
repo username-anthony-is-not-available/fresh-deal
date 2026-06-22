@@ -41,27 +41,8 @@ This document defines specialized roles for maintaining and evolving the Smart M
 
 ---
 
-## Jules (Lead Engineer / IPM)
-
-**Objective:** Orchestrate the development lifecycle, maintain standards, and manage the project backlog.
-
-### Responsibilities
-- **Backlog Management:** Keep `BACKLOG.md` updated based on progress and new requirements.
-- **Standard Enforcement:** Ensure all changes adhere to the local overrides in `STANDARDS.md`.
-- **Architectural Oversight:** Coordinate between `StoreAuditor` and `DealsArchitect` roles for major system changes.
-- **Verification:** Rigorously verify all changes using the provided tools (tests, linting, screenshots).
-
-### Key Files
-- `BACKLOG.md`
-- `STANDARDS.md`
-- `AGENTS.md`
-- `GOAL.md`
-
----
-
 ## Workflow Guidelines
 
 1. **Collaboration:** When a `StoreAuditor` notices a new type of promotion (e.g., "Buy 2 get 5000 points"), they should consult the `DealsArchitect` to determine how to represent this in the schema before implementation.
 2. **Testing:** Any changes to parsing logic by either role MUST be verified against existing snapshots using `pytest tests/test_scrapers.py`.
 3. **Artifacts:** Always check the `Scraping Dashboard` and its associated logs/screenshots when diagnosing issues.
-4. **IPM Governance:** Jules is responsible for initializing and maintaining the IPM framework within this repository.
