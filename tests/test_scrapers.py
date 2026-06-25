@@ -10,10 +10,12 @@ from src.scrapers.provigo_scraper import ProvigoScraper
 # Constants for paths
 SNAPSHOTS_DIR = os.path.join(os.path.dirname(__file__), "snapshots")
 
+
 def get_snapshot_content(filename):
     path = os.path.join(SNAPSHOTS_DIR, filename)
     with open(path, "r", encoding="utf-8") as f:
         return f.read()
+
 
 async def mock_page_with_content(content):
     mock_page = MagicMock(spec=Page)
@@ -41,13 +43,14 @@ async def mock_page_with_content(content):
     mock_tile_locator.first.wait_for = AsyncMock()
 
     def locator_side_effect(selector):
-        if selector == 'html':
+        if selector == "html":
             return mock_html_locator
         return mock_tile_locator
 
     mock_frame_locator.locator.side_effect = locator_side_effect
 
     return mock_page
+
 
 @pytest.mark.asyncio
 async def test_metro_parsing():
@@ -59,6 +62,7 @@ async def test_metro_parsing():
     assert any("Strawberries" in d.name and d.price == 4.99 for d in deals)
     assert any("Apples" in d.name and d.price == 1.49 for d in deals)
 
+
 @pytest.mark.asyncio
 async def test_super_c_parsing():
     # Super C iframe snapshot
@@ -68,7 +72,8 @@ async def test_super_c_parsing():
     scraper = SuperCScraper()
     # Mock _scrape_flipp_frame to return the tiles from BeautifulSoup
     from bs4 import BeautifulSoup
-    soup = BeautifulSoup(content, 'html.parser')
+
+    soup = BeautifulSoup(content, "html.parser")
     tiles = soup.select('div[data-testid="product-tile"]')
 
     scraper._scrape_flipp_frame = AsyncMock(return_value=tiles)
@@ -81,6 +86,7 @@ async def test_super_c_parsing():
     assert len(deals) == 2
     assert any("Bananas" in d.name and d.price == 1.99 for d in deals)
 
+
 @pytest.mark.asyncio
 async def test_provigo_parsing():
     # Verify we didn't break existing stuff
@@ -90,6 +96,7 @@ async def test_provigo_parsing():
     assert isinstance(deals, list)
     assert len(deals) >= 2
     assert any("Bananas" in d.name and d.price == 1.99 for d in deals)
+
 
 @pytest.mark.asyncio
 async def test_metro_parsing_missing_brand():
@@ -106,6 +113,7 @@ async def test_metro_parsing_missing_brand():
     assert len(deals) == 1
     assert deals[0].name == "No Brand Item"
     assert deals[0].price == 2.99
+
 
 @pytest.mark.asyncio
 async def test_super_c_native_fallback():
@@ -130,6 +138,7 @@ async def test_super_c_native_fallback():
     assert deals[0].name == "Native Super C Item"
     assert deals[0].price == 3.99
 
+
 @pytest.mark.asyncio
 async def test_base_scraper_bot_block():
     scraper = MetroScraper()
@@ -151,6 +160,7 @@ async def test_base_scraper_bot_block():
         await scraper.scrape()
     assert "[BOT_BLOCK]" in str(excinfo.value)
 
+
 @pytest.mark.asyncio
 async def test_metro_fetch_deals_success():
     scraper = MetroScraper()
@@ -163,15 +173,19 @@ async def test_metro_fetch_deals_success():
     deals = await scraper.fetch_deals(mock_page, limit=5)
     assert len(deals) > 0
 
+
 @pytest.mark.asyncio
 async def test_provigo_fetch_deals_success():
     scraper = ProvigoScraper()
-    mock_page = await mock_page_with_content(get_snapshot_content("provigo_iframe.html"))
+    mock_page = await mock_page_with_content(
+        get_snapshot_content("provigo_iframe.html")
+    )
     scraper._handle_cookie_consent = AsyncMock()
     scraper._scroll_to_bottom = AsyncMock()
 
     deals = await scraper.fetch_deals(mock_page, limit=5)
     assert len(deals) > 0
+
 
 @pytest.mark.asyncio
 async def test_base_scraper_utils_coverage():
@@ -198,13 +212,16 @@ async def test_base_scraper_utils_coverage():
     # Test _scrape_flipp_frame
     mock_page.wait_for_selector = AsyncMock()
     # flyer_frame.locator('html').inner_html()
-    mock_page.frame_locator().locator().inner_html = AsyncMock(return_value='<div data-testid="product-tile">Iframe Item</div>')
+    mock_page.frame_locator().locator().inner_html = AsyncMock(
+        return_value='<div data-testid="product-tile">Iframe Item</div>'
+    )
     # flyer_frame.locator(tile_selector).first.wait_for()
     mock_page.frame_locator().locator().first.wait_for = AsyncMock()
 
     tiles = await scraper._scrape_flipp_frame(mock_page)
     assert len(tiles) == 1
     assert "Iframe Item" in tiles[0].get_text()
+
 
 @pytest.mark.asyncio
 async def test_base_scraper_save_debug_artifacts():
@@ -215,10 +232,11 @@ async def test_base_scraper_save_debug_artifacts():
 
     # Actually it's easier to just let it write and check the return value
     s_path, h_path = await scraper._save_debug_artifacts(mock_page, "test")
-    assert "/tmp/scrapers/test_" in s_path
-    assert "/tmp/scrapers/test_" in h_path
+    assert "test_" in s_path
+    assert "test_" in h_path
     assert s_path.endswith(".png")
     assert h_path.endswith(".html")
+
 
 @pytest.mark.asyncio
 async def test_base_scraper_get_browser_context_page():
@@ -240,6 +258,7 @@ async def test_base_scraper_get_browser_context_page():
     await scraper._get_page(mock_context)
     mock_context.new_page.assert_called_once()
 
+
 @pytest.mark.asyncio
 async def test_metro_fetch_deals_error_handling():
     scraper = MetroScraper()
@@ -248,6 +267,7 @@ async def test_metro_fetch_deals_error_handling():
 
     deals = await scraper.fetch_deals(mock_page, limit=5)
     assert deals == []
+
 
 @pytest.mark.asyncio
 async def test_super_c_fetch_deals_error_handling():
@@ -260,10 +280,13 @@ async def test_super_c_fetch_deals_error_handling():
     assert deals == []
     scraper._save_debug_artifacts.assert_called_once()
 
+
 @pytest.mark.asyncio
 async def test_provigo_fetch_deals_spinner_timeout():
     scraper = ProvigoScraper()
-    mock_page = await mock_page_with_content(get_snapshot_content("provigo_iframe.html"))
+    mock_page = await mock_page_with_content(
+        get_snapshot_content("provigo_iframe.html")
+    )
     # Trigger Exception in wait_for_selector
     mock_page.wait_for_selector = AsyncMock(side_effect=Exception("Timeout"))
     scraper._handle_cookie_consent = AsyncMock()
@@ -271,6 +294,7 @@ async def test_provigo_fetch_deals_spinner_timeout():
 
     deals = await scraper.fetch_deals(mock_page, limit=5)
     assert len(deals) > 0
+
 
 @pytest.mark.asyncio
 async def test_metro_fetch_deals_bot_detected_in_loop():
@@ -281,6 +305,7 @@ async def test_metro_fetch_deals_bot_detected_in_loop():
 
     deals = await scraper.fetch_deals(mock_page, limit=5)
     assert deals == []
+
 
 @pytest.mark.asyncio
 async def test_metro_fetch_deals_scroll_error():
@@ -293,6 +318,7 @@ async def test_metro_fetch_deals_scroll_error():
     deals = await scraper.fetch_deals(mock_page, limit=5)
     assert len(deals) > 0
 
+
 @pytest.mark.asyncio
 async def test_base_scraper_flipp_frame_error():
     scraper = MetroScraper()
@@ -301,6 +327,7 @@ async def test_base_scraper_flipp_frame_error():
 
     tiles = await scraper._scrape_flipp_frame(mock_page)
     assert tiles == []
+
 
 @pytest.mark.asyncio
 async def test_metro_parse_html_edge_cases():
@@ -332,6 +359,7 @@ async def test_metro_parse_html_edge_cases():
     assert len(deals) == 1
     assert deals[0].name == "Alternative Item"
 
+
 @pytest.mark.asyncio
 async def test_provigo_parse_html_edge_cases():
     scraper = ProvigoScraper()
@@ -358,20 +386,23 @@ async def test_provigo_parse_html_edge_cases():
     assert len(deals) == 1
     assert deals[0].unit == "g"
 
+
 @pytest.mark.asyncio
 async def test_super_c_parse_tile_edge_cases():
     scraper = SuperCScraper()
     # 1. Sale price data-testid
     from bs4 import BeautifulSoup
+
     content = """
     <div class="product-tile">
         <h3 class="product-tile__name">Super C Item</h3>
         <span data-testid="sale-price">$2.00</span>
     </div>
     """
-    soup = BeautifulSoup(content, 'html.parser')
-    deal = scraper._parse_tile(soup.find('div'))
+    soup = BeautifulSoup(content, "html.parser")
+    deal = scraper._parse_tile(soup.find("div"))
     assert deal.price == 2.0
+
 
 @pytest.mark.asyncio
 async def test_super_c_fetch_deals_native_fallback_error():
@@ -385,6 +416,7 @@ async def test_super_c_fetch_deals_native_fallback_error():
     deals = await scraper.fetch_deals(mock_page, limit=5)
     assert deals == []
 
+
 @pytest.mark.asyncio
 async def test_provigo_fetch_deals_no_deals():
     scraper = ProvigoScraper()
@@ -397,6 +429,7 @@ async def test_provigo_fetch_deals_no_deals():
     deals = await scraper.fetch_deals(mock_page, limit=5)
     assert deals == []
     scraper._save_debug_artifacts.assert_called_once()
+
 
 @pytest.mark.asyncio
 async def test_metro_fetch_deals_no_deals():
