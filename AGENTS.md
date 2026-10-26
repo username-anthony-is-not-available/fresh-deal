@@ -46,3 +46,11 @@ This document defines specialized roles for maintaining and evolving the Smart M
 1. **Collaboration:** When a `StoreAuditor` notices a new type of promotion (e.g., "Buy 2 get 5000 points"), they should consult the `DealsArchitect` to determine how to represent this in the schema before implementation.
 2. **Testing:** Any changes to parsing logic by either role MUST be verified against existing snapshots using `pytest tests/test_scrapers.py`.
 3. **Artifacts:** Always check the `Scraping Dashboard` and its associated logs/screenshots when diagnosing issues.
+
+## GitHub Actions billing (owner policy, 2026-10-25)
+
+GitHub Actions is DISABLED on this repository. The owner does not pay for GitHub Actions.
+- Do NOT re-enable Actions in repository settings.
+- Do NOT add `.github/workflows` files or trigger workflow runs.
+- Do NOT request CI runs as part of any task.
+- Verify work locally instead; CI status is not a signal for this repo.
