@@ -11,6 +11,7 @@ import pytest
         pytest.param([], id="empty"),
         pytest.param("", id="empty-non-list"),
         pytest.param({"invalid": "shape"}, id="unsupported-shape"),
+        pytest.param([None], id="invalid-day-entry"),
     ],
 )
 def test_validate_plan_uses_days_when_meal_plan_is_missing_empty_or_invalid(
@@ -63,6 +64,12 @@ def test_validate_plan_leaves_unsupported_plan_unchanged(monkeypatch):
     plan = {"meal_plan": {"breakfast": {"name": "Oatmeal"}}}
 
     assert asyncio.run(NutritionAgent().validate_plan(plan)) is plan
+
+    invalid_list_plan = {"meal_plan": [None]}
+    assert (
+        asyncio.run(NutritionAgent().validate_plan(invalid_list_plan))
+        is invalid_list_plan
+    )
 
 
 def test_validate_plan_leaves_non_dictionary_days_unchanged(monkeypatch):

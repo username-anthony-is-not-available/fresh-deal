@@ -167,7 +167,11 @@ class NutritionAgent:
         meal_plan = plan_json.get("meal_plan")
         days = (
             meal_plan
-            if isinstance(meal_plan, list) and meal_plan
+            if (
+                isinstance(meal_plan, list)
+                and meal_plan
+                and all(isinstance(day, dict) for day in meal_plan)
+            )
             else plan_json.get("days", [])
         )
         if (
