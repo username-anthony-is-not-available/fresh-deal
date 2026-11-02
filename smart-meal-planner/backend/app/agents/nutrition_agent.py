@@ -163,7 +163,7 @@ class NutritionAgent:
         total_weekly_carbs = 0
         total_weekly_fat = 0
 
-        # Support both structures: meal_plan as list of days, or plan_json["days"]
+        # Prefer meal_plan; otherwise accept top-level days.
         meal_plan = plan_json.get("meal_plan")
         days = (
             meal_plan
