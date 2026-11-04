@@ -14,7 +14,7 @@ import json
 
 router = APIRouter()
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/login/access-token")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login/access-token")
 
 class TokenData(BaseModel):
     id: Optional[str] = None
