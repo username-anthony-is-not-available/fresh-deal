@@ -336,7 +336,13 @@ async def onboard_user(
 
 
 @router.get("/users/{user_id}", response_model=UserRead)
-async def get_user(user_id: int, session: AsyncSession = Depends(get_async_session)):
+async def get_user(
+    user_id: int,
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_async_session),
+):
+    if current_user.id != user_id:
+        raise HTTPException(status_code=403, detail="Not authorized to access this user")
     user_service = UserService(session)
     user = await user_service.get_user(user_id)
     if not user:
@@ -348,8 +354,11 @@ async def get_user(user_id: int, session: AsyncSession = Depends(get_async_sessi
 async def update_user(
     user_id: int,
     user_in: UserUpdate,
+    current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session),
 ):
+    if current_user.id != user_id:
+        raise HTTPException(status_code=403, detail="Not authorized to update this user")
     user_service = UserService(session)
     user = await user_service.update_user(user_id, user_in)
     if not user:
@@ -359,8 +368,12 @@ async def update_user(
 
 @router.get("/users/{user_id}/nutrition-summary", response_model=NutritionSummaryRead)
 async def get_nutrition_summary(
-    user_id: int, session: AsyncSession = Depends(get_async_session)
+    user_id: int,
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_async_session),
 ):
+    if current_user.id != user_id:
+        raise HTTPException(status_code=403, detail="Not authorized to access this nutrition summary")
     user_service = UserService(session)
     summary = await user_service.get_meal_plan_nutrition_summary(user_id)
     if not summary:
@@ -694,11 +707,17 @@ async def list_deals(
 
 
 @router.post("/plans/generate")
-async def generate_meal_plan(user_id: int, model: Optional[str] = None):
+async def generate_meal_plan(
+    user_id: int,
+    model: Optional[str] = None,
+    current_user: User = Depends(get_current_user),
+):
     """
     Triggers meal plan generation in the background.
     Returns a task_id to poll.
     """
+    if current_user.id != user_id:
+        raise HTTPException(status_code=403, detail="Not authorized to generate meal plans for another user")
     task = generate_meal_plan_task.delay(user_id, model_type=model)
     return {"task_id": task.id, "status": "Processing"}
 
@@ -714,11 +733,15 @@ class RegenerateMealRequest(BaseModel):
 
 @router.post("/plans/regenerate-meal")
 async def regenerate_meal(
-    request: RegenerateMealRequest, session: AsyncSession = Depends(get_async_session)
+    request: RegenerateMealRequest,
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_async_session),
 ):
     """
     Generates a new, single meal to replace an existing one in a meal plan.
     """
+    if current_user.id != request.user_id:
+        raise HTTPException(status_code=403, detail="Not authorized to modify another user's meal plan")
     user = await session.get(User, request.user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -742,7 +765,10 @@ async def regenerate_meal(
 
 
 @router.get("/tasks/{task_id}")
-async def get_task_status(task_id: str):
+async def get_task_status(
+    task_id: str,
+    current_user: User = Depends(get_current_user),
+):
     """
     Checks the status of a background task.
     """
@@ -763,7 +789,10 @@ async def get_task_status(task_id: str):
 
 
 @router.post("/tasks/{task_id}/stop")
-async def stop_task(task_id: str):
+async def stop_task(
+    task_id: str,
+    current_user: User = Depends(get_current_user),
+):
     """
     Revokes/stops a running background task.
     """
@@ -779,8 +808,12 @@ async def stop_task(task_id: str):
 
 @router.get("/plans/{user_id}/latest")
 async def get_latest_plan(
-    user_id: int, session: AsyncSession = Depends(get_async_session)
+    user_id: int,
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_async_session),
 ):
+    if current_user.id != user_id:
+        raise HTTPException(status_code=403, detail="Not authorized to access another user's meal plan")
     statement = (
         select(MealPlan)
         .where(MealPlan.user_id == user_id)
@@ -803,11 +836,14 @@ async def optimize_shopping_list(
     user_id: int,
     strategy: str = "min_cost",
     preferred_stores: Optional[List[str]] = Query(None),
+    current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session),
 ):
     """
     Returns the optimized shopping list for the user's latest meal plan.
     """
+    if current_user.id != user_id:
+        raise HTTPException(status_code=403, detail="Not authorized to access another user's shopping list")
     user = await session.get(User, user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -837,8 +873,11 @@ async def optimize_shopping_list(
 @router.get("/pantry/{user_id}", response_model=List[PantryItemRead])
 async def get_pantry_items(
     user_id: int,
+    current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session),
 ):
+    if current_user.id != user_id:
+        raise HTTPException(status_code=403, detail="Not authorized to access another user's pantry")
     items = await PantryService.list_items(session, user_id)
     return [PantryItemRead.model_validate(i) for i in items]
 
@@ -847,8 +886,11 @@ async def get_pantry_items(
 async def add_pantry_items(
     user_id: int,
     request: PantryAddRequest,
+    current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session),
 ):
+    if current_user.id != user_id:
+        raise HTTPException(status_code=403, detail="Not authorized to modify another user's pantry")
     # Pantry starts empty; user-selected items populate it.
     updated = await PantryService.add_items(
         session,
@@ -862,8 +904,11 @@ async def add_pantry_items(
 async def delete_pantry_item(
     user_id: int,
     item_id: int,
+    current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session),
 ):
+    if current_user.id != user_id:
+        raise HTTPException(status_code=403, detail="Not authorized to delete items from another user's pantry")
     item = await session.get(PantryItem, item_id)
     if not item or item.user_id != user_id:
         raise HTTPException(status_code=404, detail="Pantry item not found")
@@ -875,8 +920,11 @@ async def delete_pantry_item(
 @router.post("/pantry/{user_id}/consume-latest-plan")
 async def consume_pantry_from_latest_plan(
     user_id: int,
+    current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session),
 ):
+    if current_user.id != user_id:
+        raise HTTPException(status_code=403, detail="Not authorized to modify another user's pantry")
     user = await session.get(User, user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")

@@ -8,6 +8,7 @@ from sqlmodel.pool import StaticPool
 from app.main import app
 from app.core.db import get_async_session
 from app.models.all_models import User, MealPlan, Recipe, RecipeIngredient
+from app.core.security import create_access_token
 from datetime import date, timedelta
 import pytest_asyncio
 
@@ -98,8 +99,11 @@ async def test_get_latest_plan_has_ingredients(client: AsyncClient, session: Asy
     session.add(meal_plan)
     await session.commit()
 
+    token = create_access_token(subject=user.id)
+    headers = {"Authorization": f"Bearer {token}"}
+
     # 2. Call the API
-    response = await client.get(f"/api/plans/{user.id}/latest")
+    response = await client.get(f"/api/plans/{user.id}/latest", headers=headers)
 
     assert response.status_code == 200
     data = response.json()

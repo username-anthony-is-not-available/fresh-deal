@@ -12,6 +12,7 @@ from sqlmodel.pool import StaticPool
 from app.main import app
 from app.core.db import get_async_session
 from app.models.all_models import MealPlan, PantryItem, User
+from app.core.security import create_access_token
 from sqlmodel import select
 
 
@@ -67,6 +68,9 @@ async def test_pantry_add_and_consume_latest_plan(
     await session.commit()
     await session.refresh(user)
 
+    token = create_access_token(subject=user.id)
+    headers = {"Authorization": f"Bearer {token}"}
+
     # Add pantry items (starts empty)
     add_resp = await client.post(
         f"/api/pantry/{user.id}/add",
@@ -76,6 +80,7 @@ async def test_pantry_add_and_consume_latest_plan(
                 {"name": "Broccoli Crowns", "quantity": 2, "unit": "each"},
             ]
         },
+        headers=headers,
     )
     assert add_resp.status_code == 200
 
@@ -109,13 +114,13 @@ async def test_pantry_add_and_consume_latest_plan(
     session.add(meal_plan)
     await session.commit()
 
-    consume_resp = await client.post(f"/api/pantry/{user.id}/consume-latest-plan")
+    consume_resp = await client.post(f"/api/pantry/{user.id}/consume-latest-plan", headers=headers)
     assert consume_resp.status_code == 200
     payload = consume_resp.json()
     assert payload["consumed_count"] == 2
 
     # Verify pantry decreased
-    items_resp = await client.get(f"/api/pantry/{user.id}")
+    items_resp = await client.get(f"/api/pantry/{user.id}", headers=headers)
     assert items_resp.status_code == 200
     items = {(i["name"], i["unit"]): i["quantity"] for i in items_resp.json()}
 
@@ -137,10 +142,14 @@ async def test_pantry_item_deletes_when_depleted(
     await session.commit()
     await session.refresh(user)
 
+    token = create_access_token(subject=user.id)
+    headers = {"Authorization": f"Bearer {token}"}
+
     # Add exactly what will be consumed
     await client.post(
         f"/api/pantry/{user.id}/add",
         json={"items": [{"name": "Rice (Basmati 2kg)", "quantity": 0.2, "unit": "kg"}]},
+        headers=headers,
     )
 
     plan_data = {
@@ -165,10 +174,10 @@ async def test_pantry_item_deletes_when_depleted(
     session.add(meal_plan)
     await session.commit()
 
-    await client.post(f"/api/pantry/{user.id}/consume-latest-plan")
+    await client.post(f"/api/pantry/{user.id}/consume-latest-plan", headers=headers)
 
     # Should be gone
-    items_resp = await client.get(f"/api/pantry/{user.id}")
+    items_resp = await client.get(f"/api/pantry/{user.id}", headers=headers)
     assert items_resp.status_code == 200
     assert items_resp.json() == []
 

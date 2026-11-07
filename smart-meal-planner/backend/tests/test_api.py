@@ -8,6 +8,7 @@ from app.main import app
 from app.core.db import get_async_session
 from app.models.all_models import User, Recipe, RecipeFeedback
 from app.api.auth_endpoints import get_current_user
+from app.core.security import create_access_token
 from sqlmodel import select
 import pytest_asyncio
 
@@ -95,15 +96,71 @@ async def test_get_user(client: AsyncClient):
         },
     )
     user_id = onboard_response.json()["id"]
+    token = create_access_token(subject=user_id)
+    headers = {"Authorization": f"Bearer {token}"}
 
-    # Now, test the get endpoint
-    response = await client.get(f"/api/users/{user_id}")
+    # Now, test the get endpoint with token
+    response = await client.get(f"/api/users/{user_id}", headers=headers)
     assert response.status_code == 200
     data = response.json()
     assert data["id"] == user_id
     assert data["postal_code"] == "H1A 1A1"
     assert data["household_size"] == 1
     assert data["dietary_preferences"] == ["vegetarian"]
+
+
+@pytest.mark.asyncio
+async def test_get_user_unauthorized_401(client: AsyncClient):
+    response = await client.get("/api/users/1")
+    assert response.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_get_user_forbidden_403(client: AsyncClient):
+    onboard_response = await client.post(
+        "/api/onboard",
+        json={
+            "email": "user1@test.com",
+            "password": "password",
+            "postal_code": "H1A 1A1",
+            "household_size": 1,
+            "dietary_preferences": [],
+        },
+    )
+    user1_id = onboard_response.json()["id"]
+    token1 = create_access_token(subject=user1_id)
+    headers = {"Authorization": f"Bearer {token1}"}
+
+    # User 1 tries to access User 2's data
+    response = await client.get("/api/users/999", headers=headers)
+    assert response.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_plans_generate_unauthorized_401(client: AsyncClient):
+    response = await client.post("/api/plans/generate?user_id=1")
+    assert response.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_pantry_forbidden_403(client: AsyncClient):
+    onboard_response = await client.post(
+        "/api/onboard",
+        json={
+            "email": "pantryuser@test.com",
+            "password": "password",
+            "postal_code": "H1A 1A1",
+            "household_size": 1,
+            "dietary_preferences": [],
+        },
+    )
+    user_id = onboard_response.json()["id"]
+    token = create_access_token(subject=user_id)
+    headers = {"Authorization": f"Bearer {token}"}
+
+    # Try to access another user's pantry
+    response = await client.get("/api/pantry/999", headers=headers)
+    assert response.status_code == 403
 
 
 @pytest.mark.asyncio
@@ -120,10 +177,12 @@ async def test_update_user(client: AsyncClient):
         },
     )
     user_id = onboard_response.json()["id"]
+    token = create_access_token(subject=user_id)
+    headers = {"Authorization": f"Bearer {token}"}
 
     # Now, test the patch endpoint
     update_data = {"postal_code": "J7Y 5K2", "household_size": 4}
-    response = await client.patch(f"/api/users/{user_id}", json=update_data)
+    response = await client.patch(f"/api/users/{user_id}", json=update_data, headers=headers)
 
     assert response.status_code == 200
     data = response.json()
@@ -133,7 +192,7 @@ async def test_update_user(client: AsyncClient):
     assert data["dietary_preferences"] == []  # Should not be changed
 
     # Verify the changes by fetching the user again
-    get_response = await client.get(f"/api/users/{user_id}")
+    get_response = await client.get(f"/api/users/{user_id}", headers=headers)
     assert get_response.status_code == 200
     get_data = get_response.json()
     assert get_data["postal_code"] == "J7Y 5K2"

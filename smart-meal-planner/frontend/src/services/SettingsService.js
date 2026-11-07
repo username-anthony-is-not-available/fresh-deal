@@ -1,14 +1,12 @@
-import axios from 'axios';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+import api from './api';
 
 const SettingsService = {
   getUserSettings: (userId) => {
-    return axios.get(`${API_URL}/api/users/${userId}`);
+    return api.get(`/users/${userId}`);
   },
 
   updateUserSettings: (userId, settings) => {
-    return axios.patch(`${API_URL}/api/users/${userId}`, settings);
+    return api.patch(`/users/${userId}`, settings);
   }
 };
 

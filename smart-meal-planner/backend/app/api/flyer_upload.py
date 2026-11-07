@@ -10,7 +10,7 @@ Based on Reddit thread feedback:
 - The output should be in a format suitable for meal planning
 """
 
-from fastapi import APIRouter, UploadFile, File, HTTPException, Form
+from fastapi import APIRouter, UploadFile, File, HTTPException, Form, Depends
 from typing import Optional, List
 import base64
 import io
@@ -20,6 +20,8 @@ import re
 from pydantic import BaseModel
 from openai import OpenAI
 from app.core.config import settings
+from app.models.all_models import User
+from app.api.auth_endpoints import get_current_user
 
 logger = logging.getLogger(__name__)
 
@@ -235,6 +237,7 @@ ocr_service = FlyerOCRService()
 async def upload_flyer(
     file: UploadFile = File(..., description="Flyer image (JPG, PNG, PDF)"),
     store: Optional[str] = Form(None, description="Store name hint (e.g., Metro, IGA)"),
+    current_user: User = Depends(get_current_user),
 ):
     """
     Upload a grocery flyer image and extract deals using AI vision.
@@ -294,6 +297,7 @@ async def upload_flyer(
 async def upload_multiple_flyers(
     files: List[UploadFile] = File(..., description="Multiple flyer images"),
     store: Optional[str] = Form(None, description="Store name hint"),
+    current_user: User = Depends(get_current_user),
 ):
     """
     Upload multiple flyer pages and extract deals from all of them.
