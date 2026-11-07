@@ -163,13 +163,25 @@ class NutritionAgent:
         total_weekly_carbs = 0
         total_weekly_fat = 0
 
-        meal_plan = plan_json.get("meal_plan", [])
-        if not meal_plan:
+        # Prefer meal_plan; otherwise accept top-level days.
+        meal_plan = plan_json.get("meal_plan")
+        days = (
+            meal_plan
+            if (
+                isinstance(meal_plan, list)
+                and meal_plan
+                and all(isinstance(day, dict) for day in meal_plan)
+            )
+            else plan_json.get("days", [])
+        )
+        if (
+            not isinstance(days, list)
+            or not days
+            or any(not isinstance(day, dict) for day in days)
+        ):
             return plan_json
 
         all_meals_to_process = []
-        # Support both structures: meal_plan as list of days, or plan_json["days"]
-        days = meal_plan if isinstance(meal_plan, list) else plan_json.get("days", [])
 
         for day in days:
             # Handle list of meals or fixed breakfast/lunch/dinner
