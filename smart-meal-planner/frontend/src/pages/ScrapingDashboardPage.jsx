@@ -34,6 +34,8 @@ const ScrapingDashboardPage = () => {
   const [hasMoreLogs, setHasMoreLogs] = useState(true);
   const [selectedLog, setSelectedLog] = useState(null);
   const [isLogModalOpen, setIsLogModalOpen] = useState(false);
+  const [isScrapingNow, setIsScrapingNow] = useState(false);
+  const [lastScrapedTimestamp, setLastScrapedTimestamp] = useState(null);
 
   // Flipp scraper options
   const [selectedStores, setSelectedStores] = useState(['metro', 'maxi', 'walmart', 'super_c']);
@@ -56,6 +58,7 @@ const ScrapingDashboardPage = () => {
     fetchDealCount();
     fetchHealthData();
     fetchScraperLogs(0, true);
+    fetchLastScraped();
   }, []);
 
   const fetchScraperLogs = async (offset = 0, reset = false) => {
@@ -109,6 +112,43 @@ const ScrapingDashboardPage = () => {
 
     return () => clearInterval(interval);
   }, [tasks]);
+
+  const fetchLastScraped = async () => {
+    try {
+      const data = await api.get('/scrape/last-scraped');
+      if (data?.last_scraped_at) {
+        setLastScrapedTimestamp(data.last_scraped_at);
+      }
+    } catch (e) {
+      console.warn('Failed to fetch last scraped timestamp', e);
+    }
+  };
+
+  const triggerLocalScrapeNow = async () => {
+    setIsScrapingNow(true);
+    const toastId = toast.loading('Triggering batch scrape across local Quebec flyers...');
+    try {
+      const data = await api.post('/scrape/trigger', { postal_code: postalCode });
+      toast.success('Quebec flyers scrape triggered successfully!', { id: toastId });
+      const newTask = {
+        task_id: data.task_id,
+        scraper: 'Local Quebec Flyers (One-Click)',
+        status: data.status,
+        startedAt: new Date().toISOString(),
+        result: null,
+        error: null,
+        meta: data
+      };
+      setTasks(prev => [newTask, ...prev]);
+      fetchDealCount();
+      fetchLastScraped();
+    } catch (e) {
+      console.error('Failed to trigger local scrape', e);
+      toast.error('Scraping failed: ' + (e?.response?.data?.detail || e.message), { id: toastId });
+    } finally {
+      setIsScrapingNow(false);
+    }
+  };
 
   const fetchDealCount = async () => {
     try {
@@ -300,9 +340,27 @@ const ScrapingDashboardPage = () => {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Scraping Dashboard</h1>
-          <p className="text-gray-500 mt-1">Manage deal scrapers and data imports</p>
+          <p className="text-gray-500 mt-1">
+            Manage deal scrapers and data imports &bull; Last sync:{" "}
+            <span className="font-medium text-emerald-700">
+              {lastScrapedTimestamp ? new Date(lastScrapedTimestamp).toLocaleString() : 'Never'}
+            </span>
+          </p>
         </div>
         <div className="flex items-center gap-3">
+          <button
+            id="scrape-flyers-now-btn"
+            onClick={triggerLocalScrapeNow}
+            disabled={isScrapingNow}
+            className={`px-4 py-2 rounded-lg font-semibold text-sm text-white flex items-center gap-2 shadow transition-all ${
+              isScrapingNow
+                ? 'bg-gray-400 cursor-not-allowed'
+                : 'bg-emerald-600 hover:bg-emerald-700 active:scale-95'
+            }`}
+          >
+            <RefreshCw className={`w-4 h-4 ${isScrapingNow ? 'animate-spin' : ''}`} />
+            {isScrapingNow ? 'Scraping Flyers...' : 'Scrape Local Flyers Now'}
+          </button>
           <div className="bg-white border border-gray-200 rounded-lg px-4 py-2 flex items-center gap-2">
             <Database className="w-5 h-5 text-gray-400" />
             <span className="text-sm text-gray-600">

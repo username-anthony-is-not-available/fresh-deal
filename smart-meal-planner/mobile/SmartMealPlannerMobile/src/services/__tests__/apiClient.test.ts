@@ -9,7 +9,8 @@ const mockFetch = fetch as jest.Mock;
 describe('apiClient', () => {
   beforeEach(() => {
     mockFetch.mockClear();
-    apiClient.setToken(null); // Reset token before each test
+    apiClient.setToken(null);
+    apiClient.setBaseUrl(null);
   });
 
   it('should make a GET request without a token', async () => {
@@ -49,6 +50,21 @@ describe('apiClient', () => {
     );
     const headers = mockFetch.mock.calls[0][1].headers as Headers;
     expect(headers.get('Authorization')).toBe('Bearer test-token');
+  });
+
+  it('should support dynamic local LAN IP configuration', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve({data: 'lan_ok'}),
+    });
+
+    apiClient.setBaseUrl('http://192.168.1.155:8000/api');
+    await apiClient.get('/shopping/optimize');
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      'http://192.168.1.155:8000/api/shopping/optimize',
+      expect.anything(),
+    );
   });
 
   it('should throw an error on a failed request', async () => {

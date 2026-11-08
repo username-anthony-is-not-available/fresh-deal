@@ -47,9 +47,9 @@ class ScraperAgent:
     if direct browser-based scraping fails.
     """
 
-    def __init__(self, session: AsyncSession, postal_code: str = "H4T1V6", headless: bool = True):
+    def __init__(self, session: AsyncSession, postal_code: Optional[str] = None, headless: bool = True):
         self.session = session
-        self.postal_code = postal_code
+        self.postal_code = postal_code or getattr(settings, "LOCAL_POSTAL_CODE", None) or settings.DEFAULT_POSTAL_CODE
         self.headless = headless
         self.scrapers = {
             "metro": MetroScraper(postal_code=self.postal_code, headless=self.headless),
@@ -340,6 +340,14 @@ class ScraperAgent:
         """
         scraper = self.scrapers.get(store_name.lower())
         last_error = None
+
+        # Prioritize Flipp JSON API for banners relying on fragile DOM iframes
+        IFRAME_BANNERS = {"iga", "provigo", "super_c", "walmart"}
+        if store_name.lower() in IFRAME_BANNERS and not skip_direct:
+            logging.info(f"Prioritizing Flipp JSON API over fragile iframe for {store_name}...")
+            deals = await self._scrape_with_flipp(store_name, limit)
+            if deals:
+                return deals, "flipp", None, None, None, None
 
         if scraper and not skip_direct:
             # Clear last artifacts

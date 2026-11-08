@@ -7,7 +7,7 @@ from sqlmodel import Session, select
 from sqlalchemy import func
 from sqlalchemy.orm import selectinload
 from datetime import datetime
-from app.models.all_models import Product, Deal, Store, User, Recipe, RecipeRating, UserFavorite, Feedback
+from app.models.all_models import Product, Deal, Store, User, Recipe, RecipeRating, UserFavorite, Feedback, PantryItem
 from app.services.llm_service import LLMService
 from app.services.recipe_service import RecipeService
 from app.services.seasonal_service import SeasonalService
@@ -132,8 +132,17 @@ class MealPlannerAgent:
         # Filter recipes based on dietary preferences and allergies
         filtered_recipes = RecipeService.filter_recipes(self.recipes, user.dietary_preferences, user.allergies)
 
-        # Calculate deal scores to prioritize cheaper recipes
-        filtered_recipes = self._calculate_deal_scores(filtered_recipes, deals)
+        # Fetch user pantry items
+        pantry_items = []
+        if getattr(user, "id", None):
+            try:
+                pantry_stmt = select(PantryItem).where(PantryItem.user_id == user.id)
+                pantry_items = self.session.exec(pantry_stmt).all()
+            except Exception as e:
+                logger.warning(f"Could not load pantry items for user: {e}")
+
+        # Calculate deal and pantry scores to prioritize cheaper recipes and stocked ingredients
+        filtered_recipes = self._calculate_deal_scores(filtered_recipes, deals, pantry_items)
 
         # Sort by deal_score (primary) and rating (secondary), putting highly-scored/rated recipes first
         filtered_recipes.sort(key=lambda r: (r.get("deal_score", 0), r.get("average_rating") or 2.5), reverse=True)
@@ -186,6 +195,40 @@ class MealPlannerAgent:
                     meal_info["instructions"] = recipe_details.get("instructions", [])
                     meal_info["tags"] = recipe_details.get("tags", [])
                     meal_info["image"] = recipe_details.get("image_url", "/placeholder.jpg")
+
+        # Apply Batch-Cooking & Leftover Chaining metadata
+        plan = self._apply_leftover_chaining(plan)
+        return plan
+
+    def _apply_leftover_chaining(self, plan: Dict) -> Dict:
+        """
+        Batch-Cooking & Leftover Chaining:
+        Chains high-yield dinner meals into next-day lunches with
+        is_leftover=True and cook_once_eat_twice=True.
+        """
+        meal_plan = plan.get("meal_plan", [])
+        if not isinstance(meal_plan, list) or len(meal_plan) < 2:
+            return plan
+
+        for i in range(1, len(meal_plan)):
+            if i in [1, 3, 5]:  # Days 2, 4, 6 lunches chain from previous dinner
+                prev_day = meal_plan[i - 1]
+                prev_dinner = prev_day.get("dinner")
+                curr_day = meal_plan[i]
+                if prev_dinner and prev_dinner.get("recipe_name"):
+                    curr_day["lunch"] = {
+                        "recipe_id": prev_dinner.get("recipe_id"),
+                        "recipe_name": f"Leftover: {prev_dinner.get('recipe_name')}",
+                        "reason": f"Cook Once, Eat Twice: Batch-cooked dinner from Day {i} saved for lunch. Cuts meal prep time and extra grocery spend.",
+                        "servings": prev_dinner.get("servings", 2),
+                        "ingredients": [],
+                        "nutrition": prev_dinner.get("nutrition", {}),
+                        "instructions": ["Reheat and enjoy!"],
+                        "is_leftover": True,
+                        "cook_once_eat_twice": True,
+                        "chained_from_day": f"Day {i} Dinner",
+                        "leftover_source_recipe": prev_dinner.get("recipe_name")
+                    }
         return plan
 
     def _generate_structured_plan(self, user: User) -> Dict[str, Any]:
@@ -231,10 +274,11 @@ class MealPlannerAgent:
                 "dinner": self._format_meal(dinner, user.household_size)
             })
 
-        return {
+        plan_dict = {
             "meal_plan": days,
             "shopping_summary": { "household_size": user.household_size, "weekly_overview": "Heuristic fallback plan." }
         }
+        return self._apply_leftover_chaining(plan_dict)
 
     def _format_meal(self, recipe: Dict, household_size: int) -> Dict:
         base_ingredients = recipe.get("ingredients", [])
@@ -253,14 +297,16 @@ class MealPlannerAgent:
             "instructions": recipe.get("instructions", [])
         }
 
-    def _calculate_deal_scores(self, recipes: List[Dict], deals: List[Dict]) -> List[Dict]:
+    def _calculate_deal_scores(self, recipes: List[Dict], deals: List[Dict], pantry_items: List[PantryItem] = None) -> List[Dict]:
         """
-        Calculates a deal score and seasonal score for each recipe.
-        The deal score is based on active deals.
+        Calculates a deal score, seasonal score, and pantry score for each recipe.
+        The deal score is based on active flyer deals.
         The seasonal score is based on Quebec seasonal produce.
-        Total score = deal_score + seasonal_score
+        The pantry score prioritizes recipes that use ingredients already in the user's pantry.
+        Total score = deal_score + seasonal_score + pantry_score
         """
         current_month = datetime.now().month
+        pantry_items = pantry_items or []
 
         # Create a mapping of product name to its best quality score
         product_quality_map = {}
@@ -272,7 +318,9 @@ class MealPlannerAgent:
 
         for recipe in recipes:
             matching_ingredients = []
+            pantry_matched_ingredients = []
             total_deal_score = 0.0
+            pantry_score = 0.0
 
             # We use normalized_ingredients for matching
             recipe_ingredients = recipe.get("normalized_ingredients", [])
@@ -281,19 +329,27 @@ class MealPlannerAgent:
                 if not ing_name:
                     continue
 
-                # Standardized matching using IngredientMatchingService
+                # Flyer deal matching
                 for sale_prod, quality in product_quality_map.items():
                     if self.ingredient_matcher.is_match(ing_name, sale_prod):
                         matching_ingredients.append(ing_name)
-                        # Weighted score: Excellent deals (score 80+) contribute more
                         weight = quality / 100.0
                         total_deal_score += weight
                         break
 
+                # Pantry inventory matching
+                for p_item in pantry_items:
+                    if self.ingredient_matcher.is_match(ing_name, p_item.name):
+                        pantry_matched_ingredients.append(ing_name)
+                        pantry_score += 1.5
+                        break
+
             seasonal_score = self.seasonal_service.calculate_seasonal_score(recipe_ingredients, current_month)
 
-            recipe["deal_score"] = round(total_deal_score + seasonal_score, 2)
+            recipe["deal_score"] = round(total_deal_score + seasonal_score + pantry_score, 2)
             recipe["on_sale_ingredients"] = list(set(matching_ingredients))
+            recipe["pantry_matches"] = list(set(pantry_matched_ingredients))
+            recipe["pantry_score"] = round(pantry_score, 2)
             recipe["seasonal_score"] = seasonal_score
 
         return recipes

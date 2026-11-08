@@ -83,3 +83,49 @@ def test_unmatched_items_efficiency(mock_session):
     # 1/2 items found = 50%
     assert result["trip_efficiency"] == 50.0
     assert "Rare Spice" in result["unmatched_items"]
+
+
+def test_store_hopping_penalty_consolidates_when_savings_less_than_travel(mock_session):
+    optimizer = ShoppingListOptimizer(mock_session)
+
+    priced_items = [
+        {
+            "ingredient": "Milk", "quantity": 1, "unit": "L",
+            "options": [
+                {"store_name": "Store A", "store_id": 1, "chain": "C1", "price": 2.50, "category": "Dairy"},
+                {"store_name": "Store B", "store_id": 2, "chain": "C2", "price": 2.00, "category": "Dairy"}
+            ]
+        },
+        {
+            "ingredient": "Bread", "quantity": 1, "unit": "Loaf",
+            "options": [
+                {"store_name": "Store A", "store_id": 1, "chain": "C1", "price": 2.80, "category": "Bakery"},
+                {"store_name": "Store B", "store_id": 2, "chain": "C2", "price": 3.40, "category": "Bakery"}
+            ]
+        }
+    ]
+
+    # Without travel penalty, min_cost would pick Store B for Milk ($2.00) and Store A for Bread ($3.00) = $5.00
+    # But driving to 2 stores incurs $3.50 travel cost ($8.50 total).
+    # Buying both at Store A costs $5.50 (0 extra travel stops).
+    result = optimizer._optimize_routes(priced_items, strategy="min_cost", travel_cost_per_stop=3.50)
+    assert len(result["recommended_stores"]) == 1
+    assert result["recommended_stores"][0]["store"] == "Store A"
+    assert result["travel_penalty_cost"] == 0.0
+
+
+def test_pantry_subtraction_bilingual_and_units(mock_session):
+    from app.models.all_models import PantryItem
+    optimizer = ShoppingListOptimizer(mock_session)
+
+    consolidated = {
+        ("chicken breast", "kg"): {"qty": 1.0, "unit": "kg"},
+        ("olive oil", "tbsp"): {"qty": 4.0, "unit": "tbsp"}
+    }
+    pantry = [
+        PantryItem(user_id=1, name="poitrine de poulet", quantity=1.0, unit="kg"),
+        PantryItem(user_id=1, name="huile d'olive", quantity=60.0, unit="ml")
+    ]
+
+    optimizer._subtract_pantry(consolidated, pantry)
+    assert len(consolidated) == 0  # Both fully covered by pantry items

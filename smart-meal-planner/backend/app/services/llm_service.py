@@ -1,6 +1,9 @@
 
 import json
 import logging
+import os
+import sqlite3
+import time
 import redis
 import hashlib
 from typing import List, Dict, Any, Optional
@@ -49,6 +52,17 @@ class LLMService:
             base_url=settings.OPENROUTER_BASE_URL,
             api_key=api_key
         )
+
+        # Ollama / Local OpenAI-compatible client
+        self.ollama_base_url = settings.OLLAMA_BASE_URL
+        if self.ollama_base_url:
+            self.ollama_client = OpenAI(
+                base_url=self.ollama_base_url,
+                api_key="ollama"
+            )
+        else:
+            self.ollama_client = None
+
         self.model = settings.DEFAULT_MODEL
         self.fallback_model = settings.FALLBACK_MODEL
         self.seasonal_service = SeasonalService()
@@ -62,6 +76,24 @@ class LLMService:
             logger.warning(f"Failed to connect to Redis: {e}. Caching disabled.")
             self.redis_client = None
 
+        # Initialize SQLite prompt cache for local offline execution
+        self.sqlite_cache_dir = os.path.join(os.getcwd(), ".cache")
+        try:
+            os.makedirs(self.sqlite_cache_dir, exist_ok=True)
+            self.sqlite_cache_path = os.path.join(self.sqlite_cache_dir, "llm_cache.sqlite")
+            with sqlite3.connect(self.sqlite_cache_path) as conn:
+                conn.execute('''
+                    CREATE TABLE IF NOT EXISTS prompt_cache (
+                        key TEXT PRIMARY KEY,
+                        value TEXT NOT NULL,
+                        expires_at REAL NOT NULL
+                    )
+                ''')
+                conn.commit()
+        except Exception as e:
+            logger.warning(f"Failed to initialize SQLite LLM cache: {e}")
+            self.sqlite_cache_path = None
+
     def _get_cache_key(self, prefix: str, data: Any) -> str:
         """Generates a cache key based on the input data."""
         data_str = json.dumps(data, sort_keys=True)
@@ -69,25 +101,54 @@ class LLMService:
         return f"{prefix}:{hash_str}"
 
     def _get_cached_response(self, key: str) -> Optional[Dict]:
-        """Retrieves cached response if available."""
-        if not self.redis_client:
-            return None
-        try:
-            cached = self.redis_client.get(key)
-            if cached:
-                return json.loads(cached)
-        except Exception as e:
-            logger.error(f"Redis get error: {e}")
+        """Retrieves cached response if available from Redis or local SQLite."""
+        if self.redis_client:
+            try:
+                cached = self.redis_client.get(key)
+                if cached:
+                    return json.loads(cached)
+            except Exception as e:
+                logger.error(f"Redis get error: {e}")
+
+        # Local SQLite prompt cache fallback
+        if getattr(self, "sqlite_cache_path", None):
+            try:
+                with sqlite3.connect(self.sqlite_cache_path) as conn:
+                    cur = conn.cursor()
+                    cur.execute("SELECT value, expires_at FROM prompt_cache WHERE key = ?", (key,))
+                    row = cur.fetchone()
+                    if row:
+                        val_str, expires_at = row
+                        if expires_at > time.time():
+                            return json.loads(val_str)
+                        else:
+                            cur.execute("DELETE FROM prompt_cache WHERE key = ?", (key,))
+                            conn.commit()
+            except Exception as e:
+                logger.debug(f"SQLite cache get error: {e}")
+
         return None
 
     def _set_cached_response(self, key: str, data: Any, ttl: int = 3600):
-        """Stores response in cache."""
-        if not self.redis_client:
-            return
-        try:
-            self.redis_client.setex(key, ttl, json.dumps(data))
-        except Exception as e:
-            logger.error(f"Redis set error: {e}")
+        """Stores response in Redis and/or local SQLite cache."""
+        payload_str = json.dumps(data)
+        if self.redis_client:
+            try:
+                self.redis_client.setex(key, ttl, payload_str)
+            except Exception as e:
+                logger.error(f"Redis set error: {e}")
+
+        if getattr(self, "sqlite_cache_path", None):
+            try:
+                expires_at = time.time() + ttl
+                with sqlite3.connect(self.sqlite_cache_path) as conn:
+                    conn.execute(
+                        "INSERT OR REPLACE INTO prompt_cache (key, value, expires_at) VALUES (?, ?, ?)",
+                        (key, payload_str, expires_at)
+                    )
+                    conn.commit()
+            except Exception as e:
+                logger.debug(f"SQLite cache set error: {e}")
 
     def _construct_system_prompt(self, dietary_preferences: List[str] = None, allergies: List[str] = None) -> str:
         """
@@ -337,12 +398,13 @@ class LLMService:
         retry=retry_if_exception_type((RateLimitError, APITimeoutError, APIConnectionError, InternalServerError)),
         before_sleep=lambda retry_state: logger.warning(f"Retrying LLM call due to {retry_state.outcome.exception()}...")
     )
-    def _make_api_request(self, model: str, prompt: str, system_prompt: str = None) -> str:
+    def _make_api_request(self, model: str, prompt: str, system_prompt: str = None, client: Optional[OpenAI] = None) -> str:
         """Makes a single, retriable API call to the LLM."""
         if not system_prompt:
             system_prompt = "You are a helpful meal planning assistant that outputs valid JSON."
 
-        completion = self.client.chat.completions.create(
+        target_client = client or self.client
+        completion = target_client.chat.completions.create(
             model=model,
             messages=[
                 {"role": "system", "content": system_prompt},
@@ -358,29 +420,40 @@ class LLMService:
 
     def _call_llm(self, prompt: str, system_prompt: str = None, model_type: Optional[str] = None) -> str:
         """
-        Calls the LLM API, handling mock mode, primary/fallback models, and retries.
+        Calls the LLM API, handling local Ollama endpoint, OpenRouter primary/fallback models, and retries.
         """
-        if settings.USE_MOCK_AI or not settings.OPENROUTER_API_KEY:
-            logger.info("Mock AI enabled or API Key missing. Triggering fallback.")
-            raise APIError("Mock AI enabled or API Key missing", request=None, body=None)
+        if settings.USE_MOCK_AI:
+            logger.info("Mock AI enabled. Triggering fallback.")
+            raise APIError("Mock AI enabled", request=None, body=None)
 
         # Determine target model
         target_model = self.MODEL_MAPPING.get(model_type, self.model)
 
-        # Try primary model
-        try:
-            logger.info(f"Calling LLM model: {target_model} (specialization: {model_type})")
-            return self._make_api_request(target_model, prompt, system_prompt=system_prompt)
-        except Exception as e:
-            logger.warning(f"LLM model '{target_model}' failed after retries: {e}")
+        # In local SQLite mode or when OpenRouter API key is missing, attempt local Ollama first
+        if (settings.USE_SQLITE_LOCAL or not settings.OPENROUTER_API_KEY) and self.ollama_client:
+            try:
+                ollama_model = "llama3.1" if "llama" in target_model.lower() else target_model
+                logger.info(f"Calling local Ollama endpoint at {self.ollama_base_url} with model {ollama_model}")
+                return self._make_api_request(ollama_model, prompt, system_prompt=system_prompt, client=self.ollama_client)
+            except Exception as e:
+                logger.warning(f"Local Ollama call failed: {e}. Falling back to OpenRouter or mock...")
 
-        # Try fallback model
-        try:
-            logger.info(f"Calling fallback LLM model: {self.fallback_model}")
-            return self._make_api_request(self.fallback_model, prompt, system_prompt=system_prompt)
-        except Exception as e2:
-            logger.error(f"Fallback LLM model '{self.fallback_model}' also failed after retries: {e2}")
-            raise APIError("Both primary and fallback LLM models failed.", request=None, body=None)
+        # If OpenRouter API key is available, call OpenRouter
+        if settings.OPENROUTER_API_KEY:
+            try:
+                logger.info(f"Calling LLM model: {target_model} (specialization: {model_type})")
+                return self._make_api_request(target_model, prompt, system_prompt=system_prompt, client=self.client)
+            except Exception as e:
+                logger.warning(f"LLM model '{target_model}' failed after retries: {e}")
+
+            # Try fallback model
+            try:
+                logger.info(f"Calling fallback LLM model: {self.fallback_model}")
+                return self._make_api_request(self.fallback_model, prompt, system_prompt=system_prompt, client=self.client)
+            except Exception as e2:
+                logger.error(f"Fallback LLM model '{self.fallback_model}' also failed after retries: {e2}")
+
+        raise APIError("Both Ollama and OpenRouter LLM models failed or are unavailable.", request=None, body=None)
 
     def _construct_meal_plan_prompt(self, user_prefs: Dict, deals: List[Dict], recipes: List[Dict], week_dates: List[Dict], user_favorites: List[int]) -> str:
         formatted_deals = self.format_deals_for_llm(deals)

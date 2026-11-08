@@ -8,14 +8,14 @@ import {
   StyleSheet,
   SafeAreaView,
   RefreshControl,
+  TouchableOpacity,
 } from 'react-native';
-import {getShoppingList} from '../services/api';
+import {getShoppingList, getOfflineCheckedItems, toggleOfflineItemChecked} from '../services/api';
 import StoreCard from '../components/StoreCard';
 import IngredientItem from '../components/IngredientItem';
 import {useAuth} from '../context/AuthContext';
 import {useTheme} from '../context/ThemeContext';
 
-// Define types for the shopping list data
 interface ShoppingItem {
   product_name: string;
   quantity: number;
@@ -36,6 +36,7 @@ const ShoppingListScreen = () => {
   const [shoppingList, setShoppingList] = useState<ShoppingListData | null>(
     null,
   );
+  const [checkedItems, setCheckedItems] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -52,8 +53,12 @@ const ShoppingListScreen = () => {
     }
     try {
       setError(null);
-      const result = await getShoppingList(user.id);
+      const [result, offlineChecked] = await Promise.all([
+        getShoppingList(user.id),
+        getOfflineCheckedItems(user.id),
+      ]);
       setShoppingList(result.data?.min_cost_stores || null);
+      setCheckedItems(offlineChecked);
       setLastUpdated(result.timestamp);
       setIsOffline(result.isOffline);
     } catch (e) {
@@ -74,6 +79,12 @@ const ShoppingListScreen = () => {
     await fetchShoppingList();
     setRefreshing(false);
   }, [fetchShoppingList]);
+
+  const handleToggleItem = async (productName: string) => {
+    if (!user) return;
+    const updated = await toggleOfflineItemChecked(user.id, productName);
+    setCheckedItems(updated);
+  };
 
   if (loading) {
     return (
@@ -103,7 +114,7 @@ const ShoppingListScreen = () => {
     <SafeAreaView style={[styles.container, {backgroundColor: colors.background}]}>
       {isOffline && (
         <View style={[styles.offlineBanner, {backgroundColor: colors.accent}]}>
-          <Text style={styles.offlineText}>Viewing offline version</Text>
+          <Text style={styles.offlineText}>Offline Mode: Stored locally for in-store checkoffs</Text>
         </View>
       )}
       <ScrollView
@@ -130,6 +141,8 @@ const ShoppingListScreen = () => {
                 quantity={item.quantity}
                 unit={item.unit}
                 price={item.price}
+                checked={!!checkedItems[item.product_name]}
+                onToggle={() => handleToggleItem(item.product_name)}
               />
             ))}
           </StoreCard>

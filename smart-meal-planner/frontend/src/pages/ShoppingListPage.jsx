@@ -218,6 +218,7 @@ const ShoppingListPage = () => {
              <IngredientPriceComparison
                detailedComparison={data.detailed_comparison}
                allStores={data.all_stores}
+               projectedSavings={data.total_savings}
              />
            )}
         </div>

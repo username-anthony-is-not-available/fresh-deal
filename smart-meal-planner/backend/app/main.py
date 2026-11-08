@@ -20,7 +20,7 @@ from slowapi.middleware import SlowAPIMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from app.scheduled_jobs import run_scheduled_scrape
+from app.scheduled_jobs import run_scheduled_scrape, run_pantry_expiration_check
 from app.tasks import cleanup_old_data_task, send_daily_digests_task
 import os
 import re
@@ -37,14 +37,12 @@ async def lifespan(app: FastAPI):
     if settings.SENTRY_DSN:
         sentry_sdk.init(
             dsn=settings.SENTRY_DSN,
-            # Set traces_sample_rate to 1.0 to capture 100%
-            # of transactions for performance monitoring.
             traces_sample_rate=1.0,
         )
     logging.getLogger(__name__).info("Application startup")
     init_db()
 
-    # Scheduler
+    # In-Process APScheduler for Local Runs
     cron_schedule_str = os.environ.get("REFRESH_CRON_SCHEDULE", "0 6 * * *")
     try:
         cron_parts = cron_schedule_str.split()
@@ -65,11 +63,14 @@ async def lifespan(app: FastAPI):
         )
         scheduler.add_job(run_scheduled_scrape, "cron", hour=6, minute=0)
 
-    # Also add the weekly cleanup task
+    # Weekly cleanup task
     scheduler.add_job(cleanup_old_data_task, "cron", day_of_week="sun", hour=0, minute=0)
 
     # Daily Email Digest
     scheduler.add_job(send_daily_digests_task, "cron", hour=8, minute=0)
+
+    # In-Process Pantry Expiration Check (runs daily at 7 AM)
+    scheduler.add_job(run_pantry_expiration_check, "cron", hour=7, minute=0)
 
     scheduler.start()
 
@@ -89,16 +90,11 @@ app = FastAPI(
 
 
 def _rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded):
-    """
-    Custom exception handler for rate limit exceeded errors.
-    Calculates the Retry-After header from the exception detail.
-    """
     response = JSONResponse(
         {"detail": f"Rate limit exceeded: {exc.detail}"}, status_code=429
     )
 
-    # Try to parse the retry-after value from the exception detail
-    retry_after = "60"  # Default value
+    retry_after = "60"
     if exc.detail:
         match = re.search(r"(\d+)\s*(second|minute|hour|day)", exc.detail)
         if match:
@@ -123,15 +119,18 @@ app.add_middleware(SlowAPIMiddleware)
 
 Instrumentator().instrument(app).expose(app)
 
-# Restrict CORS to specific origins (frontend)
+# Allow CORS for localhost and local LAN IPs (for mobile testing)
 origins = [
-    "http://localhost:5173",  # Vite dev server
-    "http://localhost:80",  # Production (if applicable)
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:80",
+    "http://localhost:3000",
 ]
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
+    allow_origin_regex=r"http://(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+)(:\d+)?",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

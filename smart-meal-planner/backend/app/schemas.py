@@ -1,80 +1,67 @@
-from pydantic import BaseModel, ConfigDict
+import datetime
+from pydantic import BaseModel, Field, EmailStr, ConfigDict
 from typing import Optional, List, Dict, Any
-from datetime import datetime
 
 
-class PantryItemUpsert(BaseModel):
-    name: str
-    quantity: float = 1
-    unit: str = "each"
+class UserBase(BaseModel):
+    email: EmailStr
+    postal_code: str
+    household_size: int
+    dietary_preferences: Optional[str] = None
+    allergies: Optional[str] = None
+    weekly_budget: Optional[float] = None
 
 
-class PantryAddRequest(BaseModel):
-    items: List[PantryItemUpsert]
-
-
-class PantryItemRead(BaseModel):
-    id: int
-    user_id: int
-    name: str
-    quantity: float
-    unit: str
-
-    model_config = ConfigDict(from_attributes=True)
+class UserCreate(UserBase):
+    password: str
 
 
 class UserUpdate(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    email: Optional[EmailStr] = None
     postal_code: Optional[str] = None
     household_size: Optional[int] = None
-    dietary_preferences: Optional[List[str]] = None
-    allergies: Optional[list[str]] = None
-    preferred_loyalty_programs: Optional[list[str]] = None
-
-    class Config:
-        schema_extra = {
-            "example": {
-                "household_size": 2,
-                "dietary_preferences": ["vegetarian", "gluten-free"],
-            }
-        }
+    dietary_preferences: Optional[str] = None
+    allergies: Optional[str] = None
+    weekly_budget: Optional[float] = None
+    email_digest_enabled: Optional[bool] = None
 
 
 class UserRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
     id: int
-    email: Optional[str] = None
+    email: EmailStr
     postal_code: str
     household_size: int
-    dietary_preferences: Optional[List[str]] = None
-    allergies: Optional[list[str]] = None
-    preferred_loyalty_programs: Optional[list[str]] = None
-
-    class Config:
-        orm_mode = True
+    dietary_preferences: Optional[str] = None
+    allergies: Optional[str] = None
+    weekly_budget: Optional[float] = None
+    email_digest_enabled: bool = False
 
 
 class FeedbackCreate(BaseModel):
-    recipe_id: Optional[int] = None
-    meal_plan_id: Optional[int] = None
-    rating: int
-    comment: Optional[str] = None
-
-    class Config:
-        schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
+                "user_id": 1,
                 "recipe_id": 1,
+                "meal_plan_id": None,
                 "rating": 5,
-                "comment": "Delicious!",
+                "comment": "This recipe was delicious and very affordable!",
             }
         }
+    )
+    user_id: int
+    recipe_id: Optional[int] = None
+    meal_plan_id: Optional[int] = None
+    rating: int = Field(..., ge=1, le=5)
+    comment: Optional[str] = None
 
 
 class FeedbackRead(FeedbackCreate):
+    model_config = ConfigDict(from_attributes=True)
     id: int
-    user_id: int
-    created_at: datetime
-
-    class Config:
-        orm_mode = True
+    created_at: datetime.datetime
 
 
 class NutritionSummaryRead(BaseModel):
@@ -83,6 +70,21 @@ class NutritionSummaryRead(BaseModel):
 
 
 class RecipeRead(BaseModel):
+    model_config = ConfigDict(
+        from_attributes=True,
+        json_schema_extra={
+            "example": {
+                "id": 1,
+                "name": "Spaghetti Bolognese",
+                "cuisine": "Italian",
+                "meal_type": "Dinner",
+                "prep_time_minutes": 60,
+                "difficulty": "Easy",
+                "ingredients": ["ground beef", "spaghetti", "tomato sauce"],
+                "substitutions": {"ground beef": ["ground turkey", "lentils"]},
+            }
+        }
+    )
     id: int
     name: str
     cuisine: Optional[str] = None
@@ -95,126 +97,104 @@ class RecipeRead(BaseModel):
     allergens: list[str] = []
     average_rating: float = 0
 
-    class Config:
-        orm_mode = True
-        schema_extra = {
-            "example": {
-                "id": 1,
-                "name": "Spaghetti Bolognese",
-                "cuisine": "Italian",
-                "meal_type": "Dinner",
-                "prep_time_minutes": 60,
-                "difficulty": "Easy",
-                "ingredients": ["ground beef", "spaghetti", "tomato sauce"],
-                "substitutions": {"ground beef": ["ground turkey", "lentils"]},
-            }
-        }
+
+class RecipeIngestion(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: Optional[str] = None
+    name: str
+    cuisine: Optional[str] = None
+    meal_type: Optional[str] = "Dinner"
+    prep_time_minutes: Optional[int] = 30
+    difficulty: Optional[str] = "easy"
+    servings: int = 4
+    ingredients: List[Any]
+    nutrition: Optional[Dict[str, Any]] = None
+    instructions: Optional[List[str]] = None
+    tags: Optional[List[str]] = None
+    dietary_tags: Optional[List[str]] = None
+    allergens: Optional[List[str]] = None
 
 
 class RecipeFeedbackCreate(BaseModel):
     status: str
-    notes: Optional[str] = None
-
-    class Config:
-        schema_extra = {
-            "example": {
-                "status": "made_it",
-                "notes": "The cooking time was a bit too long.",
-            }
-        }
 
 
 class RecipeRatingCreate(BaseModel):
-    rating: int
-
-    class Config:
-        schema_extra = {"example": {"rating": 5}}
+    rating: int = Field(..., ge=1, le=5)
 
 
 class RecipeRatingRead(RecipeRatingCreate):
+    model_config = ConfigDict(from_attributes=True)
     id: int
     user_id: int
     recipe_id: int
 
-    class Config:
-        orm_mode = True
-
 
 class UserNutritionGoalCreate(BaseModel):
-    goal_type: str = "maintenance"
-    target_calories: Optional[float] = None
-    target_protein: Optional[float] = None
-    target_carbs: Optional[float] = None
-    target_fats: Optional[float] = None
-    target_fiber: Optional[float] = None
-
-    class Config:
-        schema_extra = {
-            "example": {
-                "goal_type": "weight_loss",
-                "target_calories": 2000,
-                "target_protein": 150,
-            }
-        }
+    daily_calories: Optional[int] = Field(None, ge=500, le=10000)
+    daily_protein: Optional[float] = Field(None, ge=0, le=1000)
+    daily_carbs: Optional[float] = Field(None, ge=0, le=1000)
+    daily_fat: Optional[float] = Field(None, ge=0, le=1000)
+    daily_fiber: Optional[float] = Field(None, ge=0, le=200)
 
 
 class UserNutritionGoalRead(UserNutritionGoalCreate):
+    model_config = ConfigDict(from_attributes=True)
     id: int
     user_id: int
-
-    class Config:
-        orm_mode = True
-        schema_extra = {
-            "example": {
-                "id": 1,
-                "user_id": 1,
-                "goal_type": "weight_loss",
-                "target_calories": 2000,
-                "target_protein": 150,
-                "target_carbs": 200,
-                "target_fats": 60,
-            }
-        }
+    updated_at: datetime.datetime
 
 
 class DailyNutritionRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
     id: int
     user_id: int
-    date: str
-    calories: float
-    protein: float
-    carbs: float
-    fats: float
+    date: datetime.date
+    calories: Optional[float] = None
+    protein: Optional[float] = None
+    carbs: Optional[float] = None
+    fat: Optional[float] = None
     fiber: Optional[float] = None
-    micronutrients_json: str
-
-    class Config:
-        orm_mode = True
-        schema_extra = {
-            "example": {
-                "id": 1,
-                "user_id": 1,
-                "date": "2024-07-29",
-                "calories": 2100.5,
-                "protein": 155.2,
-                "carbs": 205.0,
-                "fats": 65.8,
-                "micronutrients_json": '{"vitamin_c": 80, "iron": 15}',
-            }
-        }
+    notes: Optional[str] = None
+    created_at: datetime.datetime
 
 
 class DealRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
     id: int
     product_id: int
     store_id: int
     price: float
     original_price: Optional[float] = None
     discount_pct: Optional[float] = None
-    valid_from: str
-    valid_until: str
+    valid_from: Optional[datetime.date] = None
+    valid_until: Optional[datetime.date] = None
     loyalty_program: Optional[str] = None
     loyalty_points: Optional[int] = None
+    sale_info: Optional[str] = None
+    image_url: Optional[str] = None
+    quality_score: Optional[float] = None
+    quality_level: Optional[str] = None
 
-    class Config:
-        orm_mode = True
+
+class PantryItemCreate(BaseModel):
+    name: str
+    quantity: float = 1.0
+    unit: str = "each"
+
+
+class PantryAddRequest(BaseModel):
+    items: List[PantryItemCreate]
+
+
+class PantryItemRead(BaseModel):
+    id: Optional[int] = None
+    user_id: int
+    name: str
+    quantity: float
+    unit: str
+    created_at: Optional[datetime.datetime] = None
+    updated_at: Optional[datetime.datetime] = None
+
+    model_config = ConfigDict(from_attributes=True)
+

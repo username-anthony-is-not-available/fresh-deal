@@ -1,6 +1,10 @@
 
 import asyncio
 import logging
+import os
+import re
+import json
+import sqlite3
 from typing import Dict, List, Any
 from app.services.fatsecret_service import FatSecretService
 from app.services.edamam_service import EdamamService
@@ -27,6 +31,37 @@ class NutritionAgent:
 
         self.use_api = self.use_edamam or self.use_fatsecret
 
+        # Canadian Nutrient File (CNF) / USDA Foundation Foods offline database
+        self.offline_nutrition_db = {}
+        data_file = os.path.join(os.path.dirname(__file__), "..", "data", "offline_nutrition.json")
+        try:
+            if os.path.exists(data_file):
+                with open(data_file, "r", encoding="utf-8") as f:
+                    self.offline_nutrition_db = json.load(f)
+                logger.info(f"Loaded {len(self.offline_nutrition_db)} CNF/USDA offline nutrition profiles.")
+        except Exception as e:
+            logger.warning(f"Failed to load offline nutrition database: {e}")
+
+        # Local SQLite cache for nutrition resolution
+        self.cache_dir = os.path.join(os.getcwd(), ".cache")
+        try:
+            os.makedirs(self.cache_dir, exist_ok=True)
+            self.cache_db = os.path.join(self.cache_dir, "nutrition_cache.sqlite")
+            with sqlite3.connect(self.cache_db) as conn:
+                conn.execute('''
+                    CREATE TABLE IF NOT EXISTS ingredient_nutrition (
+                        query TEXT PRIMARY KEY,
+                        calories REAL,
+                        protein REAL,
+                        carbs REAL,
+                        fats REAL,
+                        fiber REAL
+                    )
+                ''')
+                conn.commit()
+        except Exception as e:
+            self.cache_db = None
+
         # Fallback to rough macro estimates
         self.ingredient_db = {
             "chicken": {"calories": 165, "protein": 31, "carbs": 0, "fats": 3.6},
@@ -45,6 +80,115 @@ class NutritionAgent:
             "oil": {"calories": 884, "protein": 0, "carbs": 0, "fats": 100},
         }
 
+    def resolve_offline_nutrition(self, ingredients: List[str]) -> Dict[str, Any]:
+        """Resolves nutritional profile locally using Canadian Nutrient File / USDA data."""
+        total = {"calories": 0.0, "protein": 0.0, "carbs": 0.0, "fats": 0.0, "fiber": 0.0, "detected_count": 0}
+
+        for ing in ingredients:
+            ing_lower = ing.lower().strip()
+            if not ing_lower:
+                continue
+
+            # Check SQLite persistent cache first
+            if getattr(self, "cache_db", None):
+                try:
+                    with sqlite3.connect(self.cache_db) as conn:
+                        cur = conn.cursor()
+                        cur.execute("SELECT calories, protein, carbs, fats, fiber FROM ingredient_nutrition WHERE query = ?", (ing_lower,))
+                        row = cur.fetchone()
+                        if row:
+                            total["calories"] += row[0]
+                            total["protein"] += row[1]
+                            total["carbs"] += row[2]
+                            total["fats"] += row[3]
+                            total["fiber"] += row[4]
+                            total["detected_count"] += 1
+                            continue
+                except Exception:
+                    pass
+
+            # Parse quantity and unit
+            qty_match = re.search(r"^([\d\./]+)\s*([a-zA-Z%]+)?", ing_lower)
+            qty = 1.0
+            unit = ""
+            if qty_match:
+                qty_str = qty_match.group(1)
+                unit = (qty_match.group(2) or "").lower()
+                try:
+                    if "/" in qty_str:
+                        num, den = qty_str.split("/")
+                        qty = float(num) / float(den)
+                    else:
+                        qty = float(qty_str)
+                except ValueError:
+                    qty = 1.0
+
+            # Estimate weight in grams based on unit (CNF baseline is per 100g)
+            grams = 100.0
+            if unit in ["g", "gram", "grams"]:
+                grams = qty
+            elif unit in ["kg", "kilogram"]:
+                grams = qty * 1000.0
+            elif unit in ["lb", "lbs", "pound", "pounds"]:
+                grams = qty * 453.59
+            elif unit in ["oz", "ounce", "ounces"]:
+                grams = qty * 28.35
+            elif unit in ["tbsp", "tablespoon", "c. à soupe"]:
+                grams = qty * 15.0
+            elif unit in ["tsp", "teaspoon", "c. à thé"]:
+                grams = qty * 5.0
+            elif unit in ["cup", "tasse", "cups"]:
+                grams = qty * 150.0
+            elif unit in ["each", "un", "unit", "egg", "oeuf"] or not unit:
+                grams = qty * 80.0
+
+            multiplier = max(grams / 100.0, 0.1)
+
+            # Match against CNF/USDA offline database
+            match = None
+            if self.offline_nutrition_db:
+                for key, data in self.offline_nutrition_db.items():
+                    aliases = data.get("aliases", []) + [key]
+                    if any(alias in ing_lower for alias in aliases):
+                        match = data
+                        break
+
+            if match:
+                cals = match["calories"] * multiplier
+                prot = match["protein"] * multiplier
+                carbs = match["carbs"] * multiplier
+                fats = match["fats"] * multiplier
+                fib = match.get("fiber", 0.0) * multiplier
+
+                total["calories"] += cals
+                total["protein"] += prot
+                total["carbs"] += carbs
+                total["fats"] += fats
+                total["fiber"] += fib
+                total["detected_count"] += 1
+
+                # Cache in SQLite
+                if getattr(self, "cache_db", None):
+                    try:
+                        with sqlite3.connect(self.cache_db) as conn:
+                            conn.execute(
+                                "INSERT OR REPLACE INTO ingredient_nutrition VALUES (?, ?, ?, ?, ?, ?)",
+                                (ing_lower, cals, prot, carbs, fats, fib)
+                            )
+                            conn.commit()
+                    except Exception:
+                        pass
+
+        return {
+            "calories": round(total["calories"]),
+            "protein": round(total["protein"]),
+            "carbs": round(total["carbs"]),
+            "fats": round(total["fats"]),
+            "fat": round(total["fats"]),
+            "fiber": round(total["fiber"]),
+            "detected_count": total["detected_count"],
+        }
+
     async def estimate_meal_nutrition(self, meal_name: str, ingredients: List[Any]) -> Dict[str, Any]:
         # Convert ingredients to strings if they are dicts
         ing_strings = []
@@ -57,13 +201,29 @@ class NutritionAgent:
             else:
                 ing_strings.append(str(ing))
 
+        # 1. Resolve through local offline CNF/USDA database first
+        local_nutrition = self.resolve_offline_nutrition(ing_strings)
+        detected = local_nutrition.get("detected_count", 0)
+
+        # If all ingredients or at least 80% resolved locally, or if no external APIs are configured, return local result
+        if (not self.use_api) or (detected > 0 and detected >= len(ing_strings)):
+            if local_nutrition.get("calories", 0) > 0:
+                return {
+                    "calories": int(local_nutrition["calories"]),
+                    "protein": int(local_nutrition["protein"]),
+                    "carbs": int(local_nutrition["carbs"]),
+                    "fat": int(local_nutrition["fat"]),
+                    "fats": int(local_nutrition["fats"]),
+                    "fiber": int(local_nutrition["fiber"]),
+                }
+
+        # 2. Query external APIs on cache misses if configured
         if self.use_edamam:
             nutrition = await self.edamam_service.get_nutrition_data(meal_name, ing_strings)
             if nutrition:
                 return nutrition
 
         if self.use_fatsecret:
-            # Re-using the existing placeholder logic for FatSecret if Edamam fails or is not configured
             try:
                 total_nutrition = {
                     "calories": 0, "protein": 0, "carbs": 0, "fat": 0,
@@ -77,7 +237,6 @@ class NutritionAgent:
                 for result in search_results:
                     if isinstance(result, Exception) or not result or not result.get('foods'):
                         continue
-                    # Assume the first result is the best match
                     food_id = result['foods']['food'][0]['food_id']
                     food_ids_to_fetch.append(int(food_id))
 
@@ -104,6 +263,17 @@ class NutritionAgent:
                     return {k: int(v) for k, v in total_nutrition.items()}
             except Exception as e:
                 logger.error(f"FatSecret estimation failed: {e}")
+
+        # 3. Fallback to offline local nutrition or heuristic estimate
+        if local_nutrition.get("calories", 0) > 0:
+            return {
+                "calories": int(local_nutrition["calories"]),
+                "protein": int(local_nutrition["protein"]),
+                "carbs": int(local_nutrition["carbs"]),
+                "fat": int(local_nutrition["fat"]),
+                "fats": int(local_nutrition["fats"]),
+                "fiber": int(local_nutrition["fiber"]),
+            }
 
         return self._fallback_estimate_meal_nutrition(meal_name, ing_strings)
 

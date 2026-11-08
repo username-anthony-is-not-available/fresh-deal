@@ -15,6 +15,9 @@ except Exception:  # pragma: no cover
     stealth_async = None
 from typing import List, Dict, Any, Optional, Tuple
 from app.core.proxy_manager import ProxyManager
+from app.core.config import settings
+from datetime import timedelta
+import json
 from .user_agents import USER_AGENTS
 
 # Loyalty programs mapping
@@ -26,6 +29,39 @@ LOYALTY_PROGRAMS = {
 }
 
 
+
+LOYALTY_POINT_VALUES = {
+    "PC Optimum": 0.001,  # 1000 pts = $1.00 (Maxi, Provigo)
+    "Scene+": 0.01,       # 1000 pts = $10.00 (IGA)
+    "Moi": 0.008,         # 500 pts = $4.00 (Metro, Super C)
+    "AIR MILES": 0.105,   # ~10.5 cents per mile
+}
+
+def calculate_effective_loyalty_price(
+    price: float,
+    loyalty_points: Optional[int] = None,
+    loyalty_program: Optional[str] = None,
+    member_price: Optional[float] = None
+) -> Tuple[float, float]:
+    """
+    Returns (effective_price, loyalty_savings).
+    Converts Quebec grocery loyalty points bonuses and member pricing into CAD discounts.
+    """
+    effective = member_price if member_price and member_price < price else price
+    savings = 0.0
+    if member_price and member_price < price:
+        savings += (price - member_price)
+
+    if loyalty_points and loyalty_points > 0 and loyalty_program:
+        for prog, val in LOYALTY_POINT_VALUES.items():
+            if prog.lower() in loyalty_program.lower():
+                point_discount = loyalty_points * val
+                savings += point_discount
+                effective = max(0.01, effective - point_discount)
+                break
+    return round(effective, 2), round(savings, 2)
+
+
 class BaseScraper(ABC):
     """
     Abstract base class for all store-specific scrapers.
@@ -34,12 +70,12 @@ class BaseScraper(ABC):
 
     def __init__(
         self,
-        postal_code: str = "H4T1V6",
+        postal_code: Optional[str] = None,
         headless: bool = True,
         proxy_manager: Optional[ProxyManager] = None,
         storage_path: str = "/tmp/scrapers",
     ):
-        self.postal_code = postal_code
+        self.postal_code = postal_code or getattr(settings, "LOCAL_POSTAL_CODE", None) or settings.DEFAULT_POSTAL_CODE
         self.headless = headless
         self.proxy_manager = proxy_manager or ProxyManager()
         self.storage_path = storage_path
@@ -52,6 +88,52 @@ class BaseScraper(ABC):
         self.user_agents = USER_AGENTS
         self.last_screenshot: Optional[str] = None
         self.last_html: Optional[str] = None
+
+    @staticmethod
+    def get_flyer_week_id(dt: Optional[datetime] = None) -> str:
+        if dt is None:
+            dt = datetime.now()
+        days_since_thursday = (dt.weekday() - 3) % 7
+        thursday = dt - timedelta(days=days_since_thursday)
+        return thursday.strftime("%Y_%m_%d")
+
+    def _get_cache_path(self) -> str:
+        cache_dir = os.path.join(os.getcwd(), ".cache", "flyers")
+        os.makedirs(cache_dir, exist_ok=True)
+        week_id = self.get_flyer_week_id()
+        store_key = self.__class__.__name__.lower().replace("scraper", "")
+        return os.path.join(cache_dir, f"{store_key}_{week_id}.json")
+
+    def load_cached_payload(self) -> Optional[List[Dict[str, Any]]]:
+        cache_file = self._get_cache_path()
+        if os.path.exists(cache_file):
+            try:
+                with open(cache_file, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    if isinstance(data, list) and len(data) > 0:
+                        logging.info(f"Loaded {len(data)} cached deals from {cache_file}")
+                        return data
+            except Exception as e:
+                logging.warning(f"Failed to read flyer cache {cache_file}: {e}")
+        return None
+
+    def save_cached_payload(self, deals: List[Dict[str, Any]]):
+        if not deals:
+            return
+        cache_file = self._get_cache_path()
+        try:
+            with open(cache_file, "w", encoding="utf-8") as f:
+                json.dump(deals, f, ensure_ascii=False, indent=2, default=str)
+                logging.info(f"Cached {len(deals)} deals to {cache_file}")
+        except Exception as e:
+            logging.warning(f"Failed to write flyer cache {cache_file}: {e}")
+
+    def parse_html(self, html_content: str) -> List[Any]:
+        """
+        Static/HTML-based parsing logic for offline snapshots or regression testing.
+        Subclasses should override if they support direct HTML string parsing.
+        """
+        return []
 
     @abstractmethod
     async def _scrape_page(self, page: Page, limit: int) -> List[Dict[str, Any]]:
@@ -67,6 +149,11 @@ class BaseScraper(ABC):
         It calls the _scrape_page method where the actual scraping logic resides.
         Returns a tuple of (deals, proxy_used, screenshot_path, html_path).
         """
+        # Check local disk cache first (Thursday-Wednesday weekly circular)
+        cached = self.load_cached_payload()
+        if cached:
+            return cached[:limit], "disk_cache", None, None
+
         proxy = self.proxy_manager.get_proxy()
         screenshot_path = None
         html_path = None
@@ -91,6 +178,8 @@ class BaseScraper(ABC):
                     raise Exception("[BOT_BLOCK] Anti-bot detection triggered (Incapsula)")
 
                 await context.storage_state(path=self.storage_state_path)
+                if deals:
+                    self.save_cached_payload(deals)
                 return deals, proxy, None, None
             except Exception as e:
                 error_msg = str(e)
@@ -174,7 +263,7 @@ class BaseScraper(ABC):
             await stealth_async(page)
         return page
 
-    async def _random_delay(self, min_delay: float = 1.0, max_delay: float = 3.0):
+    async def _random_delay(self, min_delay: float = 1.5, max_delay: float = 3.0):
         """
         Waits for a random amount of time to mimic human behavior.
         """

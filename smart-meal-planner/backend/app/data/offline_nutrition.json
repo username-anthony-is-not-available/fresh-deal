@@ -1,0 +1,994 @@
+{
+  "chicken_breast": {
+    "calories": 165,
+    "protein": 31.0,
+    "carbs": 0.0,
+    "fats": 3.6,
+    "fiber": 0.0,
+    "aliases": [
+      "chicken breast",
+      "poitrine de poulet",
+      "boneless chicken",
+      "haut de cuisse",
+      "chicken"
+    ]
+  },
+  "chicken_thigh": {
+    "calories": 209,
+    "protein": 26.0,
+    "carbs": 0.0,
+    "fats": 10.9,
+    "fiber": 0.0,
+    "aliases": [
+      "chicken thigh",
+      "cuisse de poulet",
+      "pilon de poulet",
+      "chicken drumstick"
+    ]
+  },
+  "ground_chicken": {
+    "calories": 189,
+    "protein": 24.0,
+    "carbs": 0.0,
+    "fats": 10.0,
+    "fiber": 0.0,
+    "aliases": [
+      "ground chicken",
+      "poulet haché"
+    ]
+  },
+  "turkey_breast": {
+    "calories": 135,
+    "protein": 30.0,
+    "carbs": 0.0,
+    "fats": 1.0,
+    "fiber": 0.0,
+    "aliases": [
+      "turkey",
+      "dinde",
+      "poitrine de dinde",
+      "ground turkey",
+      "dinde hachée"
+    ]
+  },
+  "ground_beef_lean": {
+    "calories": 215,
+    "protein": 26.0,
+    "carbs": 0.0,
+    "fats": 12.0,
+    "fiber": 0.0,
+    "aliases": [
+      "ground beef",
+      "boeuf haché",
+      "lean ground beef",
+      "boeuf haché maigre",
+      "beef"
+    ]
+  },
+  "ground_beef_medium": {
+    "calories": 260,
+    "protein": 24.0,
+    "carbs": 0.0,
+    "fats": 18.0,
+    "fiber": 0.0,
+    "aliases": [
+      "medium ground beef",
+      "boeuf haché mi-maigre"
+    ]
+  },
+  "beef_steak": {
+    "calories": 240,
+    "protein": 26.0,
+    "carbs": 0.0,
+    "fats": 15.0,
+    "fiber": 0.0,
+    "aliases": [
+      "steak",
+      "beef steak",
+      "bifteck",
+      "sirloin",
+      "faux-filet",
+      "bavette",
+      "roast beef",
+      "rôti de boeuf"
+    ]
+  },
+  "beef_stew": {
+    "calories": 220,
+    "protein": 28.0,
+    "carbs": 0.0,
+    "fats": 11.0,
+    "fiber": 0.0,
+    "aliases": [
+      "beef stew",
+      "boeuf à ragoût",
+      "cubes de boeuf"
+    ]
+  },
+  "pork_tenderloin": {
+    "calories": 143,
+    "protein": 26.0,
+    "carbs": 0.0,
+    "fats": 3.5,
+    "fiber": 0.0,
+    "aliases": [
+      "pork tenderloin",
+      "filet de porc",
+      "porc"
+    ]
+  },
+  "pork_chops": {
+    "calories": 231,
+    "protein": 25.0,
+    "carbs": 0.0,
+    "fats": 14.0,
+    "fiber": 0.0,
+    "aliases": [
+      "pork chop",
+      "côtelette de porc",
+      "longe de porc",
+      "pork loin"
+    ]
+  },
+  "bacon": {
+    "calories": 541,
+    "protein": 37.0,
+    "carbs": 1.4,
+    "fats": 42.0,
+    "fiber": 0.0,
+    "aliases": [
+      "bacon",
+      "lardons",
+      "bacon fumé"
+    ]
+  },
+  "ham": {
+    "calories": 145,
+    "protein": 21.0,
+    "carbs": 1.5,
+    "fats": 6.0,
+    "fiber": 0.0,
+    "aliases": [
+      "ham",
+      "jambon",
+      "jambon cuit"
+    ]
+  },
+  "sausage": {
+    "calories": 300,
+    "protein": 14.0,
+    "carbs": 2.0,
+    "fats": 26.0,
+    "fiber": 0.0,
+    "aliases": [
+      "sausage",
+      "saucisse",
+      "saucisses italiennes",
+      "italian sausage"
+    ]
+  },
+  "salmon": {
+    "calories": 208,
+    "protein": 20.0,
+    "carbs": 0.0,
+    "fats": 13.0,
+    "fiber": 0.0,
+    "aliases": [
+      "salmon",
+      "saumon",
+      "saumon de l'atlantique",
+      "filet de saumon"
+    ]
+  },
+  "tuna": {
+    "calories": 132,
+    "protein": 28.0,
+    "carbs": 0.0,
+    "fats": 1.0,
+    "fiber": 0.0,
+    "aliases": [
+      "tuna",
+      "thon",
+      "canned tuna",
+      "thon en boîte"
+    ]
+  },
+  "white_fish": {
+    "calories": 105,
+    "protein": 23.0,
+    "carbs": 0.0,
+    "fats": 1.0,
+    "fiber": 0.0,
+    "aliases": [
+      "cod",
+      "morue",
+      "tilapia",
+      "haddock",
+      "aiglefin",
+      "sole",
+      "halibut",
+      "poisson blanc"
+    ]
+  },
+  "shrimp": {
+    "calories": 99,
+    "protein": 24.0,
+    "carbs": 0.2,
+    "fats": 0.3,
+    "fiber": 0.0,
+    "aliases": [
+      "shrimp",
+      "crevette",
+      "crevettes"
+    ]
+  },
+  "trout": {
+    "calories": 190,
+    "protein": 27.0,
+    "carbs": 0.0,
+    "fats": 8.0,
+    "fiber": 0.0,
+    "aliases": [
+      "trout",
+      "truite"
+    ]
+  },
+  "egg": {
+    "calories": 143,
+    "protein": 12.6,
+    "carbs": 0.7,
+    "fats": 9.5,
+    "fiber": 0.0,
+    "aliases": [
+      "egg",
+      "eggs",
+      "oeuf",
+      "oeufs",
+      "large egg"
+    ]
+  },
+  "egg_white": {
+    "calories": 52,
+    "protein": 11.0,
+    "carbs": 0.7,
+    "fats": 0.2,
+    "fiber": 0.0,
+    "aliases": [
+      "egg white",
+      "blanc d'oeuf"
+    ]
+  },
+  "cheddar_cheese": {
+    "calories": 403,
+    "protein": 25.0,
+    "carbs": 1.3,
+    "fats": 33.0,
+    "fiber": 0.0,
+    "aliases": [
+      "cheddar",
+      "fromage cheddar",
+      "cheese",
+      "fromage"
+    ]
+  },
+  "mozzarella": {
+    "calories": 300,
+    "protein": 22.0,
+    "carbs": 2.2,
+    "fats": 22.0,
+    "fiber": 0.0,
+    "aliases": [
+      "mozzarella",
+      "fromage mozzarella"
+    ]
+  },
+  "parmesan": {
+    "calories": 431,
+    "protein": 38.0,
+    "carbs": 4.1,
+    "fats": 29.0,
+    "fiber": 0.0,
+    "aliases": [
+      "parmesan",
+      "parmigiano"
+    ]
+  },
+  "feta": {
+    "calories": 264,
+    "protein": 14.0,
+    "carbs": 4.1,
+    "fats": 21.0,
+    "fiber": 0.0,
+    "aliases": [
+      "feta",
+      "fromage feta"
+    ]
+  },
+  "greek_yogurt": {
+    "calories": 73,
+    "protein": 10.0,
+    "carbs": 3.9,
+    "fats": 1.9,
+    "fiber": 0.0,
+    "aliases": [
+      "greek yogurt",
+      "yogourt grec",
+      "yogurt",
+      "yogourt"
+    ]
+  },
+  "cottage_cheese": {
+    "calories": 98,
+    "protein": 11.0,
+    "carbs": 3.4,
+    "fats": 4.3,
+    "fiber": 0.0,
+    "aliases": [
+      "cottage cheese",
+      "fromage cottage"
+    ]
+  },
+  "milk_2_percent": {
+    "calories": 50,
+    "protein": 3.3,
+    "carbs": 4.8,
+    "fats": 2.0,
+    "fiber": 0.0,
+    "aliases": [
+      "milk",
+      "lait",
+      "2% milk",
+      "lait 2%"
+    ]
+  },
+  "butter": {
+    "calories": 717,
+    "protein": 0.9,
+    "carbs": 0.1,
+    "fats": 81.0,
+    "fiber": 0.0,
+    "aliases": [
+      "butter",
+      "beurre",
+      "salted butter",
+      "beurre salé"
+    ]
+  },
+  "cream_35_percent": {
+    "calories": 345,
+    "protein": 2.1,
+    "carbs": 2.8,
+    "fats": 37.0,
+    "fiber": 0.0,
+    "aliases": [
+      "heavy cream",
+      "crème 35%",
+      "crème",
+      "cream"
+    ]
+  },
+  "white_rice": {
+    "calories": 130,
+    "protein": 2.7,
+    "carbs": 28.2,
+    "fats": 0.3,
+    "fiber": 0.4,
+    "aliases": [
+      "rice",
+      "riz",
+      "white rice",
+      "riz blanc",
+      "basmati",
+      "jasmine"
+    ]
+  },
+  "brown_rice": {
+    "calories": 112,
+    "protein": 2.6,
+    "carbs": 23.5,
+    "fats": 0.9,
+    "fiber": 1.8,
+    "aliases": [
+      "brown rice",
+      "riz brun"
+    ]
+  },
+  "pasta": {
+    "calories": 158,
+    "protein": 5.8,
+    "carbs": 30.9,
+    "fats": 0.9,
+    "fiber": 1.8,
+    "aliases": [
+      "pasta",
+      "pâtes",
+      "spaghetti",
+      "macaroni",
+      "penne",
+      "fettuccine",
+      "linguine"
+    ]
+  },
+  "oats": {
+    "calories": 389,
+    "protein": 16.9,
+    "carbs": 66.3,
+    "fats": 6.9,
+    "fiber": 10.6,
+    "aliases": [
+      "oats",
+      "avoine",
+      "rolled oats",
+      "flocons d'avoine",
+      "oatmeal"
+    ]
+  },
+  "quinoa": {
+    "calories": 120,
+    "protein": 4.4,
+    "carbs": 21.3,
+    "fats": 1.9,
+    "fiber": 2.8,
+    "aliases": [
+      "quinoa"
+    ]
+  },
+  "bread_whole_wheat": {
+    "calories": 247,
+    "protein": 13.0,
+    "carbs": 41.3,
+    "fats": 3.4,
+    "fiber": 7.0,
+    "aliases": [
+      "bread",
+      "pain",
+      "whole wheat bread",
+      "pain blé entier"
+    ]
+  },
+  "bread_white": {
+    "calories": 265,
+    "protein": 9.0,
+    "carbs": 49.0,
+    "fats": 3.2,
+    "fiber": 2.7,
+    "aliases": [
+      "white bread",
+      "pain blanc"
+    ]
+  },
+  "tortilla": {
+    "calories": 237,
+    "protein": 7.0,
+    "carbs": 45.0,
+    "fats": 3.0,
+    "fiber": 2.5,
+    "aliases": [
+      "tortilla",
+      "tortillas",
+      "wrap"
+    ]
+  },
+  "flour": {
+    "calories": 364,
+    "protein": 10.0,
+    "carbs": 76.0,
+    "fats": 1.0,
+    "fiber": 2.7,
+    "aliases": [
+      "flour",
+      "farine",
+      "all-purpose flour",
+      "farine tout usage"
+    ]
+  },
+  "couscous": {
+    "calories": 112,
+    "protein": 3.8,
+    "carbs": 23.0,
+    "fats": 0.2,
+    "fiber": 1.4,
+    "aliases": [
+      "couscous"
+    ]
+  },
+  "black_beans": {
+    "calories": 132,
+    "protein": 8.9,
+    "carbs": 23.7,
+    "fats": 0.5,
+    "fiber": 8.7,
+    "aliases": [
+      "black beans",
+      "haricots noirs"
+    ]
+  },
+  "chickpeas": {
+    "calories": 164,
+    "protein": 8.9,
+    "carbs": 27.4,
+    "fats": 2.6,
+    "fiber": 7.6,
+    "aliases": [
+      "chickpeas",
+      "pois chiches",
+      "garbanzo"
+    ]
+  },
+  "lentils": {
+    "calories": 116,
+    "protein": 9.0,
+    "carbs": 20.0,
+    "fats": 0.4,
+    "fiber": 7.9,
+    "aliases": [
+      "lentils",
+      "lentilles",
+      "red lentils",
+      "lentilles rouges"
+    ]
+  },
+  "tofu_firm": {
+    "calories": 144,
+    "protein": 17.3,
+    "carbs": 2.8,
+    "fats": 8.7,
+    "fiber": 2.3,
+    "aliases": [
+      "tofu",
+      "tofu ferme",
+      "firm tofu"
+    ]
+  },
+  "edamame": {
+    "calories": 122,
+    "protein": 11.9,
+    "carbs": 8.9,
+    "fats": 5.2,
+    "fiber": 5.2,
+    "aliases": [
+      "edamame",
+      "soja vert"
+    ]
+  },
+  "peanut_butter": {
+    "calories": 588,
+    "protein": 25.0,
+    "carbs": 20.0,
+    "fats": 50.0,
+    "fiber": 6.0,
+    "aliases": [
+      "peanut butter",
+      "beurre d'arachide"
+    ]
+  },
+  "potato": {
+    "calories": 77,
+    "protein": 2.0,
+    "carbs": 17.5,
+    "fats": 0.1,
+    "fiber": 2.2,
+    "aliases": [
+      "potato",
+      "pomme de terre",
+      "patate",
+      "russet",
+      "red potato"
+    ]
+  },
+  "sweet_potato": {
+    "calories": 86,
+    "protein": 1.6,
+    "carbs": 20.1,
+    "fats": 0.1,
+    "fiber": 3.0,
+    "aliases": [
+      "sweet potato",
+      "patate douce"
+    ]
+  },
+  "broccoli": {
+    "calories": 34,
+    "protein": 2.8,
+    "carbs": 6.6,
+    "fats": 0.4,
+    "fiber": 2.6,
+    "aliases": [
+      "broccoli",
+      "brocoli"
+    ]
+  },
+  "cauliflower": {
+    "calories": 25,
+    "protein": 1.9,
+    "carbs": 5.0,
+    "fats": 0.3,
+    "fiber": 2.0,
+    "aliases": [
+      "cauliflower",
+      "chou-fleur"
+    ]
+  },
+  "carrot": {
+    "calories": 41,
+    "protein": 0.9,
+    "carbs": 9.6,
+    "fats": 0.2,
+    "fiber": 2.8,
+    "aliases": [
+      "carrot",
+      "carotte",
+      "carottes"
+    ]
+  },
+  "onion": {
+    "calories": 40,
+    "protein": 1.1,
+    "carbs": 9.3,
+    "fats": 0.1,
+    "fiber": 1.7,
+    "aliases": [
+      "onion",
+      "oignon",
+      "yellow onion",
+      "red onion",
+      "oignon rouge"
+    ]
+  },
+  "garlic": {
+    "calories": 149,
+    "protein": 6.4,
+    "carbs": 33.1,
+    "fats": 0.5,
+    "fiber": 2.1,
+    "aliases": [
+      "garlic",
+      "ail",
+      "gousse d'ail"
+    ]
+  },
+  "bell_pepper": {
+    "calories": 31,
+    "protein": 1.0,
+    "carbs": 6.0,
+    "fats": 0.3,
+    "fiber": 2.1,
+    "aliases": [
+      "bell pepper",
+      "poivron",
+      "poivron rouge",
+      "red pepper",
+      "green pepper",
+      "poivron vert"
+    ]
+  },
+  "spinach": {
+    "calories": 23,
+    "protein": 2.9,
+    "carbs": 3.6,
+    "fats": 0.4,
+    "fiber": 2.2,
+    "aliases": [
+      "spinach",
+      "épinard",
+      "épinards",
+      "baby spinach"
+    ]
+  },
+  "kale": {
+    "calories": 49,
+    "protein": 4.3,
+    "carbs": 8.8,
+    "fats": 0.9,
+    "fiber": 3.6,
+    "aliases": [
+      "kale",
+      "chou frisé"
+    ]
+  },
+  "lettuce": {
+    "calories": 15,
+    "protein": 1.4,
+    "carbs": 2.9,
+    "fats": 0.2,
+    "fiber": 1.3,
+    "aliases": [
+      "lettuce",
+      "laitue",
+      "romaine",
+      "salade"
+    ]
+  },
+  "tomato": {
+    "calories": 18,
+    "protein": 0.9,
+    "carbs": 3.9,
+    "fats": 0.2,
+    "fiber": 1.2,
+    "aliases": [
+      "tomato",
+      "tomate",
+      "tomates",
+      "cherry tomato",
+      "tomates cerises"
+    ]
+  },
+  "cucumber": {
+    "calories": 15,
+    "protein": 0.7,
+    "carbs": 3.6,
+    "fats": 0.1,
+    "fiber": 0.5,
+    "aliases": [
+      "cucumber",
+      "concombre"
+    ]
+  },
+  "zucchini": {
+    "calories": 17,
+    "protein": 1.2,
+    "carbs": 3.1,
+    "fats": 0.3,
+    "fiber": 1.0,
+    "aliases": [
+      "zucchini",
+      "courgette"
+    ]
+  },
+  "mushroom": {
+    "calories": 22,
+    "protein": 3.1,
+    "carbs": 3.3,
+    "fats": 0.3,
+    "fiber": 1.0,
+    "aliases": [
+      "mushroom",
+      "champignon",
+      "champignons",
+      "cremini"
+    ]
+  },
+  "green_beans": {
+    "calories": 31,
+    "protein": 1.8,
+    "carbs": 7.0,
+    "fats": 0.2,
+    "fiber": 2.7,
+    "aliases": [
+      "green beans",
+      "haricots verts"
+    ]
+  },
+  "asparagus": {
+    "calories": 20,
+    "protein": 2.2,
+    "carbs": 3.9,
+    "fats": 0.1,
+    "fiber": 2.1,
+    "aliases": [
+      "asparagus",
+      "asperge",
+      "asperges"
+    ]
+  },
+  "celery": {
+    "calories": 14,
+    "protein": 0.7,
+    "carbs": 3.0,
+    "fats": 0.2,
+    "fiber": 1.6,
+    "aliases": [
+      "celery",
+      "céleri"
+    ]
+  },
+  "cabbage": {
+    "calories": 25,
+    "protein": 1.3,
+    "carbs": 5.8,
+    "fats": 0.1,
+    "fiber": 2.5,
+    "aliases": [
+      "cabbage",
+      "chou",
+      "chou vert",
+      "chou rouge"
+    ]
+  },
+  "peas": {
+    "calories": 81,
+    "protein": 5.4,
+    "carbs": 14.5,
+    "fats": 0.4,
+    "fiber": 5.7,
+    "aliases": [
+      "peas",
+      "green peas",
+      "petits pois"
+    ]
+  },
+  "corn": {
+    "calories": 86,
+    "protein": 3.2,
+    "carbs": 19.0,
+    "fats": 1.2,
+    "fiber": 2.7,
+    "aliases": [
+      "corn",
+      "maïs"
+    ]
+  },
+  "avocado": {
+    "calories": 160,
+    "protein": 2.0,
+    "carbs": 8.5,
+    "fats": 14.7,
+    "fiber": 6.7,
+    "aliases": [
+      "avocado",
+      "avocat"
+    ]
+  },
+  "apple": {
+    "calories": 52,
+    "protein": 0.3,
+    "carbs": 13.8,
+    "fats": 0.2,
+    "fiber": 2.4,
+    "aliases": [
+      "apple",
+      "pomme",
+      "pommes"
+    ]
+  },
+  "banana": {
+    "calories": 89,
+    "protein": 1.1,
+    "carbs": 22.8,
+    "fats": 0.3,
+    "fiber": 2.6,
+    "aliases": [
+      "banana",
+      "banane",
+      "bananes"
+    ]
+  },
+  "orange": {
+    "calories": 47,
+    "protein": 0.9,
+    "carbs": 11.8,
+    "fats": 0.1,
+    "fiber": 2.4,
+    "aliases": [
+      "orange",
+      "oranges",
+      "clementine",
+      "clémentine"
+    ]
+  },
+  "strawberry": {
+    "calories": 32,
+    "protein": 0.7,
+    "carbs": 7.7,
+    "fats": 0.3,
+    "fiber": 2.0,
+    "aliases": [
+      "strawberry",
+      "strawberries",
+      "fraise",
+      "fraises"
+    ]
+  },
+  "blueberry": {
+    "calories": 57,
+    "protein": 0.7,
+    "carbs": 14.5,
+    "fats": 0.3,
+    "fiber": 2.4,
+    "aliases": [
+      "blueberry",
+      "blueberries",
+      "bleuet",
+      "bleuets"
+    ]
+  },
+  "raspberry": {
+    "calories": 52,
+    "protein": 1.2,
+    "carbs": 11.9,
+    "fats": 0.7,
+    "fiber": 6.5,
+    "aliases": [
+      "raspberry",
+      "raspberries",
+      "framboise",
+      "framboises"
+    ]
+  },
+  "lemon": {
+    "calories": 29,
+    "protein": 1.1,
+    "carbs": 9.3,
+    "fats": 0.3,
+    "fiber": 2.8,
+    "aliases": [
+      "lemon",
+      "citron",
+      "jus de citron",
+      "lemon juice",
+      "lime"
+    ]
+  },
+  "olive_oil": {
+    "calories": 884,
+    "protein": 0.0,
+    "carbs": 0.0,
+    "fats": 100.0,
+    "fiber": 0.0,
+    "aliases": [
+      "olive oil",
+      "huile d'olive",
+      "oil",
+      "huile"
+    ]
+  },
+  "canola_oil": {
+    "calories": 884,
+    "protein": 0.0,
+    "carbs": 0.0,
+    "fats": 100.0,
+    "fiber": 0.0,
+    "aliases": [
+      "canola oil",
+      "vegetable oil",
+      "huile végétale"
+    ]
+  },
+  "maple_syrup": {
+    "calories": 260,
+    "protein": 0.0,
+    "carbs": 67.0,
+    "fats": 0.1,
+    "fiber": 0.0,
+    "aliases": [
+      "maple syrup",
+      "sirop d'érable"
+    ]
+  },
+  "honey": {
+    "calories": 304,
+    "protein": 0.3,
+    "carbs": 82.4,
+    "fats": 0.0,
+    "fiber": 0.2,
+    "aliases": [
+      "honey",
+      "miel"
+    ]
+  },
+  "soy_sauce": {
+    "calories": 53,
+    "protein": 8.1,
+    "carbs": 4.9,
+    "fats": 0.6,
+    "fiber": 0.8,
+    "aliases": [
+      "soy sauce",
+      "sauce soya",
+      "sauce soja"
+    ]
+  },
+  "vinegar": {
+    "calories": 18,
+    "protein": 0.0,
+    "carbs": 0.9,
+    "fats": 0.0,
+    "fiber": 0.0,
+    "aliases": [
+      "vinegar",
+      "vinaigre",
+      "apple cider vinegar",
+      "vinaigre de cidre"
+    ]
+  }
+}

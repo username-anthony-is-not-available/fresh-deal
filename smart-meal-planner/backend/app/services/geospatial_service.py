@@ -55,3 +55,37 @@ class GeospatialService:
             return None
 
         return cls.calculate_distance(coords1[0], coords1[1], coords2[0], coords2[1])
+
+    @classmethod
+    def calculate_trip_travel_penalty(
+        cls,
+        store_postal_codes: list[str],
+        user_postal_code: str = None,
+        base_cost_per_km: float = 0.50,
+        fixed_stop_cost: float = 3.50,
+    ) -> float:
+        """
+        Calculates travel penalty based on the number of store stops and distance.
+        Each additional store beyond the first incurs fixed_stop_cost + distance cost.
+        """
+        if not store_postal_codes or len(store_postal_codes) <= 1:
+            return 0.0
+
+        extra_stops = len(store_postal_codes) - 1
+        penalty = extra_stops * fixed_stop_cost
+
+        if user_postal_code:
+            total_km = 0.0
+            prev_pc = user_postal_code
+            for s_pc in store_postal_codes:
+                d = cls.get_distance_between_postal_codes(prev_pc, s_pc)
+                if d is not None:
+                    total_km += d
+                prev_pc = s_pc
+            d_return = cls.get_distance_between_postal_codes(prev_pc, user_postal_code)
+            if d_return is not None:
+                total_km += d_return
+            penalty += total_km * base_cost_per_km
+
+        return round(penalty, 2)
+

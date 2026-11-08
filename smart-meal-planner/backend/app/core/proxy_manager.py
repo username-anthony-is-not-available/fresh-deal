@@ -3,6 +3,7 @@ import random
 import time
 import logging
 from typing import List, Optional, Dict
+from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -10,10 +11,19 @@ class ProxyManager:
     """
     Manages a pool of proxies for web scraping.
     Handles proxy rotation, health checking, and temporary blacklisting.
+    Bypasses proxies when DISABLE_PROXIES_LOCAL is True to prevent timeouts.
     """
 
     def __init__(self, proxy_pool: Optional[List[str]] = None, blacklist_timeout: int = 300):
-        if proxy_pool:
+        self.disable_proxies = (
+            getattr(settings, "DISABLE_PROXIES_LOCAL", False)
+            or os.environ.get("DISABLE_PROXIES_LOCAL", "").lower() in ("true", "1")
+        )
+
+        if self.disable_proxies:
+            self.proxy_pool = []
+            logger.info("Local proxy bypass enabled (DISABLE_PROXIES_LOCAL=True). Requests will use residential IP with jitter.")
+        elif proxy_pool:
             self.proxy_pool = proxy_pool
         else:
             proxy_env = os.environ.get("PROXY_POOL")
@@ -23,14 +33,15 @@ class ProxyManager:
         self.blacklist_timeout = blacklist_timeout
         self.current_proxy_index = 0
 
-        if not self.proxy_pool:
+        if not self.proxy_pool and not self.disable_proxies:
             logger.warning("Proxy pool is empty. Scraping will be done without proxies.")
 
     def get_proxy(self) -> Optional[str]:
         """
         Gets the next available proxy from the pool, skipping blacklisted proxies.
+        Returns None if proxies are disabled locally.
         """
-        if not self.proxy_pool:
+        if self.disable_proxies or not self.proxy_pool:
             return None
 
         # Clean up the blacklist

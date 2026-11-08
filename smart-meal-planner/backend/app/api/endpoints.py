@@ -435,6 +435,45 @@ async def trigger_flipp_scrape(
     }
 
 
+@router.post("/scrape/trigger")
+async def trigger_local_scrape_now(
+    postal_code: Optional[str] = None,
+    current_user: Optional[User] = Depends(get_current_user_optional)
+):
+    """One-click instant flyer refresh endpoint for local users and frontend dashboards."""
+    code = postal_code or getattr(current_user, "postal_code", None) or settings.LOCAL_POSTAL_CODE
+    stores = ["metro", "maxi", "super_c", "iga", "walmart", "provigo"]
+    task = scrape_task.delay(
+        stores=stores,
+        postal_code=code,
+        limit_per_store=40,
+    )
+    return {
+        "task_id": task.id,
+        "status": "Processing",
+        "stores": stores,
+        "postal_code": code,
+        "timestamp": datetime.now().isoformat()
+    }
+
+
+@router.get("/scrape/last-scraped")
+async def get_last_scraped_info(session: AsyncSession = Depends(get_async_session)):
+    """Returns the timestamp and stats of the most recently scraped flyers."""
+    stmt = select(Deal).order_by(Deal.created_at.desc()).limit(1)
+    res = await session.execute(stmt)
+    latest_deal = res.scalars().first()
+
+    count_stmt = select(func.count(Deal.id))
+    count_res = await session.execute(count_stmt)
+    total_deals = count_res.scalar() or 0
+
+    return {
+        "last_scraped_at": latest_deal.created_at.isoformat() if latest_deal and getattr(latest_deal, "created_at", None) else None,
+        "total_active_deals": total_deals
+    }
+
+
 @router.post("/admin/scrape/{store_name}")
 async def trigger_specific_scrape(
     store_name: str,

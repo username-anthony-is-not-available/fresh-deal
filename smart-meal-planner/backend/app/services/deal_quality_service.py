@@ -12,6 +12,8 @@ Based on Reddit thread feedback:
 
 import re
 import logging
+from datetime import datetime, timedelta, timezone
+from sqlmodel import select, col
 from typing import List, Dict, Any, Optional
 from dataclasses import dataclass
 from enum import Enum
@@ -41,6 +43,47 @@ class QualityScore:
 
 
 class DealQualityService:
+
+    @staticmethod
+    def record_price(session, product_id: int, store_id: int, price: float, timestamp: Optional[datetime] = None):
+        """Persists a price observation to PriceRecord for 12-week historical tracking."""
+        try:
+            from app.models.all_models import PriceRecord
+            record = PriceRecord(
+                product_id=product_id,
+                store_id=store_id,
+                price=price,
+                timestamp=timestamp or datetime.now(timezone.utc)
+            )
+            session.add(record)
+        except Exception as e:
+            logger.warning(f"Could not record historical price: {e}")
+
+    @staticmethod
+    def get_12_week_history(session, product_id: int, store_id: Optional[int] = None) -> List[float]:
+        """Fetches the past 12 weeks of prices for an ingredient from PriceRecord."""
+        try:
+            from app.models.all_models import PriceRecord
+            cutoff = datetime.now(timezone.utc) - timedelta(weeks=12)
+            stmt = select(PriceRecord.price).where(
+                PriceRecord.product_id == product_id,
+                PriceRecord.timestamp >= cutoff
+            )
+            if store_id:
+                stmt = stmt.where(PriceRecord.store_id == store_id)
+            stmt = stmt.order_by(PriceRecord.timestamp.desc())
+
+            if hasattr(session, 'exec'):
+                results = session.exec(stmt).all()
+            elif hasattr(session, 'execute'):
+                results = session.execute(stmt).scalars().all()
+            else:
+                return []
+            return [float(p) for p in results]
+        except Exception as e:
+            logger.debug(f"Historical price lookup skipped: {e}")
+            return []
+
     """
     Service for scoring and filtering deal quality.
 

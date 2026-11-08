@@ -1,3 +1,4 @@
+from app.core.config import settings
 """
 Circulaire-en-ligne.ca Scraper
 
@@ -48,6 +49,7 @@ class CirculaireEnLigneScraper(BaseScraper):
     REQUEST_DELAY = 2.0  # seconds between requests
 
     def __init__(self, user_agent: Optional[str] = None):
+        postal_code = postal_code or getattr(settings, "LOCAL_POSTAL_CODE", None) or settings.DEFAULT_POSTAL_CODE
         super().__init__()
         self.user_agent = user_agent or self.user_agents[0]
         self.session: Optional[aiohttp.ClientSession] = None

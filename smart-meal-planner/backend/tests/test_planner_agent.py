@@ -50,7 +50,7 @@ def create_test_recipes(session: Session):
 def test_generate_plan_llm_success(session: Session, mock_llm_service):
     # Arrange
     create_test_recipes(session)
-    user = User(id=1, household_size=2, dietary_preferences="None", postal_code="H1A1A1")
+    user = User(id=1, email="pantry_test@example.com", hashed_password="pw", household_size=2, dietary_preferences="None", postal_code="H1A1A1")
     agent = MealPlannerAgent(session)
     agent.llm_service = mock_llm_service
 
@@ -66,7 +66,7 @@ def test_generate_plan_llm_success(session: Session, mock_llm_service):
 def test_generate_plan_llm_failure_fallback(session: Session, mock_llm_service):
     # Arrange
     create_test_recipes(session)
-    user = User(id=1, household_size=2, dietary_preferences="None", postal_code="H1A1A1")
+    user = User(id=1, email="pantry_test@example.com", hashed_password="pw", household_size=2, dietary_preferences="None", postal_code="H1A1A1")
 
     # Simulate LLM failure
     mock_llm_service.generate_meal_plan.side_effect = Exception("LLM API is down")
@@ -164,3 +164,55 @@ def test_generate_plan_filters_by_allergies(session: Session, mock_llm_service):
     assert any(r["name"] == "Safe Salad" for r in filtered_recipes)
     assert any(r["name"] == "Pasta with Gluten" for r in filtered_recipes)
     assert not any(r["name"] == "Peanut Satay" for r in filtered_recipes)
+
+
+def test_pantry_prioritization(session: Session, mock_llm_service):
+    from app.models.all_models import PantryItem
+    recipes_data = [
+        {"id": 1, "name": "Chicken Curry", "ingredients_json": "[]", "instructions_json": "[]", "dietary_tags_json": "[]"},
+        {"id": 2, "name": "Beef Stew", "ingredients_json": "[]", "instructions_json": "[]", "dietary_tags_json": "[]"},
+    ]
+    for data in recipes_data:
+        session.add(Recipe(**data))
+    user = User(id=1, email="pantry_test@example.com", hashed_password="pw", household_size=2, dietary_preferences="None", postal_code="H1A1A1")
+    session.add(user)
+    session.add(PantryItem(user_id=1, name="chicken", quantity=1.0, unit="kg"))
+    session.commit()
+
+    agent = MealPlannerAgent(session)
+    agent.recipes = [
+        {"id": 1, "name": "Chicken Curry", "normalized_ingredients": ["chicken", "curry powder"], "ingredients": []},
+        {"id": 2, "name": "Beef Stew", "normalized_ingredients": ["beef", "carrots"], "ingredients": []}
+    ]
+    agent.llm_service = mock_llm_service
+    agent.generate_plan(user)
+
+    call_args, _ = mock_llm_service.generate_meal_plan.call_args
+    filtered_recipes = call_args[2]
+    # Chicken Curry should have higher score due to pantry match
+    curry = next(r for r in filtered_recipes if r["id"] == 1)
+    stew = next(r for r in filtered_recipes if r["id"] == 2)
+    assert curry["pantry_score"] > 0
+    assert "chicken" in curry["pantry_matches"]
+    assert curry["deal_score"] > stew["deal_score"]
+
+
+def test_batch_cooking_leftover_chaining(session: Session, mock_llm_service):
+    create_test_recipes(session)
+    user = User(id=1, email="pantry_test@example.com", hashed_password="pw", household_size=2, dietary_preferences="None", postal_code="H1A1A1")
+
+    # Simulate LLM failure to trigger fallback generation
+    mock_llm_service.generate_meal_plan.side_effect = Exception("Fallback")
+    agent = MealPlannerAgent(session)
+    agent.llm_service = mock_llm_service
+
+    plan = agent.generate_plan(user)
+    meal_plan = plan["meal_plan"]
+    assert len(meal_plan) == 7
+
+    # Day 2, 4, 6 lunches should be chained leftovers
+    day2_lunch = meal_plan[1]["lunch"]
+    assert day2_lunch["is_leftover"] is True
+    assert day2_lunch["cook_once_eat_twice"] is True
+    assert "Leftover" in day2_lunch["recipe_name"]
+    assert day2_lunch["chained_from_day"] == "Day 1 Dinner"

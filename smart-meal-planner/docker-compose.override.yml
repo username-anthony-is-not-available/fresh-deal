@@ -2,12 +2,28 @@ services:
   backend:
     ports:
       - "8000:8000"
+    environment:
+      - USE_SQLITE_LOCAL=True
+      - USE_MOCK_AI=True
+      - CELERY_TASK_ALWAYS_EAGER=True
+      - DISABLE_PROXIES_LOCAL=True
+      - LOCAL_POSTAL_CODE=H4T1V6
     volumes:
-      - ../src:/app/src:ro
       - ./backend/app:/app/app
+      - ./backend/alembic:/app/alembic
+
+  frontend:
+    ports:
+      - "5173:5173"
+
   celery_worker:
-    healthcheck:
-      disable: true
-    volumes:
-      - ../src:/app/src:ro
-      - ./backend/app:/app/app
+    deploy:
+      replicas: 0 # Disabled for local zero-redis runs (eager execution in backend)
+
+  db:
+    deploy:
+      replicas: 0 # Disabled for local zero-redis/sqlite runs
+
+  redis:
+    deploy:
+      replicas: 0 # Disabled for local zero-redis runs

@@ -1,0 +1,42 @@
+# Lightweight Local-First Docker Compose Setup
+# Zero Postgres/Redis overhead, runs FastAPI with SQLite and Vite dev server directly
+
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    ports:
+      - "8000:8000"
+    environment:
+      - USE_SQLITE_LOCAL=True
+      - USE_MOCK_AI=True
+      - CELERY_TASK_ALWAYS_EAGER=True
+      - ENVIRONMENT=development
+      - LOCAL_POSTAL_CODE=H4T1V6
+      - DISABLE_PROXIES_LOCAL=True
+    volumes:
+      - ./backend/app:/app/app
+      - ./backend/alembic:/app/alembic
+      - sqlite_data:/app/data
+    restart: unless-stopped
+
+  frontend:
+    image: node:20-alpine
+    working_dir: /app
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_URL=http://localhost:8000/api
+    volumes:
+      - ./frontend:/app
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0 --port 5173"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  sqlite_data:

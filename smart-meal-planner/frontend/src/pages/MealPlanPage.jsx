@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 
 import React, { useEffect, useState, useCallback } from 'react';
 import { DndProvider } from 'react-dnd';
@@ -5,7 +6,7 @@ import { HTML5Backend } from 'react-dnd-html5-backend';
 import DraggableMealCard from '../components/DraggableMealCard';
 import MealSlot from '../components/MealSlot';
 import DietaryFilters from '../components/DietaryFilters';
-import { RefreshCw, Calendar as CalendarIcon, Lightbulb, PiggyBank, Search, X, Star, Send, Download, FileText } from 'lucide-react';
+import { RefreshCw, Store, Calendar as CalendarIcon, Lightbulb, PiggyBank, Search, X, Star, Send, Download, FileText } from 'lucide-react';
 import clsx from 'clsx';
 import api from '../services/api';
 import SkeletonLoader from '../components/SkeletonLoader';
@@ -574,6 +575,13 @@ const MealPlanPage = () => {
                   ${plan.shopping_summary?.estimated_savings || "0.00"}
                 </div>
                 <p className="text-xs text-green-600 dark:text-green-500 mt-1">Saved compared to regular prices</p>
+                <Link
+                  to="/shopping-list"
+                  className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-700 dark:text-emerald-400 hover:underline"
+                >
+                  <Store className="w-3.5 h-3.5" />
+                  View Store Price Comparison &rarr;
+                </Link>
               </div>
             </div>
 

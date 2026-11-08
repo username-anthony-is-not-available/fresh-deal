@@ -79,3 +79,18 @@ def test_validate_plan_leaves_non_dictionary_days_unchanged(monkeypatch):
     plan = {"days": [None]}
 
     assert asyncio.run(NutritionAgent().validate_plan(plan)) is plan
+
+
+
+def test_offline_nutrition_resolution_cnf_usda():
+    from app.agents.nutrition_agent import NutritionAgent
+    agent = NutritionAgent()
+    # Force use_api to False
+    agent.use_api = False
+
+    ingredients = ["200 g chicken breast", "150 g white rice", "100 g broccoli"]
+    res = asyncio.run(agent.estimate_meal_nutrition("Chicken Rice & Broccoli", ingredients))
+    assert res["calories"] > 0
+    assert res["protein"] > 0
+    assert res["carbs"] > 0
+    assert res["fat"] > 0

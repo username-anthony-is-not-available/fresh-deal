@@ -1,5 +1,6 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import MealPlanPage from '../pages/MealPlanPage';
 import api from '../services/api';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
@@ -56,6 +57,12 @@ const mockPlan = {
   shopping_summary: { estimated_savings: 10 }
 };
 
+const renderMealPlanPage = () => render(
+  <MemoryRouter>
+    <MealPlanPage />
+  </MemoryRouter>
+);
+
 describe('MealPlanPage Filter', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -69,7 +76,7 @@ describe('MealPlanPage Filter', () => {
   });
 
   it('renders all meals initially', async () => {
-    render(<MealPlanPage />);
+    renderMealPlanPage();
     await waitFor(() => {
       expect(screen.getByText('Chicken Curry')).toBeInTheDocument();
       expect(screen.getByText('Beef Tacos')).toBeInTheDocument();
@@ -78,7 +85,7 @@ describe('MealPlanPage Filter', () => {
   });
 
   it('filters meals by recipe name', async () => {
-    render(<MealPlanPage />);
+    renderMealPlanPage();
     await waitFor(() => screen.getByText('Chicken Curry'));
 
     const searchInput = screen.getByPlaceholderText(/Search recipes or ingredients/i);
@@ -90,7 +97,7 @@ describe('MealPlanPage Filter', () => {
   });
 
   it('filters meals by ingredient', async () => {
-    render(<MealPlanPage />);
+    renderMealPlanPage();
     await waitFor(() => screen.getByText('Beef Tacos'));
 
     const searchInput = screen.getByPlaceholderText(/Search recipes or ingredients/i);
@@ -101,7 +108,7 @@ describe('MealPlanPage Filter', () => {
   });
 
   it('updates search when quick filter chip is clicked', async () => {
-    render(<MealPlanPage />);
+    renderMealPlanPage();
     await waitFor(() => screen.getByText('Chicken Curry'));
 
     const chickenChip = screen.getByRole('button', { name: /Chicken/i });
@@ -118,7 +125,7 @@ describe('MealPlanPage Filter', () => {
   });
 
   it('shows no results message when no matches found', async () => {
-    render(<MealPlanPage />);
+    renderMealPlanPage();
     await waitFor(() => screen.getByText('Chicken Curry'));
 
     const searchInput = screen.getByPlaceholderText(/Search recipes or ingredients/i);

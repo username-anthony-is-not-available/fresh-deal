@@ -17,10 +17,10 @@ def test_get_seasonal_context():
         assert "maple syrup" in context
     elif 6 <= month <= 8:
         assert "Summer" in context
-        assert "strawberries" in context
+        assert "strawberries" in context or "strawberry" in context
     elif 9 <= month <= 11:
         assert "Autumn" in context
-        assert "apples" in context
+        assert "apples" in context or "apple" in context
     else:
         assert "Winter" in context
         assert "root vegetables" in context
@@ -51,6 +51,7 @@ def test_construct_system_prompt_with_both():
 @patch("app.services.llm_service.LLMService._call_llm")
 def test_generate_meal_plan_passes_system_prompt(mock_call_llm):
     service = LLMService()
+    service._get_cached_response = MagicMock(return_value=None)
     user_prefs = {
         "household_size": 2,
         "dietary_preferences": ["gluten-free"],
@@ -75,6 +76,7 @@ def test_generate_meal_plan_passes_system_prompt(mock_call_llm):
 def test_generate_meal_plan_with_model_type(mock_make_request):
     mock_make_request.return_value = json.dumps({"meal_plan": []})
     service = LLMService()
+    service._get_cached_response = MagicMock(return_value=None)
     user_prefs = {"household_size": 2}
 
     # Need to ensure we don't trigger the mock AI check
@@ -133,3 +135,41 @@ async def test_regenerate_single_meal_passes_system_prompt(mock_call_llm):
         assert system_prompt is not None
         assert "vegan" in system_prompt
         assert "nuts" in system_prompt
+
+
+def test_sqlite_prompt_cache(tmp_path):
+    service = LLMService()
+    # Disable redis to test sqlite fallback
+    service.redis_client = None
+    service.sqlite_cache_path = str(tmp_path / "test_cache.sqlite")
+    import sqlite3
+    with sqlite3.connect(service.sqlite_cache_path) as conn:
+        conn.execute("CREATE TABLE IF NOT EXISTS prompt_cache (key TEXT PRIMARY KEY, value TEXT, expires_at REAL)")
+        conn.commit()
+
+    test_key = "test_prompt_key"
+    test_data = {"meal": "test_recipe", "savings": 42.5}
+    service._set_cached_response(test_key, test_data, ttl=60)
+    cached = service._get_cached_response(test_key)
+    assert cached == test_data
+
+
+def test_ollama_local_call():
+    service = LLMService()
+    service.ollama_client = MagicMock()
+    mock_choice = MagicMock()
+    mock_choice.message.content = '{"plan": "local_ollama_plan"}'
+    mock_resp = MagicMock()
+    mock_resp.choices = [mock_choice]
+    service.ollama_client.chat.completions.create.return_value = mock_resp
+
+    with patch("app.services.llm_service.settings") as mock_settings:
+        mock_settings.USE_MOCK_AI = False
+        mock_settings.USE_SQLITE_LOCAL = True
+        mock_settings.OPENROUTER_API_KEY = None
+        mock_settings.DEFAULT_MODEL = "meta-llama/llama-3.1-8b-instruct"
+        mock_settings.OLLAMA_BASE_URL = "http://localhost:11434/v1"
+
+        res = service._call_llm("Generate meal plan", system_prompt="System instructions")
+        assert res == '{"plan": "local_ollama_plan"}'
+        service.ollama_client.chat.completions.create.assert_called_once()

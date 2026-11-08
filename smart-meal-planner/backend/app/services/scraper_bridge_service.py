@@ -1,69 +1,64 @@
-import sys
-import os
+"""
+RETIRED / DEPRECATED: ScraperBridgeService
+Consolidated into backend app.agents.scrapers. This file is retained solely as a
+lightweight compatibility layer for any legacy callers and tests.
+"""
+
 import logging
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
+from app.agents.scrapers.base_scraper import BaseScraper
+from app.agents.scrapers.provigo_scraper import ProvigoScraper
+from app.agents.scrapers.metro_scraper import MetroScraper
+from app.agents.scrapers.super_c_scraper import SuperCScraper
 
-# Add the project root to sys.path to allow importing from the root 'src' directory
-project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../../"))
-if project_root not in sys.path:
-    sys.path.insert(0, project_root)
-
-try:
-    from src.scrapers.provigo_scraper import ProvigoScraper
-    # Import other scrapers as they are added to the root framework
-    # from src.scrapers.walmart_scraper import WalmartScraper
-except ImportError as e:
-    logging.error(f"Failed to import root scrapers: {e}")
-    ProvigoScraper = None
+logger = logging.getLogger(__name__)
 
 class ScraperBridgeService:
     """
-    Bridge service to run scrapers from the root-level framework
-    and convert their output to the backend's expected format.
+    Deprecated bridge service. Scrapers are now unified directly inside
+    smart-meal-planner/backend/app/agents/scrapers/.
     """
 
     SCRAPER_MAP = {
         "provigo": ProvigoScraper,
-        # Add more mappings as root scrapers are implemented
+        "metro": MetroScraper,
+        "super_c": SuperCScraper,
     }
 
     @staticmethod
-    async def run_root_scraper(store_name: str, postal_code: str = "H4T1V6", limit: int = 50, headless: bool = True) -> List[Dict[str, Any]]:
-        """
-        Runs a specific scraper from the root framework.
-        """
+    async def run_root_scraper(
+        store_name: str, postal_code: str = "H4T1V6", limit: int = 50, headless: bool = True
+    ) -> List[Dict[str, Any]]:
         scraper_class = ScraperBridgeService.SCRAPER_MAP.get(store_name.lower())
         if not scraper_class:
-            logging.warning(f"No root scraper found for store: {store_name}")
+            logger.warning(f"No unified scraper found for store: {store_name}")
             return []
 
-        logging.info(f"Running root scraper for {store_name} (Postal Code: {postal_code})")
+        logger.info(f"Running unified scraper for {store_name} (Postal Code: {postal_code})")
         scraper = scraper_class(postal_code=postal_code, headless=headless)
 
         try:
-            deals = await scraper.scrape(limit=limit)
+            deals, _, _, _ = await scraper.scrape(limit=limit)
             return [ScraperBridgeService._map_deal_to_dict(d) for d in deals]
         except Exception as e:
-            logging.error(f"Root scraper for {store_name} failed: {e}")
+            logger.error(f"Unified scraper for {store_name} failed: {e}")
             return []
 
     @staticmethod
     def _map_deal_to_dict(deal: Any) -> Dict[str, Any]:
-        """
-        Converts a root-level Deal object (Pydantic) to the backend's dictionary format.
-        """
-        # deal is an instance of src.core.schema_validator.Deal
+        if isinstance(deal, dict):
+            return deal
         return {
-            "name": deal.name,
-            "price": deal.price,
-            "original_price": deal.original_price or deal.price,
-            "unit": deal.unit,
-            "store": deal.store,
-            "category": deal.category,
-            "image_url": deal.image_url,
-            "valid_from": deal.valid_from,
-            "valid_until": deal.valid_until,
-            "loyalty_program": deal.loyalty_program,
-            "loyalty_points": deal.loyalty_points,
-            "sale_info": deal.sale_info
+            "name": getattr(deal, "name", ""),
+            "price": getattr(deal, "price", 0.0),
+            "original_price": getattr(deal, "original_price", getattr(deal, "price", 0.0)),
+            "unit": getattr(deal, "unit", "each"),
+            "category": getattr(deal, "category", "Grocery"),
+            "store": getattr(deal, "store", ""),
+            "valid_from": getattr(deal, "valid_from", None),
+            "valid_until": getattr(deal, "valid_until", None),
+            "loyalty_program": getattr(deal, "loyalty_program", None),
+            "loyalty_points": getattr(deal, "loyalty_points", None),
+            "image_url": getattr(deal, "image_url", None),
+            "sale_info": getattr(deal, "sale_info", None),
         }

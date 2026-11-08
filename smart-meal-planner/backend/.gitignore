@@ -1,5 +1,6 @@
 # Log files
 *.log
+server.log
 
 # Python caches
 __pycache__/
@@ -9,3 +10,8 @@ __pycache__/
 
 # Alembic
 alembic/versions/__pycache__/
+
+# Local SQLite & Caches
+local_dev.db
+.cache/
+tests/screenshots/error.png

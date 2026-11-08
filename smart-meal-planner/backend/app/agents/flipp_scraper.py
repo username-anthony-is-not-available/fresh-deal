@@ -20,6 +20,10 @@ Supported Canadian stores include:
 
 import asyncio
 import aiohttp
+import os
+import json
+from datetime import datetime, timedelta
+from app.core.config import settings
 import re
 from typing import List, Dict, Any, Optional, Tuple
 from dataclasses import dataclass
@@ -87,10 +91,11 @@ class FlippScraper:
     
     def __init__(
         self, 
-        postal_code: str = "H4T1V6",  # Default: Montreal area
+        postal_code: Optional[str] = None,
         locale: str = "en-ca",
         stores: Optional[List[str]] = None
     ):
+        postal_code = postal_code or getattr(settings, "LOCAL_POSTAL_CODE", None) or settings.DEFAULT_POSTAL_CODE
         """
         Initialize the Flipp scraper.
         
@@ -106,6 +111,42 @@ class FlippScraper:
         self.items: List[Dict[str, Any]] = []
         self.seen_items: set = set()  # Deduplicate by name+store
         
+    @staticmethod
+    def get_flyer_week_id(dt: Optional[datetime] = None) -> str:
+        if dt is None:
+            dt = datetime.now()
+        days_since_thursday = (dt.weekday() - 3) % 7
+        thursday = dt - timedelta(days=days_since_thursday)
+        return thursday.strftime("%Y_%m_%d")
+
+    def _get_cache_path(self, store_name: str) -> str:
+        cache_dir = os.path.join(os.getcwd(), ".cache", "flyers")
+        os.makedirs(cache_dir, exist_ok=True)
+        week_id = self.get_flyer_week_id()
+        return os.path.join(cache_dir, f"flipp_{store_name.lower()}_{week_id}.json")
+
+    def load_cached_payload(self, store_name: str) -> Optional[List[Dict[str, Any]]]:
+        cache_file = self._get_cache_path(store_name)
+        if os.path.exists(cache_file):
+            try:
+                with open(cache_file, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    if isinstance(data, list) and len(data) > 0:
+                        return data
+            except Exception:
+                pass
+        return None
+
+    def save_cached_payload(self, store_name: str, deals: List[Dict[str, Any]]):
+        if not deals:
+            return
+        cache_file = self._get_cache_path(store_name)
+        try:
+            with open(cache_file, "w", encoding="utf-8") as f:
+                json.dump(deals, f, ensure_ascii=False, indent=2, default=str)
+        except Exception:
+            pass
+
     async def _random_delay(self):
         """Add a small delay between requests to be respectful."""
         delay = random.uniform(self.MIN_DELAY_SECONDS, self.MAX_DELAY_SECONDS)
