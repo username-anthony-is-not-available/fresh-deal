@@ -379,9 +379,10 @@ def seed_data(session: Session = Depends(get_session)):
 class ScrapeRequest(BaseModel):
     """Request body for scraping."""
 
-    stores: List[str]
+    stores: Optional[List[str]] = None
     postal_code: str = "H4T1V6"
-    limit_per_store: int = 50
+    limit_per_store: Optional[int] = None
+    limit: Optional[int] = None
 
 
 @router.post("/admin/scrape")
@@ -395,15 +396,17 @@ async def trigger_scrape(
     This endpoint uses the ScraperAgent to orchestrate the scraping process,
     which may include direct browser scraping with a fallback to the Flipp API.
     """
+    effective_limit = request.limit or request.limit_per_store or 50
+    effective_stores = request.stores if request.stores else ["metro", "walmart", "maxi", "iga", "provigo", "super_c"]
     task = scrape_task.delay(
-        stores=request.stores,
+        stores=effective_stores,
         postal_code=request.postal_code,
-        limit_per_store=request.limit_per_store,
+        limit_per_store=effective_limit,
     )
     return {
         "task_id": task.id,
         "status": "Processing",
-        "stores": request.stores,
+        "stores": effective_stores,
         "postal_code": request.postal_code,
     }
 
@@ -416,7 +419,20 @@ async def trigger_flipp_scrape(
     """
     Dedicated endpoint for Flipp API scraping, as expected by the frontend.
     """
-    return await trigger_scrape(request, current_user=current_user)
+    effective_limit = request.limit or request.limit_per_store or 50
+    effective_stores = request.stores if request.stores else ["metro", "walmart", "maxi", "iga", "provigo", "super_c"]
+    task = scrape_task.delay(
+        stores=effective_stores,
+        postal_code=request.postal_code,
+        limit_per_store=effective_limit,
+        scraper_type="flipp",
+    )
+    return {
+        "task_id": task.id,
+        "status": "Processing",
+        "stores": effective_stores,
+        "postal_code": request.postal_code,
+    }
 
 
 @router.post("/admin/scrape/{store_name}")
@@ -723,13 +739,14 @@ async def regenerate_meal(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    llm_service = LLMService(session)
+    llm_service = LLMService()
     new_meal = await llm_service.regenerate_single_meal(
         user=user,
         day=request.day,
         meal_type=request.type,
         dietary_preferences=request.dietary_preferences,
         existing_meals=request.existing_meals,
+        session=session,
         model_type=request.model_type,
     )
 

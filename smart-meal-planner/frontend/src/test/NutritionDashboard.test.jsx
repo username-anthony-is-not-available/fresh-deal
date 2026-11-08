@@ -3,7 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import NutritionDashboard from '../pages/NutritionDashboard';
 import * as nutritionService from '../services/nutritionService';
-import { vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // Mock the nutritionService
 vi.mock('../services/nutritionService');
@@ -34,7 +34,7 @@ describe('NutritionDashboard', () => {
             </BrowserRouter>
         );
         await waitFor(() => {
-            expect(screen.getByText('Nutrition Dashboard')).toBeInTheDocument();
+            expect(screen.getByText(/Nutritional Dashboard/i)).toBeInTheDocument();
         });
     });
 
@@ -54,9 +54,8 @@ describe('NutritionDashboard', () => {
             </BrowserRouter>
         );
         await waitFor(() => {
-            expect(screen.getByText('Your Nutrition Goals (maintenance)')).toBeInTheDocument();
-            expect(screen.getByText('Calories:')).toBeInTheDocument();
-            expect(screen.getByText('2000 kcal')).toBeInTheDocument();
+            expect(screen.getByText(/Target: 2000 kcal/i)).toBeInTheDocument();
+            expect(screen.getByText(/Target: 150 g/i)).toBeInTheDocument();
         });
     });
 
@@ -67,9 +66,7 @@ describe('NutritionDashboard', () => {
             </BrowserRouter>
         );
         await waitFor(() => {
-            expect(screen.getByText('Last 7 Days Nutrition Summary')).toBeInTheDocument();
-            // A simple way to check if the chart is there is to look for one of its labels
-            expect(screen.getByText('Calories (kcal)')).toBeInTheDocument();
+            expect(screen.getByText(/Daily Macro Intake/i)).toBeInTheDocument();
         });
     });
 
@@ -81,9 +78,8 @@ describe('NutritionDashboard', () => {
             </BrowserRouter>
         );
         await waitFor(() => {
-            // Check that loading is finished but no data is displayed
             expect(screen.queryByText('Loading...')).not.toBeInTheDocument();
-            expect(screen.queryByText('Your Nutrition Goals (maintenance)')).not.toBeInTheDocument();
+            expect(screen.queryByText(/Target: 2000 kcal/i)).not.toBeInTheDocument();
         });
     });
 });

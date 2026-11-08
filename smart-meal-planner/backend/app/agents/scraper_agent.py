@@ -23,6 +23,23 @@ from app.services.scraper_bridge_service import ScraperBridgeService
 import logging
 
 
+def _coerce_date(val: Any, default: date) -> date:
+    if isinstance(val, datetime):
+        return val.date()
+    if isinstance(val, date):
+        return val
+    if isinstance(val, str) and val.strip():
+        try:
+            clean_str = val.replace("Z", "+00:00")
+            return datetime.fromisoformat(clean_str).date()
+        except Exception:
+            try:
+                return datetime.strptime(val[:10], "%Y-%m-%d").date()
+            except Exception:
+                pass
+    return default
+
+
 class ScraperAgent:
     """
     The ScraperAgent orchestrates the scraping of grocery deals from various stores.
@@ -76,7 +93,35 @@ class ScraperAgent:
         logging.info(f"Starting scrape and persist for {store_name} (type: {scraper_type})")
 
         try:
-            if scraper_type == "root_framework":
+            if scraper_type == "flipp":
+                deals = await self._scrape_with_flipp(store_name, limit)
+                duration = time.time() - start_time
+                status = "success" if deals else "failure"
+                error_msg = None if deals else "No deals found via Flipp"
+
+                await self._log_scrape(
+                    store_name,
+                    status,
+                    len(deals),
+                    duration,
+                    error_msg,
+                    scraper_type="flipp",
+                    postal_code=self.postal_code,
+                )
+                if deals:
+                    await self.persist_deals(deals)
+                else:
+                    await self.mark_store_as_scraped(store_name)
+
+                await self.session.commit()
+                return {
+                    "store": store_name,
+                    "status": status,
+                    "count": len(deals),
+                    "scraper_type": "flipp"
+                }
+
+            elif scraper_type == "root_framework":
                 deals = await ScraperBridgeService.run_root_scraper(
                     store_name, postal_code=self.postal_code, limit=limit, headless=self.headless
                 )
@@ -518,8 +563,8 @@ class ScraperAgent:
                 )
                 self.session.add(price_record)
 
-            valid_from = deal_data.get("valid_from", today)
-            valid_until = deal_data.get("valid_until", today + timedelta(days=7))
+            valid_from = _coerce_date(deal_data.get("valid_from"), today)
+            valid_until = _coerce_date(deal_data.get("valid_until") or deal_data.get("valid_to"), today + timedelta(days=7))
 
             # Check for duplicate
             deal_key = (product.id, store.id, price, valid_until)
@@ -546,7 +591,7 @@ class ScraperAgent:
             new_deals_count += 1
 
         # Update last_scraped_at for all stores that provided deals
-        now = datetime.now(timezone.utc)
+        now = datetime.now(timezone.utc).replace(tzinfo=None)
         for store in store_cache.values():
             store.last_scraped_at = now
             self.session.add(store)
@@ -568,7 +613,7 @@ class ScraperAgent:
         )
         store = result.scalar_one_or_none()
         if store:
-            store.last_scraped_at = datetime.now(timezone.utc)
+            store.last_scraped_at = datetime.now(timezone.utc).replace(tzinfo=None)
             self.session.add(store)
             await self.session.commit()
             logging.info(

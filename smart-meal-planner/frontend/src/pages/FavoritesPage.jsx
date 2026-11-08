@@ -11,7 +11,8 @@ const FavoritesPage = () => {
     const fetchFavorites = async () => {
       try {
         const response = await api.get('/users/me/favorites');
-        setFavorites(response.data);
+        const favs = Array.isArray(response) ? response : (response?.data || []);
+        setFavorites(favs);
       } catch (err) {
         setError('Failed to fetch favorites.');
         console.error(err);

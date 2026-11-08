@@ -1,6 +1,6 @@
 from typing import List, Dict, Any
 from sqlmodel import select, desc
-from sqlalchemy import delete
+from sqlalchemy import delete, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.all_models import ScraperLog
 from datetime import datetime, timedelta, timezone
@@ -18,18 +18,33 @@ class ScraperHealthService:
         """
         Calculates health metrics for all stores based on logs from the last N days.
         """
-        since_date = datetime.now(timezone.utc) - timedelta(days=days)
+        since_date = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=days)
 
-        # Get all unique store names from logs
-        store_stmt = select(ScraperLog.store_name).distinct()
+        # Get all unique store keys (case-insensitive)
+        store_stmt = select(func.lower(ScraperLog.store_name)).distinct()
         store_result = await self.session.execute(store_stmt)
-        store_names = store_result.scalars().all()
+        raw_keys = [k for k in store_result.scalars().all() if k]
+
+        STORE_DISPLAY_NAMES = {
+            "metro": "Metro",
+            "iga": "IGA",
+            "maxi": "Maxi",
+            "provigo": "Provigo",
+            "walmart": "Walmart",
+            "super_c": "Super C",
+            "superc": "Super C",
+            "costco": "Costco",
+            "adonis": "Adonis",
+        }
+
+        # Deduplicate keys
+        unique_keys = list(dict.fromkeys(raw_keys))
 
         metrics = []
-        for store_name in store_names:
+        for store_key in unique_keys:
             # Query logs for this store
             stmt = select(ScraperLog).where(
-                ScraperLog.store_name == store_name,
+                func.lower(ScraperLog.store_name) == store_key,
                 ScraperLog.timestamp >= since_date
             ).order_by(desc(ScraperLog.timestamp))
 
@@ -46,7 +61,6 @@ class ScraperHealthService:
             avg_duration = sum(log_item.duration_seconds for log_item in logs) / total_runs
             total_items = sum(log_item.items_scraped for log_item in logs)
 
-            # Determine consecutive failures and categorize them
             consecutive_failures = 0
             error_categories = {}
             for log_item in logs:
@@ -76,8 +90,25 @@ class ScraperHealthService:
             elif success_rate < 70 or consecutive_failures >= 1:
                 status = "degraded"
 
+            # Clean, friendly last error representation
+            last_err = None
+            if logs[0].status == "failure" and logs[0].error_message:
+                raw_err = logs[0].error_message.strip()
+                if "[BOT_BLOCK]" in raw_err:
+                    last_err = "Bot detection triggered"
+                elif "[TIMEOUT]" in raw_err:
+                    last_err = "Flyer load timeout"
+                elif "can't subtract offset-naive" in raw_err or "DataError" in raw_err:
+                    last_err = "Database format error (resolved)"
+                elif "\n" in raw_err:
+                    last_err = raw_err.split("\n")[0][:100]
+                else:
+                    last_err = raw_err[:100]
+
+            canonical_name = STORE_DISPLAY_NAMES.get(store_key, store_key.title())
+
             metrics.append({
-                "store_name": store_name,
+                "store_name": canonical_name,
                 "success_rate": round(success_rate, 1),
                 "avg_duration_seconds": round(avg_duration, 2),
                 "total_items_scraped": total_items,
@@ -86,7 +117,7 @@ class ScraperHealthService:
                 "consecutive_failures": consecutive_failures,
                 "total_runs": total_runs,
                 "error_breakdown": error_categories,
-                "last_error": logs[0].error_message if logs[0].status == "failure" else None
+                "last_error": last_err
             })
 
         return sorted(metrics, key=lambda x: x["success_rate"], reverse=True)
@@ -111,7 +142,7 @@ class ScraperHealthService:
             "total_scrapers": total_stores,
             "healthy_scrapers": healthy_stores,
             "critical_scrapers": critical_stores,
-            "timestamp": datetime.now(timezone.utc)
+            "timestamp": datetime.now(timezone.utc).replace(tzinfo=None)
         }
 
     async def should_skip_direct_scrape(self, store_name: str) -> bool:
@@ -119,11 +150,11 @@ class ScraperHealthService:
         Circuit breaker: returns True if the direct scraper for this store
         has been failing consistently, suggesting we should skip it and use fallbacks.
         """
-        since_date = datetime.now(timezone.utc) - timedelta(hours=24)
+        since_date = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(hours=24)
         stmt = (
             select(ScraperLog)
             .where(
-                ScraperLog.store_name == store_name,
+                func.lower(ScraperLog.store_name) == store_name.lower(),
                 ScraperLog.scraper_type == "direct",
                 ScraperLog.timestamp >= since_date
             )
@@ -144,9 +175,9 @@ class ScraperHealthService:
         """
         Resets the circuit breaker for a store by deleting recent failure logs.
         """
-        since_date = datetime.now(timezone.utc) - timedelta(hours=24)
+        since_date = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(hours=24)
         stmt = delete(ScraperLog).where(
-            ScraperLog.store_name == store_name,
+            func.lower(ScraperLog.store_name) == store_name.lower(),
             ScraperLog.status == "failure",
             ScraperLog.timestamp >= since_date
         )

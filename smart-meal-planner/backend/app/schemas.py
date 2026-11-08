@@ -41,6 +41,7 @@ class UserUpdate(BaseModel):
 
 class UserRead(BaseModel):
     id: int
+    email: Optional[str] = None
     postal_code: str
     household_size: int
     dietary_preferences: Optional[List[str]] = None

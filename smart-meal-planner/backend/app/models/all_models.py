@@ -6,7 +6,8 @@ from app.core.crypto import EncryptedString, EncryptedInt
 
 
 def utc_now():
-    return datetime.now(timezone.utc)
+    # Columns are TIMESTAMP WITHOUT TIME ZONE; asyncpg rejects tz-aware values, so store naive UTC.
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 class User(SQLModel, table=True):
@@ -63,7 +64,11 @@ class Store(SQLModel, table=True):
     def is_stale(self) -> bool:
         if not self.last_scraped_at:
             return True
-        return self.last_scraped_at < datetime.now(timezone.utc) - timedelta(days=7)
+        last_scraped = self.last_scraped_at
+        if last_scraped.tzinfo is not None:
+            last_scraped = last_scraped.replace(tzinfo=None)
+        cutoff = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=7)
+        return last_scraped < cutoff
 
 
 class Product(SQLModel, table=True):

@@ -171,24 +171,24 @@ class FlippScraper:
                 return None
             
             # Parse unit from post_price_text (e.g., "/lb", "/kg")
-            post_price = item.get("post_price_text", "")
+            post_price = (item.get("post_price_text") or "").lower()
             unit = "each"
-            if "/lb" in post_price.lower():
+            if "/lb" in post_price:
                 unit = "lb"
-            elif "/kg" in post_price.lower():
+            elif "/kg" in post_price:
                 unit = "kg"
-            elif "/100" in post_price.lower():
+            elif "/100" in post_price:
                 unit = "100g"
-            elif "/l" in post_price.lower():
+            elif "/l" in post_price:
                 unit = "L"
                 
             # Determine category from L1/L2 taxonomy
-            l1 = item.get("_L1", "")
-            l2 = item.get("_L2", "")
+            l1 = item.get("_L1") or ""
+            l2 = item.get("_L2") or ""
             category = self._determine_category(l1, l2, name)
             
             # Get sale info if available
-            sale_story = item.get("sale_story", "")
+            sale_story = item.get("sale_story") or ""
             
             # Parse loyalty points
             loyalty_info = self._parse_loyalty_points(sale_story)

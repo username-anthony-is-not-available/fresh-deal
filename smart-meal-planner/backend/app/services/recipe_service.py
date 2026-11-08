@@ -53,20 +53,20 @@ class RecipeService:
 
         filtered = []
         # Normalize for case-insensitive matching
-        dietary_prefs_lower = [p.lower() for p in dietary_preferences]
-        allergies_lower = [a.lower() for a in allergies]
+        dietary_prefs_norm = [p.lower().replace("_", "-").replace(" ", "-") for p in dietary_preferences]
+        allergies_norm = [a.lower().replace("_", "-").replace(" ", "-") for a in allergies]
 
         for r in recipes:
             # Check dietary preferences
-            if dietary_prefs_lower:
-                recipe_tags_lower = [t.lower() for t in r.get("dietary_tags", [])]
-                if not all(pref in recipe_tags_lower for pref in dietary_prefs_lower):
+            if dietary_prefs_norm:
+                recipe_tags_norm = [t.lower().replace("_", "-").replace(" ", "-") for t in r.get("dietary_tags", [])]
+                if not all(pref in recipe_tags_norm for pref in dietary_prefs_norm):
                     continue
 
             # Check allergies
-            if allergies_lower:
-                recipe_allergens_lower = [a.lower() for a in r.get("allergens", [])]
-                if any(allergy in recipe_allergens_lower for allergy in allergies_lower):
+            if allergies_norm:
+                recipe_allergens_norm = [a.lower().replace("_", "-").replace(" ", "-") for a in r.get("allergens", [])]
+                if any(allergy in recipe_allergens_norm for allergy in allergies_norm):
                     continue
 
             filtered.append(r)

@@ -62,12 +62,13 @@ const ScrapingDashboardPage = () => {
     setIsLoadingLogs(true);
     try {
       const data = await api.get(`/admin/scrapers/logs?limit=50&offset=${offset}`);
+      const logsArray = Array.isArray(data) ? data : (data?.data || []);
       if (reset) {
-        setScraperLogs(data);
+        setScraperLogs(logsArray);
       } else {
-        setScraperLogs(prev => [...prev, ...data]);
+        setScraperLogs(prev => [...(Array.isArray(prev) ? prev : []), ...logsArray]);
       }
-      setHasMoreLogs(data.length === 50);
+      setHasMoreLogs(logsArray.length === 50);
       setLogsOffset(offset);
     } catch (e) {
       console.error('Failed to fetch scraper logs', e);
@@ -754,7 +755,7 @@ const ScrapingDashboardPage = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {scraperLogs.length === 0 ? (
+              {(!Array.isArray(scraperLogs) || scraperLogs.length === 0) ? (
                 <tr>
                   <td colSpan="7" className="px-6 py-8 text-center text-gray-500 italic">
                     {isLoadingLogs ? "Loading logs..." : "No logs available."}

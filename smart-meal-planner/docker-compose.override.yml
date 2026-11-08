@@ -1,0 +1,13 @@
+services:
+  backend:
+    ports:
+      - "8000:8000"
+    volumes:
+      - ../src:/app/src:ro
+      - ./backend/app:/app/app
+  celery_worker:
+    healthcheck:
+      disable: true
+    volumes:
+      - ../src:/app/src:ro
+      - ./backend/app:/app/app

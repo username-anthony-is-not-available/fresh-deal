@@ -67,7 +67,7 @@ const ShoppingListPage = () => {
     const fetchList = async () => {
       setLoading(true);
       try {
-        let url = `shopping/optimize?user_id=${userId}&strategy=${strategy}`;
+        let url = `/shopping/optimize?user_id=${userId}&strategy=${strategy}`;
         if (preferredStores.length > 0) {
           preferredStores.forEach(s => {
             url += `&preferred_stores=${encodeURIComponent(s)}`;

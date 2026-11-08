@@ -1,14 +1,68 @@
 import random
+import json
+import os
 from datetime import date, timedelta
 from sqlmodel import Session, select
-from app.models.all_models import Store, Product, Deal
+from app.models.all_models import Store, Product, Deal, Recipe, RecipeIngredient
 
 class MockScraperAgent:
     def __init__(self, session: Session):
         self.session = session
 
+    def seed_recipes(self) -> int:
+        """Seeds recipes from data/recipes.json if no recipes exist."""
+        existing = self.session.exec(select(Recipe)).first()
+        if existing:
+            return 0
+
+        base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        file_path = os.path.join(base_path, "data", "recipes.json")
+        if not os.path.exists(file_path):
+            return 0
+
+        with open(file_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+
+        count = 0
+        for r in data:
+            recipe = Recipe(
+                name=r.get("name", "Untitled Recipe"),
+                cuisine=r.get("cuisine"),
+                category=r.get("category", "Main"),
+                meal_type=r.get("meal_type", "Dinner"),
+                ingredients_json=json.dumps(r.get("ingredients", [])),
+                instructions_json=json.dumps(r.get("instructions", [])),
+                allergens_json=json.dumps(r.get("allergens", [])),
+                dietary_tags_json=json.dumps(r.get("dietary_tags", [])),
+                nutrition_json=json.dumps(r.get("nutrition", {})),
+                prep_time_minutes=r.get("prep_time_minutes", 30),
+                difficulty=r.get("difficulty", "medium"),
+                servings=r.get("servings", 4),
+                image_url=r.get("image_url"),
+                source_url=r.get("source_url")
+            )
+            self.session.add(recipe)
+            self.session.flush()
+
+            for ing in r.get("ingredients", []):
+                item_name = ing.get("item", "") if isinstance(ing, dict) else str(ing)
+                clean_name = item_name.lower().strip()
+                if clean_name:
+                    db_ing = RecipeIngredient(
+                        recipe_id=recipe.id,
+                        name=clean_name,
+                        original_text=f"{ing.get('quantity', '')} {ing.get('unit', '')} {item_name}".strip() if isinstance(ing, dict) else item_name
+                    )
+                    self.session.add(db_ing)
+            count += 1
+
+        self.session.commit()
+        return count
+
     def generate_deals(self) -> int:
-        """Generates mock deals for stores and products."""
+        """Generates mock deals for stores and products and seeds recipes."""
+        self.seed_recipes()
+
         stores_data = [
             {"name": "Walmart", "chain": "Walmart", "postal_code": "H4T1V6"},
             {"name": "Provigo", "chain": "Provigo", "postal_code": "H4E2G9"}, # ~4km from H4T

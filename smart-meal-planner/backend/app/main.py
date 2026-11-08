@@ -1,3 +1,4 @@
+from app.celery_app import celery_app
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import Settings
@@ -136,12 +137,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(api_router, prefix="/api", tags=["api"])
 app.include_router(auth_endpoints.router, prefix="/auth", tags=["auth"])
 app.include_router(nutrition.router, prefix="/api", tags=["nutrition"])
 app.include_router(deals_export.router, prefix="/api", tags=["deals-export"])
 app.include_router(flyer_upload.router, prefix="/api", tags=["flyer-upload"])
 app.include_router(plan_export.router, prefix="/api", tags=["plan-export"])
+app.include_router(api_router, prefix="/api", tags=["api"])
 
 
 @app.get("/health")

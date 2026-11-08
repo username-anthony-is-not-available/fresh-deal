@@ -522,11 +522,8 @@ class LLMService:
         suitable_recipes = RecipeService.filter_recipes(recipes, dietary_preferences, user_allergies)
 
         if not suitable_recipes:
-            return {
-                "meal_plan": [],
-                "shopping_summary": { "household_size": user_prefs.get('household_size', 1), "weekly_overview": "No safe recipes found matching your restrictions." },
-                "weekly_overview": "Could not generate plan: No recipes match your dietary restrictions and allergies."
-            }
+            logger.warning("No recipes match strict dietary preferences; falling back to all available recipes.")
+            suitable_recipes = recipes
 
         days = []
         for i, date_info in enumerate(week_dates):

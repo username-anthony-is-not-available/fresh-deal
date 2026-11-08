@@ -1,5 +1,7 @@
 import json
-from celery import shared_task, group
+from celery import group
+from app.celery_app import celery_app
+shared_task = celery_app.task
 from sqlmodel import Session, select
 from sqlalchemy import func, delete
 from app.core.db import engine, async_engine
@@ -55,7 +57,7 @@ def scrape_store_task(
 
 @shared_task
 def scrape_task(
-    stores: list = None, postal_code: str = "H4T1V6", limit_per_store: int = 50
+    stores: list = None, postal_code: str = "H4T1V6", limit_per_store: int = 50, scraper_type: str = "default"
 ):
     """
     Orchestrator task that parallelizes scraping across multiple stores using Celery group.
@@ -64,7 +66,7 @@ def scrape_task(
         stores = settings.SUPPORTED_STORES
 
     job = group(
-        scrape_store_task.s(store, postal_code, limit_per_store)
+        scrape_store_task.s(store, postal_code, limit_per_store, scraper_type=scraper_type)
         for store in stores
     )
     result = job.apply_async()
@@ -203,11 +205,14 @@ def generate_meal_plan_task(user_id: int, model_type: Optional[str] = None):
                 logger.error(f"Failed to enrich plan with nutrition data: {e}")
 
             # Extract start date from the first day of the plan
-            start_date_str = plan_data.get("meal_plan", [])[0].get("date")
+            meal_days = plan_data.get("meal_plan", []) or plan_data.get("days", [])
+            start_date_str = meal_days[0].get("date") if (meal_days and len(meal_days) > 0 and isinstance(meal_days[0], dict)) else None
             if start_date_str:
-                start_date = datetime.strptime(start_date_str, "%Y-%m-%d").date()
+                try:
+                    start_date = datetime.strptime(start_date_str, "%Y-%m-%d").date()
+                except Exception:
+                    start_date = datetime.now().date()
             else:
-                # Fallback if somehow missing
                 start_date = datetime.now().date()
 
             meal_plan = MealPlan(

@@ -311,7 +311,7 @@ class NutritionAgent:
                     existing.protein = summary.get("protein", 0)
                     existing.carbs = summary.get("carbs", 0)
                     existing.fats = summary.get("fat", 0)
-                    existing.updated_at = datetime.now(timezone.utc)
+                    existing.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
                     self.session.add(existing)
                 else:
                     new_daily = DailyNutrition(

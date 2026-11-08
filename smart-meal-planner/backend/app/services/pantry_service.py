@@ -12,7 +12,7 @@ from app.models.all_models import MealPlan, PantryItem
 
 
 def _utc_now() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 @dataclass(frozen=True)
