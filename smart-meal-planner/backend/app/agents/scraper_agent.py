@@ -617,6 +617,9 @@ class ScraperAgent:
         else:
             await self.session.flush()
 
+        from app.services.deal_cache_service import deal_cache
+        deal_cache.invalidate_deals()
+
         logging.info(f"Persisted {new_deals_count} new deals to the database.")
 
     async def mark_store_as_scraped(self, store_chain: str):
