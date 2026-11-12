@@ -8,6 +8,12 @@ import sqlite3
 from typing import Dict, List, Any
 from app.services.fatsecret_service import FatSecretService
 from app.services.edamam_service import EdamamService
+from app.services.nutrition_helpers import (
+    extract_day_meals,
+    extract_plan_days,
+    normalize_nutrition,
+    parse_nutrition_json,
+)
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
@@ -107,51 +113,71 @@ class NutritionAgent:
                 except Exception:
                     pass
 
-            # Parse quantity and unit
-            qty_match = re.search(r"^([\d\./]+)\s*([a-zA-Z%]+)?", ing_lower)
+            # Parse quantity (supports decimals, fractions, and mixed fractions like "1 1/2") and unit
+            qty_match = re.search(
+                r"^(\d+\s+\d+/\d+|\d+/\d+|\d+(?:\.\d+)?)\s*([a-zA-ZÀ-ÿ\.%]+)?",
+                ing_lower,
+            )
             qty = 1.0
             unit = ""
             if qty_match:
-                qty_str = qty_match.group(1)
-                unit = (qty_match.group(2) or "").lower()
+                qty_str = qty_match.group(1).strip()
+                unit = (qty_match.group(2) or "").lower().rstrip(".")
                 try:
-                    if "/" in qty_str:
-                        num, den = qty_str.split("/")
+                    if " " in qty_str and "/" in qty_str:
+                        whole_str, frac_str = qty_str.split(None, 1)
+                        num, den = frac_str.split("/", 1)
+                        qty = float(whole_str) + (float(num) / float(den))
+                    elif "/" in qty_str:
+                        num, den = qty_str.split("/", 1)
                         qty = float(num) / float(den)
                     else:
                         qty = float(qty_str)
-                except ValueError:
+                except (ValueError, ZeroDivisionError):
                     qty = 1.0
 
             # Estimate weight in grams based on unit (CNF baseline is per 100g)
-            grams = 100.0
             if unit in ["g", "gram", "grams"]:
                 grams = qty
-            elif unit in ["kg", "kilogram"]:
+            elif unit in ["kg", "kilogram", "kilograms"]:
                 grams = qty * 1000.0
             elif unit in ["lb", "lbs", "pound", "pounds"]:
                 grams = qty * 453.59
             elif unit in ["oz", "ounce", "ounces"]:
                 grams = qty * 28.35
-            elif unit in ["tbsp", "tablespoon", "c. à soupe"]:
+            elif unit in ["ml", "milliliter", "milliliters"]:
+                grams = qty
+            elif unit in ["l", "liter", "liters", "litre", "litres"]:
+                grams = qty * 1000.0
+            elif unit in ["tbsp", "tablespoon", "tablespoons", "cas"] or "c. à soupe" in ing_lower:
                 grams = qty * 15.0
-            elif unit in ["tsp", "teaspoon", "c. à thé"]:
+            elif unit in ["tsp", "teaspoon", "teaspoons", "cat"] or "c. à thé" in ing_lower:
                 grams = qty * 5.0
-            elif unit in ["cup", "tasse", "cups"]:
+            elif unit in ["cup", "tasse", "tasses", "cups"]:
                 grams = qty * 150.0
-            elif unit in ["each", "un", "unit", "egg", "oeuf"] or not unit:
+            elif unit in ["each", "un", "unit", "piece", "pieces", "egg", "oeuf"] or not unit:
                 grams = qty * 80.0
+            elif unit in ["can", "cans", "conserve"]:
+                grams = qty * 400.0
+            elif unit in ["clove", "cloves", "gousse", "gousses"]:
+                grams = qty * 5.0
+            else:
+                # Unit token was part of the ingredient name (e.g. "2 chicken breasts"); still scale by quantity.
+                grams = qty * 100.0
 
             multiplier = max(grams / 100.0, 0.1)
 
-            # Match against CNF/USDA offline database
+            # Match against CNF/USDA offline database, preferring longest alias match
             match = None
+            best_alias_len = 0
             if self.offline_nutrition_db:
                 for key, data in self.offline_nutrition_db.items():
                     aliases = data.get("aliases", []) + [key]
-                    if any(alias in ing_lower for alias in aliases):
-                        match = data
-                        break
+                    for alias in aliases:
+                        alias_lower = alias.lower()
+                        if alias_lower in ing_lower and len(alias_lower) > best_alias_len:
+                            match = data
+                            best_alias_len = len(alias_lower)
 
             if match:
                 cals = match["calories"] * multiplier
@@ -278,7 +304,7 @@ class NutritionAgent:
         return self._fallback_estimate_meal_nutrition(meal_name, ing_strings)
 
     def _fallback_estimate_meal_nutrition(self, meal_name: str, ingredients: List[str]) -> Dict[str, int]:
-        total_nutrition = {"calories": 0, "protein": 0, "carbs": 0, "fats": 0}
+        total_nutrition = {"calories": 0.0, "protein": 0.0, "carbs": 0.0, "fats": 0.0, "fiber": 0.0}
         detected_ingredients = 0
         for ing in ingredients:
             ing_lower = ing.lower()
@@ -322,52 +348,54 @@ class NutritionAgent:
 
         if detected_ingredients < 2:
             total_nutrition["calories"] += 500
-        return {k: int(v) for k, v in total_nutrition.items()}
+        rounded = {k: int(round(v)) for k, v in total_nutrition.items()}
+        rounded["fat"] = rounded["fats"]
+        return rounded
+
+    async def _fetch_recipe(self, recipe_id: int):
+        """Fetch a Recipe from either a synchronous Session or AsyncSession."""
+        from app.models.all_models import Recipe
+        from sqlalchemy.ext.asyncio import AsyncSession
+
+        if not self.session:
+            return None
+        if isinstance(self.session, AsyncSession):
+            return await self.session.get(Recipe, recipe_id)
+        return self.session.get(Recipe, recipe_id)
 
     async def validate_plan(self, plan_json: Dict[str, Any]) -> Dict[str, Any]:
-        from app.models.all_models import Recipe
-        import json
-
-        total_weekly_cals = 0
-        total_weekly_protein = 0
-        total_weekly_carbs = 0
-        total_weekly_fat = 0
-
-        # Prefer meal_plan; otherwise accept top-level days.
-        meal_plan = plan_json.get("meal_plan")
-        days = (
-            meal_plan
-            if (
-                isinstance(meal_plan, list)
-                and meal_plan
-                and all(isinstance(day, dict) for day in meal_plan)
-            )
-            else plan_json.get("days", [])
-        )
-        if (
-            not isinstance(days, list)
-            or not days
-            or any(not isinstance(day, dict) for day in days)
-        ):
+        days = extract_plan_days(plan_json)
+        if not days:
             return plan_json
 
-        all_meals_to_process = []
+        total_weekly_cals = 0.0
+        total_weekly_protein = 0.0
+        total_weekly_carbs = 0.0
+        total_weekly_fat = 0.0
 
-        for day in days:
-            # Handle list of meals or fixed breakfast/lunch/dinner
-            if "meals" in day:
-                for meal in day["meals"]:
-                    all_meals_to_process.append(meal)
-            else:
-                for meal_type in ["breakfast", "lunch", "dinner"]:
-                    if day.get(meal_type):
-                        all_meals_to_process.append(day[meal_type])
+        all_meals_to_process = [
+            meal for day in days for meal in extract_day_meals(day)
+        ]
 
-        # Optimize: Only estimate if nutrition is missing or empty
+        # Populate missing or incomplete nutrition: check stored Recipe.nutrition_json first, then estimate.
         nutrition_tasks = []
         meals_needing_nutrition = []
         for m in all_meals_to_process:
-            if not m.get("nutrition") or not m["nutrition"].get("calories"):
+            existing_nut = m.get("nutrition")
+            has_calories = isinstance(existing_nut, dict) and (existing_nut.get("calories") or 0) > 0
+            if not has_calories:
+                recipe_id = m.get("recipe_id")
+                if self.session and isinstance(recipe_id, int):
+                    try:
+                        recipe = await self._fetch_recipe(recipe_id)
+                        if recipe and recipe.nutrition_json:
+                            parsed = parse_nutrition_json(recipe.nutrition_json)
+                            if (parsed.get("calories") or 0) > 0:
+                                m["nutrition"] = parsed
+                                continue
+                    except Exception as e:
+                        logger.error(f"Failed to load recipe {recipe_id} nutrition: {e}")
+
                 name = m.get("recipe_name") or m.get("name", "Unknown Meal")
                 ingredients = m.get("ingredients", [])
                 nutrition_tasks.append(self.estimate_meal_nutrition(name, ingredients))
@@ -380,60 +408,49 @@ class NutritionAgent:
                 meal["nutrition"] = nutrition
 
                 # Update recipe in DB if session is available
-                if self.session and meal.get("recipe_id"):
+                if self.session and isinstance(meal.get("recipe_id"), int):
                     try:
-                        recipe = self.session.get(Recipe, meal["recipe_id"])
+                        recipe = await self._fetch_recipe(meal["recipe_id"])
                         if recipe:
                             recipe.nutrition_json = json.dumps(nutrition)
                             self.session.add(recipe)
-                            # We don't commit here, let the caller handle it
                     except Exception as e:
                         logger.error(f"Failed to update recipe {meal['recipe_id']} nutrition: {e}")
 
-        # Calculate summaries
+        # Calculate summaries accurately using float accumulation before rounding.
         for day in days:
-            day_cals = 0
-            day_protein = 0
-            day_carbs = 0
-            day_fat = 0
+            day_cals = 0.0
+            day_protein = 0.0
+            day_carbs = 0.0
+            day_fat = 0.0
 
-            day_meals = []
-            if "meals" in day:
-                day_meals = day["meals"]
-            else:
-                day_meals = [day.get(m) for m in ["breakfast", "lunch", "dinner"] if day.get(m)]
-
-            for meal in day_meals:
-                nutrition = meal.get("nutrition", {})
-                # Support both 'fat' and 'fats'
-                fats = nutrition.get("fat") if nutrition.get("fat") is not None else nutrition.get("fats", 0)
-
-                day_cals += nutrition.get("calories", 0)
-                day_protein += nutrition.get("protein", 0)
-                day_carbs += nutrition.get("carbs", 0)
-                day_fat += fats
-
-                total_weekly_protein += nutrition.get("protein", 0)
-                total_weekly_carbs += nutrition.get("carbs", 0)
-                total_weekly_fat += fats
+            for meal in extract_day_meals(day):
+                norm = normalize_nutrition(meal.get("nutrition"))
+                day_cals += norm["calories"]
+                day_protein += norm["protein"]
+                day_carbs += norm["carbs"]
+                day_fat += norm["fat"]
 
             day["daily_summary"] = {
-                "calories": int(day_cals),
-                "protein": int(day_protein),
-                "carbs": int(day_carbs),
-                "fat": int(day_fat)
+                "calories": int(round(day_cals)),
+                "protein": int(round(day_protein)),
+                "carbs": int(round(day_carbs)),
+                "fat": int(round(day_fat)),
             }
             total_weekly_cals += day_cals
+            total_weekly_protein += day_protein
+            total_weekly_carbs += day_carbs
+            total_weekly_fat += day_fat
 
         num_days = len(days)
         plan_json["nutritional_summary"] = {
-            "avg_daily_calories": int(total_weekly_cals / num_days) if num_days else 0,
-            "avg_daily_protein": int(total_weekly_protein / num_days) if num_days else 0,
-            "total_weekly_calories": int(total_weekly_cals),
-            "total_weekly_protein": int(total_weekly_protein),
-            "total_weekly_carbs": int(total_weekly_carbs),
-            "total_weekly_fat": int(total_weekly_fat),
-            "note": "Nutritional information is an estimate."
+            "avg_daily_calories": int(round(total_weekly_cals / num_days)) if num_days else 0,
+            "avg_daily_protein": int(round(total_weekly_protein / num_days)) if num_days else 0,
+            "total_weekly_calories": int(round(total_weekly_cals)),
+            "total_weekly_protein": int(round(total_weekly_protein)),
+            "total_weekly_carbs": int(round(total_weekly_carbs)),
+            "total_weekly_fat": int(round(total_weekly_fat)),
+            "note": "Nutritional information is an estimate.",
         }
 
         return plan_json
@@ -441,18 +458,22 @@ class NutritionAgent:
     async def persist_daily_nutrition_from_plan(self, user_id: int, plan_json: Dict[str, Any]):
         """
         Populates the DailyNutrition table with the data from the generated meal plan.
+        Supports both synchronous Session and AsyncSession.
         """
         from app.models.all_models import DailyNutrition
+        from sqlalchemy.ext.asyncio import AsyncSession
         from sqlmodel import select
         from datetime import datetime, timezone
 
-        meal_plan = plan_json.get("meal_plan") or plan_json.get("days")
-        if not meal_plan or not isinstance(meal_plan, list):
+        meal_plan = extract_plan_days(plan_json)
+        if not meal_plan:
             return
 
         if not self.session:
             logger.error("No database session provided to NutritionAgent. Persistence skipped.")
             return
+
+        is_async = isinstance(self.session, AsyncSession)
 
         for day in meal_plan:
             day_date_str = day.get("date")
@@ -464,33 +485,52 @@ class NutritionAgent:
             except ValueError:
                 continue
 
-            summary = day.get("daily_summary", {})
+            day_meals = extract_day_meals(day)
+            meal_fiber = sum(normalize_nutrition(m.get("nutrition"))["fiber"] for m in day_meals)
 
-            # Check for existing record for this user and date
+            summary = day.get("daily_summary")
+            if isinstance(summary, dict) and summary:
+                norm_summary = normalize_nutrition(summary)
+                if norm_summary["fiber"] == 0.0 and meal_fiber > 0.0:
+                    norm_summary["fiber"] = meal_fiber
+            else:
+                norm_summary = {"calories": 0.0, "protein": 0.0, "carbs": 0.0, "fat": 0.0, "fiber": 0.0}
+                for m in day_meals:
+                    norm_m = normalize_nutrition(m.get("nutrition"))
+                    for key in norm_summary:
+                        norm_summary[key] += norm_m[key]
+
             statement = select(DailyNutrition).where(
                 DailyNutrition.user_id == user_id,
-                DailyNutrition.date == day_date
+                DailyNutrition.date == day_date,
             )
 
-            # Using exec because self.session is likely a sync Session in generate_meal_plan_task
             try:
-                existing = self.session.exec(statement).first()
+                if is_async:
+                    result = await self.session.execute(statement)
+                    existing = result.scalars().first()
+                elif hasattr(self.session, "exec"):
+                    existing = self.session.exec(statement).first()
+                else:
+                    existing = self.session.execute(statement).scalars().first()
 
                 if existing:
-                    existing.calories = summary.get("calories", 0)
-                    existing.protein = summary.get("protein", 0)
-                    existing.carbs = summary.get("carbs", 0)
-                    existing.fats = summary.get("fat", 0)
+                    existing.calories = norm_summary["calories"]
+                    existing.protein = norm_summary["protein"]
+                    existing.carbs = norm_summary["carbs"]
+                    existing.fats = norm_summary["fat"]
+                    existing.fiber = norm_summary["fiber"]
                     existing.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
                     self.session.add(existing)
                 else:
                     new_daily = DailyNutrition(
                         user_id=user_id,
                         date=day_date,
-                        calories=summary.get("calories", 0),
-                        protein=summary.get("protein", 0),
-                        carbs=summary.get("carbs", 0),
-                        fats=summary.get("fat", 0),
+                        calories=norm_summary["calories"],
+                        protein=norm_summary["protein"],
+                        carbs=norm_summary["carbs"],
+                        fats=norm_summary["fat"],
+                        fiber=norm_summary["fiber"],
                     )
                     self.session.add(new_daily)
             except Exception as e:
