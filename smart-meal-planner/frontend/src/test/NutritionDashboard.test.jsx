@@ -14,17 +14,27 @@ const mockGoal = {
     target_protein: 150,
     target_carbs: 250,
     target_fats: 70,
+    target_fiber: 30,
 };
 
 const mockSummary = [
-    { date: '2023-01-01', calories: 1800, protein: 120, carbs: 200, fats: 60 },
-    { date: '2023-01-02', calories: 2100, protein: 160, carbs: 260, fats: 75 },
+    { date: '2023-01-01', calories: 1800, protein: 120, carbs: 200, fats: 60, fiber: 24 },
+    { date: '2023-01-02', calories: 2100, protein: 160, carbs: 260, fats: 75, fiber: 32 },
 ];
+
+const mockCompliance = {
+    compliance_score: 85,
+    status: 'compliant',
+    restrictions: ['vegan', 'gluten-free'],
+    warnings: [],
+    micronutrients_to_watch: ['vitamin_b12', 'iron'],
+};
 
 describe('NutritionDashboard', () => {
     beforeEach(() => {
         nutritionService.getNutritionGoal.mockResolvedValue(mockGoal);
         nutritionService.getNutritionSummary.mockResolvedValue(mockSummary);
+        nutritionService.getNutritionCompliance.mockResolvedValue(mockCompliance);
     });
 
     it('renders the dashboard title', async () => {
@@ -80,6 +90,20 @@ describe('NutritionDashboard', () => {
         await waitFor(() => {
             expect(screen.queryByText('Loading...')).not.toBeInTheDocument();
             expect(screen.queryByText(/Target: 2000 kcal/i)).not.toBeInTheDocument();
+        });
+    });
+
+    it('displays dietary restriction compliance and fiber target', async () => {
+        render(
+            <BrowserRouter>
+                <NutritionDashboard />
+            </BrowserRouter>
+        );
+        await waitFor(() => {
+            expect(screen.getByText(/Dietary Restriction Tracking/i)).toBeInTheDocument();
+            expect(screen.getByText(/Score: 85\/100/i)).toBeInTheDocument();
+            expect(screen.getByText(/Target: 30 g/i)).toBeInTheDocument();
+            expect(screen.getByText(/vitamin b12/i)).toBeInTheDocument();
         });
     });
 });

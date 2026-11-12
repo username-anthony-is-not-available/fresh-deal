@@ -6,7 +6,22 @@ import SettingsService from '../services/SettingsService';
 import { useAuth } from '../context/AuthContext.jsx';
 import NutritionGoalSettings from '../components/NutritionGoalSettings';
 
-const dietaryOptions = ["vegetarian", "vegan", "gluten_free", "keto", "paleo"];
+const dietaryOptions = [
+  "vegetarian",
+  "vegan",
+  "pescatarian",
+  "gluten_free",
+  "dairy_free",
+  "keto",
+  "low_carb",
+  "paleo",
+  "halal",
+  "kosher",
+  "nut_free",
+  "low_sodium",
+  "high_protein",
+  "mediterranean",
+];
 
 const SettingsPage = () => {
   const { t, i18n } = useTranslation();
@@ -44,9 +59,11 @@ const SettingsPage = () => {
         setFormData({
           postal_code: response.data.postal_code,
           household_size: response.data.household_size,
-          dietary_preferences: response.data.dietary_preferences || [],
+          dietary_preferences: Array.isArray(response.data.dietary_preferences)
+            ? response.data.dietary_preferences
+            : [],
           budget_limit: 200, // Not in model, keeping in state for now
-          allergies: response.data.allergies || []
+          allergies: Array.isArray(response.data.allergies) ? response.data.allergies : []
         });
       } catch (error) {
         toast.error(t('failed_to_load_settings'));
