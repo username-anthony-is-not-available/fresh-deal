@@ -54,14 +54,14 @@ async def async_session():
 async def test_scraper_agent_orchestration_with_mocked_scrapers(async_session: AsyncSession):
     # Arrange
     agent = ScraperAgent(async_session)
-    stores = ["metro", "walmart"]
+    stores = ["metro", "maxi"]
 
-    # Mock the scrape methods of the individual scrapers
+    # Mock the scrape methods of the individual direct scrapers
     with patch('app.agents.scrapers.metro_scraper.MetroScraper.scrape', new_callable=AsyncMock) as mock_metro_scrape, \
-         patch('app.agents.scrapers.walmart_scraper.WalmartScraper.scrape', new_callable=AsyncMock) as mock_walmart_scrape:
+         patch('app.agents.scrapers.maxi_scraper.MaxiScraper.scrape', new_callable=AsyncMock) as mock_maxi_scrape:
 
         mock_metro_scrape.return_value = [{"name": "Metro Product", "price": 1.0, "store": "Metro"}]
-        mock_walmart_scrape.return_value = [{"name": "Walmart Product", "price": 2.0, "store": "Walmart"}]
+        mock_maxi_scrape.return_value = [{"name": "Maxi Product", "price": 2.0, "store": "Maxi"}]
 
         # Act
         deals = await agent.scrape(stores)
@@ -69,11 +69,11 @@ async def test_scraper_agent_orchestration_with_mocked_scrapers(async_session: A
         # Assert
         assert len(deals) == 2
         assert "metro" in deals
-        assert "walmart" in deals
+        assert "maxi" in deals
         assert deals["metro"][0]["store"] == "Metro"
-        assert deals["walmart"][0]["store"] == "Walmart"
+        assert deals["maxi"][0]["store"] == "Maxi"
         mock_metro_scrape.assert_called_once()
-        mock_walmart_scrape.assert_called_once()
+        mock_maxi_scrape.assert_called_once()
 
 
 @pytest.mark.asyncio

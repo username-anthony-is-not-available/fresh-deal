@@ -602,8 +602,9 @@ async def get_scraper_log_screenshot(
         raise HTTPException(status_code=404, detail="Screenshot not found for this log")
 
     # Path validation: must be within /tmp/scrapers
+    allowed_dir = os.path.abspath("/tmp/scrapers")
     abs_path = os.path.abspath(log.screenshot_path)
-    if not abs_path.startswith("/tmp/scrapers"):
+    if os.path.commonpath([abs_path, allowed_dir]) != allowed_dir:
         logging.warning(f"Unauthorized path access attempt: {abs_path}")
         raise HTTPException(status_code=403, detail="Unauthorized access to this path")
 
@@ -627,8 +628,9 @@ async def get_scraper_log_html(
         raise HTTPException(status_code=404, detail="HTML snapshot not found for this log")
 
     # Path validation: must be within /tmp/scrapers
+    allowed_dir = os.path.abspath("/tmp/scrapers")
     abs_path = os.path.abspath(log.html_path)
-    if not abs_path.startswith("/tmp/scrapers"):
+    if os.path.commonpath([abs_path, allowed_dir]) != allowed_dir:
         logging.warning(f"Unauthorized path access attempt: {abs_path}")
         raise HTTPException(status_code=403, detail="Unauthorized access to this path")
 

@@ -1,15 +1,15 @@
 import datetime
 from pydantic import BaseModel, Field, EmailStr, ConfigDict
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Union
 
 
 class UserBase(BaseModel):
     email: EmailStr
     postal_code: str
     household_size: int
-    dietary_preferences: Optional[str] = None
-    allergies: Optional[str] = None
-    weekly_budget: Optional[float] = None
+    dietary_preferences: Optional[List[str]] = []
+    allergies: Optional[List[str]] = []
+    preferred_loyalty_programs: Optional[List[str]] = []
 
 
 class UserCreate(UserBase):
@@ -21,21 +21,21 @@ class UserUpdate(BaseModel):
     email: Optional[EmailStr] = None
     postal_code: Optional[str] = None
     household_size: Optional[int] = None
-    dietary_preferences: Optional[str] = None
-    allergies: Optional[str] = None
-    weekly_budget: Optional[float] = None
+    dietary_preferences: Optional[List[str]] = None
+    allergies: Optional[List[str]] = None
+    preferred_loyalty_programs: Optional[List[str]] = None
     email_digest_enabled: Optional[bool] = None
 
 
 class UserRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: int
-    email: EmailStr
+    email: Optional[str] = None
     postal_code: str
     household_size: int
-    dietary_preferences: Optional[str] = None
-    allergies: Optional[str] = None
-    weekly_budget: Optional[float] = None
+    dietary_preferences: Optional[List[str]] = None
+    allergies: Optional[List[str]] = None
+    preferred_loyalty_programs: Optional[List[str]] = None
     email_digest_enabled: bool = False
 
 
@@ -43,7 +43,6 @@ class FeedbackCreate(BaseModel):
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
-                "user_id": 1,
                 "recipe_id": 1,
                 "meal_plan_id": None,
                 "rating": 5,
@@ -51,7 +50,7 @@ class FeedbackCreate(BaseModel):
             }
         }
     )
-    user_id: int
+    user_id: Optional[int] = None
     recipe_id: Optional[int] = None
     meal_plan_id: Optional[int] = None
     rating: int = Field(..., ge=1, le=5)
@@ -61,6 +60,7 @@ class FeedbackCreate(BaseModel):
 class FeedbackRead(FeedbackCreate):
     model_config = ConfigDict(from_attributes=True)
     id: int
+    user_id: int
     created_at: datetime.datetime
 
 
@@ -117,6 +117,7 @@ class RecipeIngestion(BaseModel):
 
 class RecipeFeedbackCreate(BaseModel):
     status: str
+    notes: Optional[str] = None
 
 
 class RecipeRatingCreate(BaseModel):
@@ -131,32 +132,33 @@ class RecipeRatingRead(RecipeRatingCreate):
 
 
 class UserNutritionGoalCreate(BaseModel):
-    daily_calories: Optional[int] = Field(None, ge=500, le=10000)
-    daily_protein: Optional[float] = Field(None, ge=0, le=1000)
-    daily_carbs: Optional[float] = Field(None, ge=0, le=1000)
-    daily_fat: Optional[float] = Field(None, ge=0, le=1000)
-    daily_fiber: Optional[float] = Field(None, ge=0, le=200)
+    goal_type: str = "maintenance"
+    target_calories: Optional[float] = Field(None, ge=500, le=10000)
+    target_protein: Optional[float] = Field(None, ge=0, le=1000)
+    target_carbs: Optional[float] = Field(None, ge=0, le=1000)
+    target_fats: Optional[float] = Field(None, ge=0, le=1000)
+    target_fiber: Optional[float] = Field(None, ge=0, le=200)
 
 
 class UserNutritionGoalRead(UserNutritionGoalCreate):
     model_config = ConfigDict(from_attributes=True)
     id: int
     user_id: int
-    updated_at: datetime.datetime
+    updated_at: Optional[datetime.datetime] = None
 
 
 class DailyNutritionRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: int
     user_id: int
-    date: datetime.date
-    calories: Optional[float] = None
-    protein: Optional[float] = None
-    carbs: Optional[float] = None
-    fat: Optional[float] = None
+    date: Union[datetime.date, str]
+    calories: float
+    protein: float
+    carbs: float
+    fats: float
     fiber: Optional[float] = None
-    notes: Optional[str] = None
-    created_at: datetime.datetime
+    micronutrients_json: str = "{}"
+    created_at: Optional[datetime.datetime] = None
 
 
 class DealRead(BaseModel):

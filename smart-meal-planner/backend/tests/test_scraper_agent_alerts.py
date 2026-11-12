@@ -13,12 +13,12 @@ async def test_scraper_agent_notifies_on_direct_failure():
     # We need to mock the scrape method of the specific scraper class
     # Since ScraperAgent instantiates them in __init__
 
-    with patch('app.agents.scrapers.walmart_scraper.WalmartScraper.scrape', new_callable=AsyncMock) as mock_scrape:
+    with patch('app.agents.scrapers.metro_scraper.MetroScraper.scrape', new_callable=AsyncMock) as mock_scrape:
         mock_scrape.side_effect = Exception("Structure changed")
 
         # Mock fallbacks to succeed so the whole process doesn't fail
         with patch.object(agent, '_scrape_with_flipp', new_callable=AsyncMock) as mock_flipp:
-            mock_flipp.return_value = [{"name": "Fallback Product", "price": 1.0, "store": "Walmart"}]
+            mock_flipp.return_value = [{"name": "Fallback Product", "price": 1.0, "store": "Metro"}]
 
             # Mock notification service
             with patch('app.services.notification_service.NotificationService.send_scraper_failure_alert', new_callable=AsyncMock) as mock_alert:
@@ -26,7 +26,7 @@ async def test_scraper_agent_notifies_on_direct_failure():
                 # We need to reduce retries and sleep time for faster test
                 with patch('asyncio.sleep', new_callable=AsyncMock):
                     # Act
-                    deals, scraper_type, _, _, _, _ = await agent._scrape_store("walmart", limit=1)
+                    deals, scraper_type, _, _, _, _ = await agent._scrape_store("metro", limit=1)
 
                     # Assert
                     assert len(deals) == 1
@@ -36,5 +36,5 @@ async def test_scraper_agent_notifies_on_direct_failure():
                     # Check that alert was sent
                     mock_alert.assert_called_once()
                     args = mock_alert.call_args[0]
-                    assert args[0] == "walmart"
+                    assert args[0] == "metro"
                     assert "Structure changed" in args[1]

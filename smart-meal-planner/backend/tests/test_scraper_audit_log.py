@@ -1,7 +1,7 @@
 import pytest
 import pytest_asyncio
 import os
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from unittest.mock import AsyncMock, patch
 from sqlmodel import select
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
@@ -106,8 +106,9 @@ async def test_api_get_logs(async_session):
     from app.api.endpoints import get_scraper_logs
 
     # Arrange
-    async_session.add(ScraperLog(store_name="Store1", status="success", timestamp=datetime.now(timezone.utc)))
-    async_session.add(ScraperLog(store_name="Store2", status="failure", screenshot_path="s.png", timestamp=datetime.now(timezone.utc)))
+    now = datetime.now(timezone.utc)
+    async_session.add(ScraperLog(store_name="Store1", status="success", timestamp=now - timedelta(seconds=5)))
+    async_session.add(ScraperLog(store_name="Store2", status="failure", screenshot_path="s.png", timestamp=now))
     await async_session.commit()
 
     # Act
@@ -157,9 +158,9 @@ async def test_api_get_log_artifacts(async_session):
         html_response = await get_scraper_log_html(log_id=log.id, session=async_session, current_user=User(id=1, email="a@b.com"))
 
         # Assert
-        assert screenshot_response.path == screenshot_path
+        assert os.path.abspath(screenshot_response.path) == os.path.abspath(screenshot_path)
         assert screenshot_response.media_type == "image/png"
-        assert html_response.path == html_path
+        assert os.path.abspath(html_response.path) == os.path.abspath(html_path)
         assert html_response.media_type == "text/html"
     finally:
         # Cleanup
