@@ -1,6 +1,8 @@
 import logging
 import sys
 from pythonjsonlogger import jsonlogger
+from app.core.secrets import SecretRedactionFilter
+
 
 def setup_logging():
     log = logging.getLogger()
@@ -10,4 +12,5 @@ def setup_logging():
         '%(asctime)s %(name)s %(levelname)s %(message)s'
     )
     handler.setFormatter(formatter)
+    handler.addFilter(SecretRedactionFilter())
     log.addHandler(handler)
