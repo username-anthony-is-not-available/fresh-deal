@@ -3,7 +3,14 @@ from sqlmodel import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.all_models import User, MealPlan, Recipe
 from app.schemas import UserUpdate
-from typing import Optional
+from app.services.nutrition_helpers import (
+    NUTRIENT_KEYS,
+    extract_day_meals,
+    extract_plan_days,
+    normalize_nutrition,
+    parse_nutrition_json,
+)
+from typing import Dict, Optional
 
 class UserService:
     def __init__(self, session: AsyncSession):
@@ -48,23 +55,42 @@ class UserService:
             return {}
 
         plan_data = json.loads(plan.content_json)
+        days = extract_plan_days(plan_data)
 
-        totals = {"calories": 0, "protein": 0, "carbs": 0, "fat": 0, "fiber": 0}
-        num_days = len(plan_data.get("meal_plan", []))
+        totals: Dict[str, float] = {key: 0.0 for key in NUTRIENT_KEYS}
+        num_days = len(days)
 
-        for day in plan_data.get("meal_plan", []):
-            for meal_type in ["breakfast", "lunch", "dinner"]:
-                meal = day.get(meal_type, {})
-                if meal:
-                    recipe_id = meal.get("recipe_id")
-                    if recipe_id:
-                        recipe = await self.session.get(Recipe, recipe_id)
-                        if recipe and recipe.nutrition_json:
-                            nutrition_data = json.loads(recipe.nutrition_json)
-                            for key in totals:
-                                totals[key] += nutrition_data.get(key, 0)
+        # Prefetch all referenced recipes in one query to avoid N+1 database roundtrips.
+        all_meals = [meal for day in days for meal in extract_day_meals(day)]
+        recipe_ids = {
+            meal["recipe_id"]
+            for meal in all_meals
+            if isinstance(meal.get("recipe_id"), int)
+        }
+        recipe_nutrition_by_id: Dict[int, Dict[str, float]] = {}
+        if recipe_ids:
+            rec_stmt = select(Recipe).where(Recipe.id.in_(recipe_ids))
+            rec_result = await self.session.execute(rec_stmt)
+            for recipe in rec_result.scalars().all():
+                parsed = parse_nutrition_json(recipe.nutrition_json)
+                if parsed:
+                    recipe_nutrition_by_id[recipe.id] = normalize_nutrition(parsed)
 
+        for meal in all_meals:
+            recipe_id = meal.get("recipe_id")
+            if isinstance(recipe_id, int) and recipe_id in recipe_nutrition_by_id:
+                nutrition_data = recipe_nutrition_by_id[recipe_id]
+            else:
+                nutrition_data = normalize_nutrition(meal.get("nutrition"))
+
+            for key in NUTRIENT_KEYS:
+                totals[key] += nutrition_data.get(key, 0.0)
+
+        rounded_totals = {key: round(value, 2) for key, value in totals.items()}
         return {
-            "totals": totals,
-            "daily_averages": {key: round(value / num_days, 2) if num_days > 0 else 0 for key, value in totals.items()}
+            "totals": rounded_totals,
+            "daily_averages": {
+                key: round(value / num_days, 2) if num_days > 0 else 0
+                for key, value in totals.items()
+            },
         }
