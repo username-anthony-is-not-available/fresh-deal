@@ -26,8 +26,11 @@ class Settings(BaseSettings):
     FALLBACK_MODEL: str = "meta-llama/llama-3.1-8b-instruct:free"
     OPENROUTER_MODEL: str = "anthropic/claude-3.5-sonnet" # Keeping for backward compat if any
 
-    # Redis
+    # Redis & Caching
     REDIS_URL: str = "redis://localhost:6379/0"
+    DEAL_CACHE_ENABLED: bool = True
+    DEAL_CACHE_TTL_SECONDS: int = 300
+    DEAL_CACHE_MAX_ENTRIES: int = 512
 
     # App Mode
     USE_MOCK_AI: bool = False

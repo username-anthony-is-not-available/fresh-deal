@@ -30,6 +30,7 @@ import json
 import os
 import logging
 from app.tasks import generate_meal_plan_task, scrape_task
+from app.services.deal_cache_service import deal_cache
 from app.services.user_service import UserService
 from app.services.llm_service import LLMService
 from app.schemas import (
@@ -374,6 +375,7 @@ def seed_data(session: Session = Depends(get_session)):
     # Keep synchronous as it's a dev tool and uses MockScraperAgent which might be sync
     scraper = MockScraperAgent(session)
     count = scraper.generate_deals()
+    deal_cache.invalidate_deals()
     return {"message": f"Seeded database with {count} deals."}
 
 
@@ -682,6 +684,19 @@ async def get_innovative_meal_suggestions(
         raise HTTPException(status_code=500, detail="Failed to generate innovative suggestions")
 
 
+@router.get("/deals/cache/stats")
+async def get_deal_cache_stats():
+    """Return server-side deal cache statistics and hit/miss telemetry."""
+    return deal_cache.get_stats()
+
+
+@router.post("/deals/cache/invalidate")
+async def invalidate_deal_cache(current_user: User = Depends(get_current_user)):
+    """Manually invalidate cached deal responses."""
+    new_version = deal_cache.invalidate_deals()
+    return {"status": "invalidated", "version": new_version}
+
+
 @router.get("/deals")
 async def list_deals(
     sort_by: Optional[str] = Query(
@@ -697,90 +712,103 @@ async def list_deals(
     session: AsyncSession = Depends(get_async_session),
 ):
     """
-    List active deals with product and store info using SQL-level filtering, sorting, and pagination.
-    Sort by 'category', 'effective_discount', 'discount_pct', or 'distance'.
-    Filter by proximity if postal_code is provided.
+    List active deals with product and store info using SQL-level filtering, sorting,
+    pagination, and server-side TTL caching.
     """
-    statement = select(Deal, Product, Store).join(Product).join(Store)
+    async def _load_deals() -> List[Dict[str, Any]]:
+        statement = select(Deal, Product, Store).join(Product).join(Store)
 
-    if active_only:
-        today = date.today()
-        statement = statement.where(Deal.valid_from <= today, Deal.valid_until >= today)
-    if category:
-        statement = statement.where(Product.category.ilike(f"%{category}%"))
-    if store:
-        statement = statement.where(Store.chain.ilike(f"%{store}%"))
-    if min_discount is not None:
-        statement = statement.where(Deal.discount_pct >= min_discount)
+        if active_only:
+            today = date.today()
+            statement = statement.where(Deal.valid_from <= today, Deal.valid_until >= today)
+        if category:
+            statement = statement.where(Product.category.ilike(f"%{category}%"))
+        if store:
+            statement = statement.where(Store.chain.ilike(f"%{store}%"))
+        if min_discount is not None:
+            statement = statement.where(Deal.discount_pct >= min_discount)
 
-    # Push sorting to SQL whenever possible
-    if sort_by == "category":
-        statement = statement.order_by(Product.category)
-    elif sort_by == "discount_pct":
-        statement = statement.order_by(func.coalesce(Deal.discount_pct, 0).desc())
+        if sort_by == "category":
+            statement = statement.order_by(Product.category)
+        elif sort_by == "discount_pct":
+            statement = statement.order_by(func.coalesce(Deal.discount_pct, 0).desc())
 
-    # Apply SQL pagination when not performing in-memory geospatial filtering or calculated sorting
-    defer_pagination = bool(postal_code) or sort_by in ("effective_discount", "distance")
-    if not defer_pagination:
-        if offset:
-            statement = statement.offset(offset)
-        if limit is not None:
-            statement = statement.limit(limit)
+        defer_pagination = bool(postal_code) or sort_by in ("effective_discount", "distance")
+        if not defer_pagination:
+            if offset:
+                statement = statement.offset(offset)
+            if limit is not None:
+                statement = statement.limit(limit)
 
-    result = await session.execute(statement)
-    results = result.all()
+        result = await session.execute(statement)
+        results = result.all()
 
-    deals_data = []
-    for deal, product, store_obj in results:
-        distance = None
-        if postal_code:
-            distance = GeospatialService.get_distance_between_postal_codes(
-                postal_code, store_obj.postal_code
-            )
-            # Filter by 5km radius if distance calculation was successful
-            if distance is not None and distance > 5.0:
-                continue
+        deals_data: List[Dict[str, Any]] = []
+        for deal, product, store_obj in results:
+            distance = None
+            if postal_code:
+                distance = GeospatialService.get_distance_between_postal_codes(
+                    postal_code, store_obj.postal_code
+                )
+                if distance is not None and distance > 5.0:
+                    continue
 
-        deal_item = {
-            "id": deal.id,
-            "product": product,
-            "store": store_obj,
-            "price": deal.price,
-            "original_price": deal.original_price,
-            "discount_pct": deal.discount_pct,
-            "valid_until": deal.valid_until,
-            "loyalty_program": deal.loyalty_program,
-            "loyalty_points": deal.loyalty_points,
-            "is_stale": store_obj.is_stale,
-            "image_url": deal.image_url,
-            "sale_info": deal.sale_info,
-            "quality_score": deal.quality_score,
-            "quality_level": deal.quality_level,
-            "distance": round(distance, 1) if distance is not None else None,
-        }
+            is_stale = store_obj.is_stale
+            # Detach lightweight model copies so cached entries remain valid across sessions.
+            product_copy = Product.model_validate(product.model_dump())
+            store_copy = Store.model_validate(store_obj.model_dump())
 
-        # Calculate effective price for sorting and display
-        effective_price = deal.price
-        if deal.loyalty_program and deal.loyalty_points:
-            point_value = LOYALTY_POINT_VALUES.get(deal.loyalty_program, 0)
-            effective_price -= deal.loyalty_points * point_value
+            deal_item = {
+                "id": deal.id,
+                "product": product_copy,
+                "store": store_copy,
+                "price": deal.price,
+                "original_price": deal.original_price,
+                "discount_pct": deal.discount_pct,
+                "valid_until": deal.valid_until,
+                "loyalty_program": deal.loyalty_program,
+                "loyalty_points": deal.loyalty_points,
+                "is_stale": is_stale,
+                "image_url": deal.image_url,
+                "sale_info": deal.sale_info,
+                "quality_score": deal.quality_score,
+                "quality_level": deal.quality_level,
+                "distance": round(distance, 1) if distance is not None else None,
+            }
 
-        deal_item["effective_price"] = round(effective_price, 2)
-        deals_data.append(deal_item)
+            effective_price = deal.price
+            if deal.loyalty_program and deal.loyalty_points:
+                point_value = LOYALTY_POINT_VALUES.get(deal.loyalty_program, 0)
+                effective_price -= deal.loyalty_points * point_value
 
-    # In-memory sorting for calculated fields
-    if sort_by == "effective_discount":
-        deals_data.sort(key=lambda x: (x["effective_price"], x["price"]))
-    elif sort_by == "distance":
-        deals_data.sort(key=lambda x: x.get("distance") if x.get("distance") is not None else float('inf'))
+            deal_item["effective_price"] = round(effective_price, 2)
+            deals_data.append(deal_item)
 
-    if defer_pagination:
-        if offset:
-            deals_data = deals_data[offset:]
-        if limit is not None:
-            deals_data = deals_data[:limit]
+        if sort_by == "effective_discount":
+            deals_data.sort(key=lambda x: (x["effective_price"], x["price"]))
+        elif sort_by == "distance":
+            deals_data.sort(key=lambda x: x.get("distance") if x.get("distance") is not None else float('inf'))
 
-    return deals_data
+        if defer_pagination:
+            if offset:
+                deals_data = deals_data[offset:]
+            if limit is not None:
+                deals_data = deals_data[:limit]
+
+        return deals_data
+
+    return await deal_cache.get_or_set_async(
+        "endpoint:list_deals",
+        _load_deals,
+        sort_by=sort_by,
+        postal_code=postal_code,
+        category=category,
+        store=store,
+        min_discount=min_discount,
+        active_only=active_only,
+        limit=limit,
+        offset=offset,
+    )
 
 
 @router.post("/plans/generate")

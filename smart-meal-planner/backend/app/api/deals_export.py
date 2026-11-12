@@ -11,6 +11,7 @@ from sqlmodel import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.db import get_async_session
 from app.models.all_models import Deal, Product, Store
+from app.services.deal_cache_service import deal_cache
 from app.services.deal_quality_service import deal_quality_service, DealQuality
 from typing import Optional, List
 from datetime import datetime, date
@@ -36,66 +37,74 @@ async def get_deals_data(
     limit: Optional[int] = None,
     active_only: bool = False,
 ) -> List[dict]:
-    """Fetch deals with optional SQL-level filtering, sorting, and limit."""
-    statement = select(Deal, Product, Store).join(Product).join(Store)
+    """Fetch deals with optional SQL-level filtering, sorting, limit, and TTL cache."""
+    async def _load() -> List[dict]:
+        statement = select(Deal, Product, Store).join(Product).join(Store)
 
-    if active_only:
-        today = date.today()
-        statement = statement.where(Deal.valid_from <= today, Deal.valid_until >= today)
-    if store:
-        statement = statement.where(Store.chain.ilike(f"%{store}%"))
-    if category:
-        statement = statement.where(Product.category.ilike(f"%{category}%"))
-    if min_discount:
-        statement = statement.where(Deal.discount_pct >= min_discount)
+        if active_only:
+            today = date.today()
+            statement = statement.where(Deal.valid_from <= today, Deal.valid_until >= today)
+        if store:
+            statement = statement.where(Store.chain.ilike(f"%{store}%"))
+        if category:
+            statement = statement.where(Product.category.ilike(f"%{category}%"))
+        if min_discount:
+            statement = statement.where(Deal.discount_pct >= min_discount)
 
-    # Push discount sorting and row cap directly to SQL
-    statement = statement.order_by(func.coalesce(Deal.discount_pct, 0).desc())
-    if limit is not None:
-        statement = statement.limit(limit)
+        # Push discount sorting and row cap directly to SQL
+        statement = statement.order_by(func.coalesce(Deal.discount_pct, 0).desc())
+        if limit is not None:
+            statement = statement.limit(limit)
 
-    result = await session.execute(statement)
-    results = result.all()
+        result = await session.execute(statement)
+        results = result.all()
 
-    deals_data = []
-    for deal, product, store_obj in results:
-        # Calculate effective price with loyalty points
-        effective_price = deal.price
-        loyalty_value = 0.0
-        if deal.loyalty_program and deal.loyalty_points:
-            point_value = LOYALTY_POINT_VALUES.get(deal.loyalty_program, 0)
-            loyalty_value = deal.loyalty_points * point_value
-            effective_price -= loyalty_value
+        deals_data = []
+        for deal, product, store_obj in results:
+            effective_price = deal.price
+            loyalty_value = 0.0
+            if deal.loyalty_program and deal.loyalty_points:
+                point_value = LOYALTY_POINT_VALUES.get(deal.loyalty_program, 0)
+                loyalty_value = deal.loyalty_points * point_value
+                effective_price -= loyalty_value
 
-        # Calculate savings
-        savings = 0.0
-        if deal.original_price and deal.original_price > deal.price:
-            savings = deal.original_price - deal.price
+            savings = 0.0
+            if deal.original_price and deal.original_price > deal.price:
+                savings = deal.original_price - deal.price
 
-        deals_data.append(
-            {
-                "product_name": product.name,
-                "category": product.category,
-                "store": store_obj.chain,
-                "store_location": store_obj.name,
-                "price": deal.price,
-                "original_price": deal.original_price or deal.price,
-                "discount_pct": deal.discount_pct or 0,
-                "savings": round(savings, 2),
-                "unit": product.unit_type,
-                "valid_from": str(deal.valid_from) if deal.valid_from else None,
-                "valid_until": str(deal.valid_until) if deal.valid_until else None,
-                "loyalty_program": deal.loyalty_program,
-                "loyalty_points": deal.loyalty_points,
-                "loyalty_value": round(loyalty_value, 2),
-                "effective_price": round(effective_price, 2),
-                "quality_score": deal.quality_score,
-                "quality_level": deal.quality_level,
-                "sale_info": deal.sale_info or "",
-            }
-        )
+            deals_data.append(
+                {
+                    "product_name": product.name,
+                    "category": product.category,
+                    "store": store_obj.chain,
+                    "store_location": store_obj.name,
+                    "price": deal.price,
+                    "original_price": deal.original_price or deal.price,
+                    "discount_pct": deal.discount_pct or 0,
+                    "savings": round(savings, 2),
+                    "unit": product.unit_type,
+                    "valid_from": str(deal.valid_from) if deal.valid_from else None,
+                    "valid_until": str(deal.valid_until) if deal.valid_until else None,
+                    "loyalty_program": deal.loyalty_program,
+                    "loyalty_points": deal.loyalty_points,
+                    "loyalty_value": round(loyalty_value, 2),
+                    "effective_price": round(effective_price, 2),
+                    "quality_score": deal.quality_score,
+                    "quality_level": deal.quality_level,
+                    "sale_info": deal.sale_info or "",
+                }
+            )
+        return deals_data
 
-    return deals_data
+    return await deal_cache.get_or_set_async(
+        "export:deals_data",
+        _load,
+        store=store,
+        category=category,
+        min_discount=min_discount,
+        limit=limit,
+        active_only=active_only,
+    )
 
 
 @router.get("/export")
@@ -212,96 +221,94 @@ async def get_weekly_summary(
     session: AsyncSession = Depends(get_async_session),
 ):
     """
-    Get a weekly summary of deals by store and category using SQL GROUP BY aggregations.
-
-    Returns aggregate statistics useful for quick decision-making:
-    - Total deals per store
-    - Average discount by category
-    - Top categories with best discounts
+    Get a weekly summary of deals by store and category using SQL GROUP BY aggregations
+    and server-side caching.
     """
-    savings_expr = case(
-        (
-            (Deal.original_price.is_not(None)) & (Deal.original_price > Deal.price),
-            Deal.original_price - Deal.price,
-        ),
-        else_=0.0,
-    )
-    discount_expr = func.coalesce(Deal.discount_pct, 0.0)
+    async def _compute_summary() -> dict:
+        savings_expr = case(
+            (
+                (Deal.original_price.is_not(None)) & (Deal.original_price > Deal.price),
+                Deal.original_price - Deal.price,
+            ),
+            else_=0.0,
+        )
+        discount_expr = func.coalesce(Deal.discount_pct, 0.0)
 
-    store_rows = (
-        await session.execute(
-            select(
-                Store.chain,
-                func.count(Deal.id),
-                func.sum(savings_expr),
-                func.avg(discount_expr),
+        store_rows = (
+            await session.execute(
+                select(
+                    Store.chain,
+                    func.count(Deal.id),
+                    func.sum(savings_expr),
+                    func.avg(discount_expr),
+                )
+                .select_from(Deal)
+                .join(Store, Deal.store_id == Store.id)
+                .group_by(Store.chain)
             )
-            .select_from(Deal)
-            .join(Store, Deal.store_id == Store.id)
-            .group_by(Store.chain)
-        )
-    ).all()
+        ).all()
 
-    if not store_rows:
-        return {"message": "No deals available", "summary": {}}
+        if not store_rows:
+            return {"message": "No deals available", "summary": {}}
 
-    store_cats_rows = (
-        await session.execute(
-            select(Store.chain, Product.category)
-            .select_from(Deal)
-            .join(Store, Deal.store_id == Store.id)
-            .join(Product, Deal.product_id == Product.id)
-            .distinct()
-        )
-    ).all()
-    cats_by_store: dict[str, list[str]] = {}
-    for store_chain, cat in store_cats_rows:
-        cats_by_store.setdefault(store_chain, []).append(cat)
+        store_cats_rows = (
+            await session.execute(
+                select(Store.chain, Product.category)
+                .select_from(Deal)
+                .join(Store, Deal.store_id == Store.id)
+                .join(Product, Deal.product_id == Product.id)
+                .distinct()
+            )
+        ).all()
+        cats_by_store: dict[str, list[str]] = {}
+        for store_chain, cat in store_cats_rows:
+            cats_by_store.setdefault(store_chain, []).append(cat)
 
-    stores_summary = {}
-    total_deals = 0
-    for store_chain, deal_count, total_savings, avg_discount in store_rows:
-        count = int(deal_count or 0)
-        total_deals += count
-        stores_summary[store_chain] = {
-            "deal_count": count,
-            "total_savings": round(float(total_savings or 0.0), 2),
-            "avg_discount": round(float(avg_discount or 0.0), 1),
-            "categories": cats_by_store.get(store_chain, []),
+        stores_summary = {}
+        total_deals = 0
+        for store_chain, deal_count, total_savings, avg_discount in store_rows:
+            count = int(deal_count or 0)
+            total_deals += count
+            stores_summary[store_chain] = {
+                "deal_count": count,
+                "total_savings": round(float(total_savings or 0.0), 2),
+                "avg_discount": round(float(avg_discount or 0.0), 1),
+                "categories": cats_by_store.get(store_chain, []),
+            }
+
+        category_rows = (
+            await session.execute(
+                select(
+                    Product.category,
+                    func.count(Deal.id),
+                    func.avg(discount_expr),
+                )
+                .select_from(Deal)
+                .join(Product, Deal.product_id == Product.id)
+                .group_by(Product.category)
+            )
+        ).all()
+
+        categories_summary = {}
+        for cat_name, deal_count, avg_discount in category_rows:
+            categories_summary[cat_name] = {
+                "deal_count": int(deal_count or 0),
+                "avg_discount": round(float(avg_discount or 0.0), 1),
+            }
+
+        top_categories = sorted(
+            categories_summary.items(), key=lambda x: x[1]["avg_discount"], reverse=True
+        )[:5]
+
+        return {
+            "generated_at": datetime.now().isoformat(),
+            "total_deals": total_deals,
+            "stores": stores_summary,
+            "categories": categories_summary,
+            "top_categories": [{"name": c[0], **c[1]} for c in top_categories],
         }
 
-    category_rows = (
-        await session.execute(
-            select(
-                Product.category,
-                func.count(Deal.id),
-                func.avg(discount_expr),
-            )
-            .select_from(Deal)
-            .join(Product, Deal.product_id == Product.id)
-            .group_by(Product.category)
-        )
-    ).all()
-
-    categories_summary = {}
-    for cat_name, deal_count, avg_discount in category_rows:
-        categories_summary[cat_name] = {
-            "deal_count": int(deal_count or 0),
-            "avg_discount": round(float(avg_discount or 0.0), 1),
-        }
-
-    # Sort categories by average discount
-    top_categories = sorted(
-        categories_summary.items(), key=lambda x: x[1]["avg_discount"], reverse=True
-    )[:5]
-
-    return {
-        "generated_at": datetime.now().isoformat(),
-        "total_deals": total_deals,
-        "stores": stores_summary,
-        "categories": categories_summary,
-        "top_categories": [{"name": c[0], **c[1]} for c in top_categories],
-    }
+    return await deal_cache.get_or_set_async("export:weekly_summary", _compute_summary)
 
 
 def generate_markdown_table(deals: List[dict]) -> str:
