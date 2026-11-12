@@ -91,7 +91,7 @@ async def test_refined_error_categorization(async_session):
     metrics = await health_service.get_store_health_metrics(days=1)
 
     # Assert
-    store_metric = next(m for m in metrics if m["store_name"] == store_name)
+    store_metric = next(m for m in metrics if m["store_name"].lower() == store_name.lower())
     breakdown = store_metric["error_breakdown"]
 
     assert breakdown.get("Proxy Failure") == 1
