@@ -1,5 +1,15 @@
+from typing import Any
 from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from app.core.secrets import (
+    DEFAULT_INSECURE_DB_PASSWORDS,
+    DEFAULT_INSECURE_ENCRYPTION_KEY,
+    DEFAULT_INSECURE_SECRET_KEYS,
+    SENSITIVE_FIELD_NAMES,
+    build_redacted_summary,
+    is_valid_fernet_key,
+    resolve_env_secret,
+)
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "Smart Meal Planner"
@@ -93,19 +103,44 @@ class Settings(BaseSettings):
         extra="ignore"
     )
 
+    APP_MASTER_KEY: str | None = None
+
     @model_validator(mode='after')
     def validate_settings(self) -> 'Settings':
+        # Resolve file-mounted (*_FILE) and encrypted (enc:...) secrets cleanly.
+        for field_name in SENSITIVE_FIELD_NAMES:
+            current_val = getattr(self, field_name, None)
+            resolved_val = resolve_env_secret(
+                field_name, current_val, master_key=self.APP_MASTER_KEY
+            )
+            if resolved_val != current_val:
+                setattr(self, field_name, resolved_val)
+
+        # Validate Fernet key format early across all environments.
+        if not is_valid_fernet_key(self.ENCRYPTION_KEY):
+            raise ValueError("ENCRYPTION_KEY must be a valid 32-byte URL-safe base64 Fernet key.")
+
         # Check for OpenRouter API key if not using mock AI or local models
         if not self.USE_MOCK_AI and not self.USE_SQLITE_LOCAL and not self.OLLAMA_BASE_URL and not self.OPENROUTER_API_KEY:
             raise ValueError("OPENROUTER_API_KEY must be set when USE_MOCK_AI is False.")
 
-        # Check for default secret key in production/staging environments
-        if self.ENVIRONMENT in ["production", "staging"] and self.SECRET_KEY == "a_very_secret_key":
-            raise ValueError("Default SECRET_KEY is not allowed in production or staging environments. Please generate a new one.")
+        # Enforce strong, non-default credentials in staging/production environments.
+        if self.ENVIRONMENT in ["production", "staging"]:
+            if self.SECRET_KEY in DEFAULT_INSECURE_SECRET_KEYS or len(self.SECRET_KEY) < 32:
+                raise ValueError(
+                    "Default or weak SECRET_KEY (<32 chars) is not allowed in production or staging environments. Please generate a new one."
+                )
 
-        # Check for default encryption key in production/staging environments
-        if self.ENVIRONMENT in ["production", "staging"] and self.ENCRYPTION_KEY == "VQZJVhu2seQqq4ZOM_KlwxbqOE0WOf1070WURHeJABQ=":
-             raise ValueError("Default ENCRYPTION_KEY is not allowed in production or staging environments. Please generate a new one.")
+            if self.ENCRYPTION_KEY == DEFAULT_INSECURE_ENCRYPTION_KEY:
+                raise ValueError(
+                    "Default ENCRYPTION_KEY is not allowed in production or staging environments. Please generate a new one."
+                )
+
+            if not self.USE_SQLITE_LOCAL and not self.DATABASE_URL:
+                if (self.POSTGRES_PASSWORD or "") in DEFAULT_INSECURE_DB_PASSWORDS:
+                    raise ValueError(
+                        "Default or empty POSTGRES_PASSWORD is not allowed in production or staging environments."
+                    )
 
         # In local SQLite mode, default Celery eager mode to True if not explicitly set
         if self.USE_SQLITE_LOCAL:
@@ -113,6 +148,10 @@ class Settings(BaseSettings):
             self.CELERY_TASK_EAGER_PROPAGATES = True
 
         return self
+
+    def redacted_summary(self) -> dict[str, Any]:
+        """Return a safe copy of configuration settings with all secrets redacted."""
+        return build_redacted_summary(self)
 
     @property
     def SQLALCHEMY_DATABASE_URI(self) -> str:
