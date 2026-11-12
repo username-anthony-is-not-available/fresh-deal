@@ -1,10 +1,10 @@
 import re
-from typing import List, Dict, Any, Optional, Tuple
+from typing import List, Dict, Any, Optional
 from datetime import datetime, timezone
+from sqlalchemy import func
 from sqlmodel import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
-from app.models.all_models import Deal, Store
+from app.models.all_models import Deal, Product, Store
 from app.services.deal_quality_service import deal_quality_service
 
 
@@ -48,46 +48,42 @@ class DealService:
 
     async def get_active_deals_as_dicts(self) -> List[Dict[str, Any]]:
         """
-        Fetches active deals and converts them to dictionaries for LLM and planning context.
-        Includes loyalty-adjusted effective prices and savings.
+        Fetches active deals and converts them to dictionaries for LLM and planning context
+        using a single SQL JOIN query instead of separate selectinload roundtrips.
         """
         today = datetime.now(timezone.utc).date()
 
         statement = (
-            select(Deal)
-            .options(
-                selectinload(Deal.product),
-                selectinload(Deal.store)
-            )
+            select(Deal, Product, Store)
+            .join(Product, Deal.product_id == Product.id)
+            .join(Store, Deal.store_id == Store.id)
             .where(Deal.valid_from <= today, Deal.valid_until >= today)
         )
 
         result = await self.session.execute(statement)
-        deals = result.scalars().unique().all()
+        rows = result.all()
 
         deals_list = []
-        for deal in deals:
-            if deal.product and deal.store:
-                eff_p, loy_sav, is_mem = _calc_loyalty_and_effective(
-                    deal.price, deal.loyalty_program, deal.loyalty_points, deal.sale_info
-                )
-                deal_dict = {
-                    "product": deal.product.name,
-                    "store": deal.store.name,
-                    "category": deal.product.category,
-                    "price": deal.price,
-                    "effective_price": eff_p,
-                    "loyalty_savings_cad": loy_sav,
-                    "is_member_price": is_mem,
-                    "regular_price": deal.original_price,
-                    "discount_percent": deal.discount_pct,
-                    "expires_in_days": (deal.valid_until - today).days,
-                    "unit": deal.product.unit_type,
-                    "loyalty_program": deal.loyalty_program,
-                    "loyalty_points": deal.loyalty_points,
-                    "sale_info": deal.sale_info,
-                }
-                deals_list.append(deal_dict)
+        for deal, product, store in rows:
+            eff_p, loy_sav, is_mem = _calc_loyalty_and_effective(
+                deal.price, deal.loyalty_program, deal.loyalty_points, deal.sale_info
+            )
+            deals_list.append({
+                "product": product.name,
+                "store": store.name,
+                "category": product.category,
+                "price": deal.price,
+                "effective_price": eff_p,
+                "loyalty_savings_cad": loy_sav,
+                "is_member_price": is_mem,
+                "regular_price": deal.original_price,
+                "discount_percent": deal.discount_pct,
+                "expires_in_days": (deal.valid_until - today).days,
+                "unit": product.unit_type,
+                "loyalty_program": deal.loyalty_program,
+                "loyalty_points": deal.loyalty_points,
+                "sale_info": deal.sale_info,
+            })
 
         return deals_list
 
@@ -97,46 +93,48 @@ class DealService:
         Optionally filters by the first 3 characters of the postal code (Forward Sortation Area).
         """
         today = datetime.now(timezone.utc).date()
+        candidate_limit = max(limit * 5, 50)
 
         statement = (
-            select(Deal)
-            .options(
-                selectinload(Deal.product),
-                selectinload(Deal.store)
-            )
+            select(Deal, Product, Store)
+            .join(Product, Deal.product_id == Product.id)
+            .join(Store, Deal.store_id == Store.id)
             .where(Deal.valid_from <= today, Deal.valid_until >= today)
+            .order_by(
+                func.coalesce(Deal.quality_score, 0).desc(),
+                func.coalesce(Deal.discount_pct, 0).desc(),
+            )
+            .limit(candidate_limit)
         )
 
         if postal_code:
             fsa = postal_code[:3].upper()
-            statement = statement.join(Store).where(Store.postal_code.like(f"{fsa}%"))
+            statement = statement.where(Store.postal_code.like(f"{fsa}%"))
 
         result = await self.session.execute(statement)
-        deals = result.scalars().unique().all()
+        rows = result.all()
 
         deals_dicts = []
-        for deal in deals:
-            if deal.product and deal.store:
-                eff_p, loy_sav, is_mem = _calc_loyalty_and_effective(
-                    deal.price, deal.loyalty_program, deal.loyalty_points, deal.sale_info
-                )
-                d = {
-                    "product": deal.product.name,
-                    "store": deal.store.name,
-                    "category": deal.product.category,
-                    "price": deal.price,
-                    "effective_price": eff_p,
-                    "loyalty_savings_cad": loy_sav,
-                    "is_member_price": is_mem,
-                    "original_price": deal.original_price,
-                    "discount_pct": deal.discount_pct,
-                    "unit": deal.product.unit_type,
-                    "image_url": deal.image_url,
-                    "sale_info": deal.sale_info,
-                    "loyalty_program": deal.loyalty_program,
-                    "loyalty_points": deal.loyalty_points
-                }
-                deals_dicts.append(d)
+        for deal, product, store in rows:
+            eff_p, loy_sav, is_mem = _calc_loyalty_and_effective(
+                deal.price, deal.loyalty_program, deal.loyalty_points, deal.sale_info
+            )
+            deals_dicts.append({
+                "product": product.name,
+                "store": store.name,
+                "category": product.category,
+                "price": deal.price,
+                "effective_price": eff_p,
+                "loyalty_savings_cad": loy_sav,
+                "is_member_price": is_mem,
+                "original_price": deal.original_price,
+                "discount_pct": deal.discount_pct,
+                "unit": product.unit_type,
+                "image_url": deal.image_url,
+                "sale_info": deal.sale_info,
+                "loyalty_program": deal.loyalty_program,
+                "loyalty_points": deal.loyalty_points,
+            })
 
         top_deals = deal_quality_service.rank_deals(deals_dicts, top_n=limit)
         return top_deals

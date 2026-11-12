@@ -23,7 +23,8 @@ from app.models.all_models import (
 from app.agents.mock_scraper import MockScraperAgent
 from app.services.shopping_optimizer import ShoppingListOptimizer
 from pydantic import BaseModel
-from typing import Optional, List, Dict, Any
+from datetime import date
+from typing import Annotated, Optional, List, Dict, Any
 from celery.result import AsyncResult
 import json
 import os
@@ -687,28 +688,54 @@ async def list_deals(
         None, enum=["category", "effective_discount", "discount_pct", "distance"]
     ),
     postal_code: Optional[str] = None,
+    category: Optional[str] = None,
+    store: Optional[str] = None,
+    min_discount: Optional[float] = None,
+    active_only: bool = False,
+    limit: Annotated[Optional[int], Query(ge=1, le=500)] = None,
+    offset: Annotated[int, Query(ge=0)] = 0,
     session: AsyncSession = Depends(get_async_session),
 ):
     """
-    List all active deals with product and store info.
+    List active deals with product and store info using SQL-level filtering, sorting, and pagination.
     Sort by 'category', 'effective_discount', 'discount_pct', or 'distance'.
     Filter by proximity if postal_code is provided.
     """
     statement = select(Deal, Product, Store).join(Product).join(Store)
 
-    # Sorting by category is done at the DB level for efficiency
+    if active_only:
+        today = date.today()
+        statement = statement.where(Deal.valid_from <= today, Deal.valid_until >= today)
+    if category:
+        statement = statement.where(Product.category.ilike(f"%{category}%"))
+    if store:
+        statement = statement.where(Store.chain.ilike(f"%{store}%"))
+    if min_discount is not None:
+        statement = statement.where(Deal.discount_pct >= min_discount)
+
+    # Push sorting to SQL whenever possible
     if sort_by == "category":
         statement = statement.order_by(Product.category)
+    elif sort_by == "discount_pct":
+        statement = statement.order_by(func.coalesce(Deal.discount_pct, 0).desc())
+
+    # Apply SQL pagination when not performing in-memory geospatial filtering or calculated sorting
+    defer_pagination = bool(postal_code) or sort_by in ("effective_discount", "distance")
+    if not defer_pagination:
+        if offset:
+            statement = statement.offset(offset)
+        if limit is not None:
+            statement = statement.limit(limit)
 
     result = await session.execute(statement)
     results = result.all()
 
     deals_data = []
-    for deal, product, store in results:
+    for deal, product, store_obj in results:
         distance = None
         if postal_code:
             distance = GeospatialService.get_distance_between_postal_codes(
-                postal_code, store.postal_code
+                postal_code, store_obj.postal_code
             )
             # Filter by 5km radius if distance calculation was successful
             if distance is not None and distance > 5.0:
@@ -717,16 +744,18 @@ async def list_deals(
         deal_item = {
             "id": deal.id,
             "product": product,
-            "store": store,
+            "store": store_obj,
             "price": deal.price,
             "original_price": deal.original_price,
             "discount_pct": deal.discount_pct,
             "valid_until": deal.valid_until,
             "loyalty_program": deal.loyalty_program,
             "loyalty_points": deal.loyalty_points,
-            "is_stale": store.is_stale,
+            "is_stale": store_obj.is_stale,
             "image_url": deal.image_url,
             "sale_info": deal.sale_info,
+            "quality_score": deal.quality_score,
+            "quality_level": deal.quality_level,
             "distance": round(distance, 1) if distance is not None else None,
         }
 
@@ -742,10 +771,14 @@ async def list_deals(
     # In-memory sorting for calculated fields
     if sort_by == "effective_discount":
         deals_data.sort(key=lambda x: (x["effective_price"], x["price"]))
-    elif sort_by == "discount_pct":
-        deals_data.sort(key=lambda x: x.get("discount_pct") or 0, reverse=True)
     elif sort_by == "distance":
         deals_data.sort(key=lambda x: x.get("distance") if x.get("distance") is not None else float('inf'))
+
+    if defer_pagination:
+        if offset:
+            deals_data = deals_data[offset:]
+        if limit is not None:
+            deals_data = deals_data[:limit]
 
     return deals_data
 

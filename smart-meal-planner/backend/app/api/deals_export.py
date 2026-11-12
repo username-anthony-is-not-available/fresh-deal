@@ -6,6 +6,7 @@ for use with external LLMs or other tools.
 
 from fastapi import APIRouter, Depends, Query, Response
 from fastapi.responses import JSONResponse
+from sqlalchemy import case, func
 from sqlmodel import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.db import get_async_session
@@ -33,16 +34,25 @@ async def get_deals_data(
     category: Optional[str] = None,
     min_discount: Optional[float] = None,
     limit: Optional[int] = None,
+    active_only: bool = False,
 ) -> List[dict]:
-    """Fetch deals with optional filters."""
+    """Fetch deals with optional SQL-level filtering, sorting, and limit."""
     statement = select(Deal, Product, Store).join(Product).join(Store)
 
+    if active_only:
+        today = date.today()
+        statement = statement.where(Deal.valid_from <= today, Deal.valid_until >= today)
     if store:
         statement = statement.where(Store.chain.ilike(f"%{store}%"))
     if category:
         statement = statement.where(Product.category.ilike(f"%{category}%"))
     if min_discount:
         statement = statement.where(Deal.discount_pct >= min_discount)
+
+    # Push discount sorting and row cap directly to SQL
+    statement = statement.order_by(func.coalesce(Deal.discount_pct, 0).desc())
+    if limit is not None:
+        statement = statement.limit(limit)
 
     result = await session.execute(statement)
     results = result.all()
@@ -79,14 +89,11 @@ async def get_deals_data(
                 "loyalty_points": deal.loyalty_points,
                 "loyalty_value": round(loyalty_value, 2),
                 "effective_price": round(effective_price, 2),
+                "quality_score": deal.quality_score,
+                "quality_level": deal.quality_level,
+                "sale_info": deal.sale_info or "",
             }
         )
-
-    # Sort by discount percentage (best deals first)
-    deals_data.sort(key=lambda x: x["discount_pct"], reverse=True)
-
-    if limit:
-        deals_data = deals_data[:limit]
 
     return deals_data
 
@@ -176,7 +183,10 @@ async def get_best_deals(
 
     Considers both price discounts and loyalty point values when ranking.
     """
-    deals = await get_deals_data(session, store, category, min_discount=5.0, limit=None)
+    candidate_limit = max(limit * 5, 100) if limit is not None else None
+    deals = await get_deals_data(
+        session, store, category, min_discount=5.0, limit=candidate_limit
+    )
 
     # Calculate a "deal score" that considers both discount % and loyalty value
     for deal in deals:
@@ -202,63 +212,83 @@ async def get_weekly_summary(
     session: AsyncSession = Depends(get_async_session),
 ):
     """
-    Get a weekly summary of deals by store and category.
+    Get a weekly summary of deals by store and category using SQL GROUP BY aggregations.
 
     Returns aggregate statistics useful for quick decision-making:
     - Total deals per store
     - Average discount by category
     - Top categories with best discounts
     """
-    deals = await get_deals_data(session)
+    savings_expr = case(
+        (
+            (Deal.original_price.is_not(None)) & (Deal.original_price > Deal.price),
+            Deal.original_price - Deal.price,
+        ),
+        else_=0.0,
+    )
+    discount_expr = func.coalesce(Deal.discount_pct, 0.0)
 
-    if not deals:
+    store_rows = (
+        await session.execute(
+            select(
+                Store.chain,
+                func.count(Deal.id),
+                func.sum(savings_expr),
+                func.avg(discount_expr),
+            )
+            .select_from(Deal)
+            .join(Store, Deal.store_id == Store.id)
+            .group_by(Store.chain)
+        )
+    ).all()
+
+    if not store_rows:
         return {"message": "No deals available", "summary": {}}
 
-    # Aggregate by store
+    store_cats_rows = (
+        await session.execute(
+            select(Store.chain, Product.category)
+            .select_from(Deal)
+            .join(Store, Deal.store_id == Store.id)
+            .join(Product, Deal.product_id == Product.id)
+            .distinct()
+        )
+    ).all()
+    cats_by_store: dict[str, list[str]] = {}
+    for store_chain, cat in store_cats_rows:
+        cats_by_store.setdefault(store_chain, []).append(cat)
+
     stores_summary = {}
-    for deal in deals:
-        store = deal["store"]
-        if store not in stores_summary:
-            stores_summary[store] = {
-                "deal_count": 0,
-                "total_savings": 0,
-                "avg_discount": 0,
-                "categories": set(),
-            }
-        stores_summary[store]["deal_count"] += 1
-        stores_summary[store]["total_savings"] += deal["savings"]
-        stores_summary[store]["categories"].add(deal["category"])
+    total_deals = 0
+    for store_chain, deal_count, total_savings, avg_discount in store_rows:
+        count = int(deal_count or 0)
+        total_deals += count
+        stores_summary[store_chain] = {
+            "deal_count": count,
+            "total_savings": round(float(total_savings or 0.0), 2),
+            "avg_discount": round(float(avg_discount or 0.0), 1),
+            "categories": cats_by_store.get(store_chain, []),
+        }
 
-    # Calculate averages
-    for store in stores_summary:
-        count = stores_summary[store]["deal_count"]
-        stores_summary[store]["avg_discount"] = round(
-            sum(d["discount_pct"] for d in deals if d["store"] == store) / count, 1
+    category_rows = (
+        await session.execute(
+            select(
+                Product.category,
+                func.count(Deal.id),
+                func.avg(discount_expr),
+            )
+            .select_from(Deal)
+            .join(Product, Deal.product_id == Product.id)
+            .group_by(Product.category)
         )
-        stores_summary[store]["categories"] = list(stores_summary[store]["categories"])
-        stores_summary[store]["total_savings"] = round(
-            stores_summary[store]["total_savings"], 2
-        )
+    ).all()
 
-    # Aggregate by category
     categories_summary = {}
-    for deal in deals:
-        cat = deal["category"]
-        if cat not in categories_summary:
-            categories_summary[cat] = {
-                "deal_count": 0,
-                "avg_discount": 0,
-                "discounts": [],
-            }
-        categories_summary[cat]["deal_count"] += 1
-        categories_summary[cat]["discounts"].append(deal["discount_pct"])
-
-    for cat in categories_summary:
-        discounts = categories_summary[cat]["discounts"]
-        categories_summary[cat]["avg_discount"] = round(
-            sum(discounts) / len(discounts), 1
-        )
-        del categories_summary[cat]["discounts"]
+    for cat_name, deal_count, avg_discount in category_rows:
+        categories_summary[cat_name] = {
+            "deal_count": int(deal_count or 0),
+            "avg_discount": round(float(avg_discount or 0.0), 1),
+        }
 
     # Sort categories by average discount
     top_categories = sorted(
@@ -267,7 +297,7 @@ async def get_weekly_summary(
 
     return {
         "generated_at": datetime.now().isoformat(),
-        "total_deals": len(deals),
+        "total_deals": total_deals,
         "stores": stores_summary,
         "categories": categories_summary,
         "top_categories": [{"name": c[0], **c[1]} for c in top_categories],
@@ -406,7 +436,7 @@ async def get_deals_with_quality(
                 "store": deal["store"],
                 "loyalty_points": deal["loyalty_points"],
                 "loyalty_program": deal["loyalty_program"],
-                "sale_info": "",  # Not available in DB deals
+                "sale_info": deal.get("sale_info", ""),
             }
         )
 
