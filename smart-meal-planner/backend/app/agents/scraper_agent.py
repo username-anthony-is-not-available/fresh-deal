@@ -532,6 +532,21 @@ class ScraperAgent:
             await self.session.flush()
 
         today = date.today()
+        # Prefetch recent PriceRecord rows in one bulk query to eliminate N+1 lookups.
+        all_store_ids = [s.id for s in store_cache.values() if s.id]
+        historical_prices_map: Dict[tuple, List[float]] = {}
+        if all_store_ids:
+            hist_stmt = (
+                select(PriceRecord.product_id, PriceRecord.store_id, PriceRecord.price)
+                .where(PriceRecord.store_id.in_(all_store_ids))
+                .order_by(desc(PriceRecord.timestamp))
+            )
+            hist_rows = (await self.session.execute(hist_stmt)).all()
+            for pid, sid, hist_price in hist_rows:
+                bucket = historical_prices_map.setdefault((pid, sid), [])
+                if len(bucket) < 5:
+                    bucket.append(hist_price)
+
         new_deals_count = 0
         for deal_data in deals:
             store_name = deal_data.get("store", "Unknown Store")
@@ -546,15 +561,7 @@ class ScraperAgent:
             if original_price and original_price > price:
                 discount_pct = round(((original_price - price) / original_price) * 100)
 
-            # Fetch historical prices for quality scoring
-            hist_stmt = (
-                select(PriceRecord.price)
-                .where(PriceRecord.product_id == product.id, PriceRecord.store_id == store.id)
-                .order_by(desc(PriceRecord.timestamp))
-                .limit(5)
-            )
-            hist_result = await self.session.execute(hist_stmt)
-            historical_prices = hist_result.scalars().all()
+            historical_prices = historical_prices_map.get((product.id, store.id), [])
 
             # Automated fresh-deal Enhancement: Score deal quality
             quality_score = deal_quality_service.score_deal(deal_data, historical_prices=historical_prices)
@@ -570,6 +577,7 @@ class ScraperAgent:
                     price=price
                 )
                 self.session.add(price_record)
+                historical_prices_map[(product.id, store.id)] = [price] + historical_prices[:4]
 
             valid_from = _coerce_date(deal_data.get("valid_from"), today)
             valid_until = _coerce_date(deal_data.get("valid_until") or deal_data.get("valid_to"), today + timedelta(days=7))

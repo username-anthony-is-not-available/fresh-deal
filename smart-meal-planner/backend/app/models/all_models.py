@@ -1,5 +1,6 @@
 import json
 from typing import Optional, List
+from sqlalchemy import Index
 from sqlmodel import SQLModel, Field, Relationship
 from datetime import datetime, date, timezone, timedelta
 from app.core.crypto import EncryptedString, EncryptedInt
@@ -55,8 +56,8 @@ class User(SQLModel, table=True):
 class Store(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     name: str
-    chain: str  # Walmart, Provigo, IGA
-    postal_code: str
+    chain: str = Field(index=True)  # Walmart, Provigo, IGA
+    postal_code: str = Field(index=True)
     address: Optional[str] = None
     last_scraped_at: Optional[datetime] = Field(default=None)
 
@@ -73,26 +74,31 @@ class Store(SQLModel, table=True):
 
 class Product(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
-    name: str
-    category: str  # Produce, Meat, Dairy, etc.
+    name: str = Field(index=True)
+    category: str = Field(index=True)  # Produce, Meat, Dairy, etc.
     unit_type: str  # kg, lb, each
 
     deals: List["Deal"] = Relationship(back_populates="product")
 
 
 class Deal(SQLModel, table=True):
+    __table_args__ = (
+        Index("ix_deal_valid_window_discount", "valid_from", "valid_until", "discount_pct"),
+        Index("ix_deal_store_product_valid", "store_id", "product_id", "valid_until"),
+    )
+
     id: Optional[int] = Field(default=None, primary_key=True)
-    product_id: int = Field(foreign_key="product.id")
-    store_id: int = Field(foreign_key="store.id")
+    product_id: int = Field(foreign_key="product.id", index=True)
+    store_id: int = Field(foreign_key="store.id", index=True)
     price: float
     original_price: Optional[float] = None
-    discount_pct: Optional[float] = None
-    valid_from: date
-    valid_until: date
+    discount_pct: Optional[float] = Field(default=None, index=True)
+    valid_from: date = Field(index=True)
+    valid_until: date = Field(index=True)
 
     loyalty_program: Optional[str] = None
     loyalty_points: Optional[int] = None
-    quality_score: Optional[float] = Field(default=None)
+    quality_score: Optional[float] = Field(default=None, index=True)
     quality_level: Optional[str] = Field(default=None)
     image_url: Optional[str] = Field(default=None)
     sale_info: Optional[str] = Field(default=None)
@@ -254,6 +260,10 @@ class ScraperLog(SQLModel, table=True):
 
 
 class PriceRecord(SQLModel, table=True):
+    __table_args__ = (
+        Index("ix_pricerecord_product_store_ts", "product_id", "store_id", "timestamp"),
+    )
+
     id: Optional[int] = Field(default=None, primary_key=True)
     product_id: int = Field(foreign_key="product.id", index=True)
     store_id: int = Field(foreign_key="store.id", index=True)
