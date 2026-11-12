@@ -161,6 +161,49 @@ class DailyNutritionRead(BaseModel):
     created_at: Optional[datetime.datetime] = None
 
 
+class DietaryProfileRead(BaseModel):
+    key: str
+    label: str
+    macro_split: Dict[str, float]
+    max_carbs_g: Optional[float] = None
+    max_sodium_mg: Optional[float] = None
+    min_protein_pct: Optional[float] = None
+    min_fiber_g: float
+    micronutrients_to_watch: List[str] = []
+
+
+class RecommendedNutritionRequest(BaseModel):
+    goal_type: str = "maintenance"
+    base_calories: Optional[float] = Field(None, ge=800, le=8000)
+    dietary_restrictions: Optional[List[str]] = None
+    apply_to_goal: bool = False
+
+
+class RecommendedNutritionRead(BaseModel):
+    goal_type: str
+    target_calories: float
+    target_protein: float
+    target_carbs: float
+    target_fats: float
+    target_fiber: float
+    max_sodium_mg: Optional[float] = None
+    restrictions_applied: List[str] = []
+    micronutrients_to_watch: List[str] = []
+
+
+class DietaryComplianceRead(BaseModel):
+    days_analyzed: int
+    restrictions: List[str] = []
+    allergies: List[str] = []
+    averages: Dict[str, float]
+    recommended_targets: RecommendedNutritionRead
+    compliance_score: int
+    status: str
+    warnings: List[str] = []
+    conflicts: List[Dict[str, Any]] = []
+    micronutrients_to_watch: List[str] = []
+
+
 class DealRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: int

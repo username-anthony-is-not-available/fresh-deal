@@ -1,7 +1,28 @@
 import React, { useState } from 'react';
 import { ChevronDown, ChevronUp, Filter } from 'lucide-react';
 
-const dietaryOptions = ["vegetarian", "vegan", "gluten-free", "keto", "paleo"];
+const dietaryOptions = [
+  "vegetarian",
+  "vegan",
+  "pescatarian",
+  "gluten-free",
+  "dairy-free",
+  "keto",
+  "low-carb",
+  "paleo",
+  "halal",
+  "kosher",
+  "nut-free",
+  "low-sodium",
+  "high-protein",
+  "mediterranean",
+];
+
+const formatDietaryLabel = (option) =>
+  option
+    .split(/[-_]/)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join('-');
 
 const DietaryFilters = ({ selected, onChange, initialOpen = false }) => {
   const [isOpen, setIsOpen] = useState(initialOpen);
@@ -38,7 +59,7 @@ const DietaryFilters = ({ selected, onChange, initialOpen = false }) => {
                 className="h-5 w-5 rounded border-gray-300 text-primary-600 focus:ring-primary-500 transition-colors"
               />
               <span className="text-sm text-gray-700 group-hover:text-primary-600 transition-colors">
-                {option.charAt(0).toUpperCase() + option.slice(1)}
+                {formatDietaryLabel(option)}
               </span>
             </label>
           ))}

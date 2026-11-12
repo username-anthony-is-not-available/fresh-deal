@@ -1,12 +1,21 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlmodel import Session, select
 from typing import List
-from datetime import date
+from datetime import date, timedelta
 
-from app.models.all_models import User, UserNutritionGoal, DailyNutrition
+from app.models.all_models import User, UserNutritionGoal, DailyNutrition, MealPlan
 from app.core.security import get_current_active_user
 from app.core.db import get_session
-from app.schemas import UserNutritionGoalCreate, UserNutritionGoalRead, DailyNutritionRead
+from app.schemas import (
+    UserNutritionGoalCreate,
+    UserNutritionGoalRead,
+    DailyNutritionRead,
+    DietaryProfileRead,
+    DietaryComplianceRead,
+    RecommendedNutritionRequest,
+    RecommendedNutritionRead,
+)
+from app.services.dietary_nutrition_service import DietaryNutritionService
 
 router = APIRouter()
 
@@ -71,3 +80,107 @@ def get_nutrition_summary(
     )
     summary = session.exec(summary_query).all()
     return summary
+
+
+@router.get(
+    "/nutrition/dietary-profiles",
+    response_model=List[DietaryProfileRead],
+    summary="List supported dietary restriction nutritional profiles",
+)
+def get_dietary_profiles():
+    """Return supported dietary restrictions with macro splits and micronutrient watchlists."""
+    return DietaryNutritionService.list_supported_profiles()
+
+
+@router.post(
+    "/users/me/nutrition-goal/recommended",
+    response_model=RecommendedNutritionRead,
+    summary="Compute dietary-restriction-adjusted nutrition targets",
+)
+def get_recommended_nutrition_goal(
+    *,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_active_user),
+    payload: RecommendedNutritionRequest,
+):
+    """
+    Calculate recommended daily calorie, macro, fiber, and sodium targets based on
+    goal type and active dietary restrictions, optionally persisting them as the user's goal.
+    """
+    restrictions = (
+        payload.dietary_restrictions
+        if payload.dietary_restrictions is not None
+        else current_user.dietary_preferences
+    )
+    recommended = DietaryNutritionService.compute_recommended_targets(
+        goal_type=payload.goal_type,
+        restrictions=restrictions,
+        base_calories=payload.base_calories,
+    )
+
+    if payload.apply_to_goal:
+        db_goal = session.exec(
+            select(UserNutritionGoal).where(UserNutritionGoal.user_id == current_user.id)
+        ).first()
+        fields = {
+            "goal_type": recommended["goal_type"],
+            "target_calories": recommended["target_calories"],
+            "target_protein": recommended["target_protein"],
+            "target_carbs": recommended["target_carbs"],
+            "target_fats": recommended["target_fats"],
+            "target_fiber": recommended["target_fiber"],
+        }
+        if db_goal:
+            for k, v in fields.items():
+                setattr(db_goal, k, v)
+        else:
+            db_goal = UserNutritionGoal(user_id=current_user.id, **fields)
+        session.add(db_goal)
+        session.commit()
+
+    return recommended
+
+
+@router.get(
+    "/users/me/nutrition-compliance",
+    response_model=DietaryComplianceRead,
+    summary="Evaluate nutritional compliance against dietary restrictions",
+)
+def get_nutrition_compliance(
+    *,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_active_user),
+    days: int = Query(7, ge=1, le=90),
+):
+    """
+    Evaluate recent daily nutrition intake and the latest meal plan against the user's
+    dietary restrictions, allergies, and nutrition goals.
+    """
+    end_date = date.today()
+    start_date = end_date - timedelta(days=days - 1)
+
+    daily_records = session.exec(
+        select(DailyNutrition)
+        .where(DailyNutrition.user_id == current_user.id)
+        .where(DailyNutrition.date >= start_date)
+        .where(DailyNutrition.date <= end_date)
+        .order_by(DailyNutrition.date)
+    ).all()
+
+    goal = session.exec(
+        select(UserNutritionGoal).where(UserNutritionGoal.user_id == current_user.id)
+    ).first()
+
+    latest_plan = session.exec(
+        select(MealPlan)
+        .where(MealPlan.user_id == current_user.id)
+        .order_by(MealPlan.created_at.desc())
+    ).first()
+
+    return DietaryNutritionService.evaluate_compliance(
+        daily_records=daily_records,
+        restrictions=current_user.dietary_preferences,
+        allergies=current_user.allergies,
+        goal=goal,
+        latest_plan=latest_plan,
+    )

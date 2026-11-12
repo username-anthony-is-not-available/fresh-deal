@@ -34,3 +34,20 @@ export const getNutritionSummary = async (startDate, endDate) => {
         throw error;
     }
 };
+
+export const getDietaryProfiles = async () => {
+    const response = await api.get('/nutrition/dietary-profiles');
+    return response?.data !== undefined ? response.data : response;
+};
+
+export const getRecommendedNutritionGoal = async (payload) => {
+    const response = await api.post('/users/me/nutrition-goal/recommended', payload);
+    return response?.data !== undefined ? response.data : response;
+};
+
+export const getNutritionCompliance = async (days = 7) => {
+    const response = await api.get('/users/me/nutrition-compliance', {
+        params: { days },
+    });
+    return response?.data !== undefined ? response.data : response;
+};

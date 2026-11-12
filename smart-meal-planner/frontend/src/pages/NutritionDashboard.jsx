@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { getNutritionGoal, getNutritionSummary } from '../services/nutritionService';
-import { Activity, Target, PieChart as PieChartIcon, Info } from 'lucide-react';
+import { getNutritionGoal, getNutritionSummary, getNutritionCompliance } from '../services/nutritionService';
+import { Activity, Target, PieChart as PieChartIcon, Info, ShieldCheck, AlertTriangle } from 'lucide-react';
 import clsx from 'clsx';
 
 const NutritionDashboard = () => {
     const [goal, setGoal] = useState(null);
     const [summary, setSummary] = useState([]);
+    const [compliance, setCompliance] = useState(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -21,6 +22,15 @@ const NutritionDashboard = () => {
 
                 const summaryData = await getNutritionSummary(startDate.toISOString().split('T')[0], endDate.toISOString().split('T')[0]);
                 setSummary(summaryData);
+
+                try {
+                    const complianceData = await getNutritionCompliance(7);
+                    if (complianceData) {
+                        setCompliance(complianceData);
+                    }
+                } catch {
+                    // Dietary compliance is optional when goal/summary data loads cleanly
+                }
             } catch (error) {
                 console.error("Error fetching nutrition data:", error);
             } finally {
@@ -39,6 +49,7 @@ const NutritionDashboard = () => {
             protein: Math.round(summary.reduce((acc, curr) => acc + curr.protein, 0) / count),
             carbs: Math.round(summary.reduce((acc, curr) => acc + curr.carbs, 0) / count),
             fats: Math.round(summary.reduce((acc, curr) => acc + (curr.fats || 0), 0) / count),
+            fiber: Math.round(summary.reduce((acc, curr) => acc + (curr.fiber || 0), 0) / count),
         };
     }, [summary]);
 
@@ -81,12 +92,13 @@ const NutritionDashboard = () => {
             </div>
 
             {/* Top Stats: Weekly Average vs Goals */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
                 {[
                     { label: 'Calories', current: weeklyAverages?.calories, target: goal?.target_calories, unit: 'kcal' },
                     { label: 'Protein', current: weeklyAverages?.protein, target: goal?.target_protein, unit: 'g' },
                     { label: 'Carbs', current: weeklyAverages?.carbs, target: goal?.target_carbs, unit: 'g' },
                     { label: 'Fats', current: weeklyAverages?.fats, target: goal?.target_fats, unit: 'g' },
+                    { label: 'Fiber', current: weeklyAverages?.fiber, target: goal?.target_fiber || compliance?.recommended_targets?.target_fiber, unit: 'g' },
                 ].map((stat) => {
                     const status = getGoalStatus(stat.current, stat.target);
                     return (
@@ -209,6 +221,59 @@ const NutritionDashboard = () => {
                     </div>
                 </div>
             </div>
+
+            {compliance && (
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 space-y-4">
+                    <div className="flex flex-wrap items-center justify-between gap-4">
+                        <div className="flex items-center gap-2">
+                            <ShieldCheck className="w-5 h-5 text-primary-600" />
+                            <h2 className="text-xl font-bold text-gray-900">Dietary Restriction Tracking</h2>
+                        </div>
+                        <span
+                            className={clsx(
+                                "px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wide",
+                                compliance.status === 'compliant'
+                                    ? "bg-green-100 text-green-700"
+                                    : compliance.status === 'attention'
+                                    ? "bg-amber-100 text-amber-700"
+                                    : "bg-red-100 text-red-700"
+                            )}
+                        >
+                            Score: {compliance.compliance_score}/100
+                        </span>
+                    </div>
+
+                    {compliance.restrictions?.length > 0 && (
+                        <div className="flex flex-wrap gap-2">
+                            {compliance.restrictions.map((restriction) => (
+                                <span
+                                    key={restriction}
+                                    className="px-2.5 py-1 rounded-lg bg-primary-50 text-primary-700 text-xs font-medium capitalize"
+                                >
+                                    {restriction.replace('-', ' ')}
+                                </span>
+                            ))}
+                        </div>
+                    )}
+
+                    {compliance.warnings?.length > 0 && (
+                        <div className="space-y-2">
+                            {compliance.warnings.map((warning, idx) => (
+                                <div key={idx} className="flex items-start gap-2 text-sm text-amber-800 bg-amber-50 p-3 rounded-xl">
+                                    <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                                    <span>{warning}</span>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    {compliance.micronutrients_to_watch?.length > 0 && (
+                        <p className="text-xs text-gray-600">
+                            Key micronutrients to monitor: {compliance.micronutrients_to_watch.map((m) => m.replace('_', ' ')).join(', ')}.
+                        </p>
+                    )}
+                </div>
+            )}
         </div>
     );
 };

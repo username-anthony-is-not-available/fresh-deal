@@ -10,6 +10,7 @@ const NutritionGoalSettings = () => {
         target_protein: '',
         target_carbs: '',
         target_fats: '',
+        target_fiber: '',
     });
 
     useEffect(() => {
@@ -23,6 +24,7 @@ const NutritionGoalSettings = () => {
                         target_protein: response.target_protein || '',
                         target_carbs: response.target_carbs || '',
                         target_fats: response.target_fats || '',
+                        target_fiber: response.target_fiber || '',
                     });
                 }
             } catch {
@@ -46,6 +48,7 @@ const NutritionGoalSettings = () => {
             target_protein: parseFloat(formData.target_protein) || null,
             target_carbs: parseFloat(formData.target_carbs) || null,
             target_fats: parseFloat(formData.target_fats) || null,
+            target_fiber: parseFloat(formData.target_fiber) || null,
         };
 
         const toastId = toast.loading('Saving nutrition goals...');
@@ -118,6 +121,17 @@ const NutritionGoalSettings = () => {
                             type="number"
                             name="target_fats"
                             value={formData.target_fats}
+                            onChange={handleChange}
+                            className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm p-2.5 border"
+                        />
+                    </div>
+                    <div>
+                        <label htmlFor="target_fiber" className="block text-sm font-medium text-gray-700 mb-1">Target Fiber (g)</label>
+                        <input
+                            id="target_fiber"
+                            type="number"
+                            name="target_fiber"
+                            value={formData.target_fiber}
                             onChange={handleChange}
                             className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm p-2.5 border"
                         />
